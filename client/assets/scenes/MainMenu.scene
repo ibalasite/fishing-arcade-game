@@ -1,13 +1,13 @@
 [
   {
     "__type__": "cc.SceneAsset",
-    "_name": "",
+    "_name": "MainMenu",
     "_objFlags": 0,
     "__editorExtras__": {},
+    "_native": "",
     "scene": {
       "__id__": 1
-    },
-    "_deps": []
+    }
   },
   {
     "__type__": "cc.Scene",
@@ -16,93 +16,192 @@
     "__editorExtras__": {},
     "_parent": null,
     "_children": [
-      { "__id__": 2 }
+      {
+        "__id__": 2
+      }
     ],
     "_active": true,
     "_components": [],
     "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 1073741824,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
     "autoReleaseAssets": false,
-    "globals": {
+    "_globals": {
       "__id__": 7
     },
-    "_id": "MainMenu-scene-001"
+    "_id": "0c31f64e-a077-4aea-b27c-93316248f5da"
   },
   {
     "__type__": "cc.Node",
     "_name": "Canvas",
     "_objFlags": 0,
     "__editorExtras__": {},
-    "_parent": { "__id__": 1 },
+    "_parent": {
+      "__id__": 1
+    },
     "_children": [
-      { "__id__": 3 }
+      {
+        "__id__": 3
+      }
     ],
     "_active": true,
     "_components": [
-      { "__id__": 4 },
-      { "__id__": 5 }
+      {
+        "__id__": 4
+      },
+      {
+        "__id__": 5
+      }
     ],
     "_prefab": null,
-    "_lpos": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
-    "_lrot": { "__type__": "cc.Quat", "x": 0, "y": 0, "z": 0, "w": 1 },
-    "_lscale": { "__type__": "cc.Vec3", "x": 1, "y": 1, "z": 1 },
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
     "_layer": 33554432,
-    "_euler": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
-    "_id": "canvas-node-mainmenu-001"
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "b2c3d4e5-main-menu-canv-000000000002"
   },
   {
     "__type__": "cc.Node",
     "_name": "MainMenuController",
     "_objFlags": 0,
     "__editorExtras__": {},
-    "_parent": { "__id__": 2 },
+    "_parent": {
+      "__id__": 2
+    },
     "_children": [],
     "_active": true,
     "_components": [
-      { "__id__": 6 }
+      {
+        "__id__": 6
+      }
     ],
     "_prefab": null,
-    "_lpos": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
-    "_lrot": { "__type__": "cc.Quat", "x": 0, "y": 0, "z": 0, "w": 1 },
-    "_lscale": { "__type__": "cc.Vec3", "x": 1, "y": 1, "z": 1 },
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
     "_layer": 33554432,
-    "_euler": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
-    "_id": "mainmenu-controller-node-001"
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "b2c3d4e5-main-menu-ctrl-000000000003"
   },
   {
     "__type__": "cc.UITransform",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
-    "node": { "__id__": 2 },
+    "node": {
+      "__id__": 2
+    },
     "_enabled": true,
     "__prefab": null,
-    "_contentSize": { "__type__": "cc.Size", "width": 1280, "height": 720 },
-    "_anchorPoint": { "__type__": "cc.Vec2", "x": 0.5, "y": 0.5 },
-    "_id": "uitransform-mainmenu-001"
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 1280,
+      "height": 720
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "b2c3d4e5-main-menu-uitr-000000000004"
   },
   {
     "__type__": "cc.Canvas",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
-    "node": { "__id__": 2 },
+    "node": {
+      "__id__": 2
+    },
     "_enabled": true,
     "__prefab": null,
     "_cameraComponent": null,
     "_alignCanvasWithScreen": true,
-    "_id": "canvas-comp-mainmenu-001"
+    "_id": "b2c3d4e5-main-menu-cvsc-000000000005"
   },
   {
-    "__type__": "MainMenu",
+    "__type__": "338ffAvnglBUZm8Qr6+K+t1",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
-    "node": { "__id__": 3 },
+    "node": {
+      "__id__": 3
+    },
     "_enabled": true,
     "__prefab": null,
     "jackpotLabel": null,
     "playButton": null,
-    "_id": "mainmenu-comp-001"
+    "_id": "b2c3d4e5-main-menu-scpt-000000000006"
   },
   {
     "__type__": "cc.SceneGlobals",
@@ -125,7 +224,13 @@
   {
     "__type__": "cc.AmbientInfo",
     "skyIllum": 20000,
-    "_groundAlbedo": { "__type__": "cc.Color", "r": 51, "g": 51, "b": 51, "a": 255 }
+    "_groundAlbedo": {
+      "__type__": "cc.Color",
+      "r": 51,
+      "g": 51,
+      "b": 51,
+      "a": 255
+    }
   },
   {
     "__type__": "cc.ShadowsInfo"
