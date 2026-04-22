@@ -248,10 +248,39 @@ C4Context
 
 | REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
 |--------------|-------------|------------|------------|---------|
-| US-FISH-002 / AC-1 | 遊戲進行中 | Boss 魚出現觸發條件達成 | 全房間玩家收到 Boss 魚出現廣播，Boss 魚顯示特效動畫與高倍率標示 | Integration |
+| US-FISH-002 / AC-1 | 遊戲進行中，每局計時器累計達到 N 分鐘（N 由數值設計確認，AC 凍結前填入，**BLOCKED 依賴數值設計**）| Boss 魚出現觸發條件達成 | 全房間玩家收到 Boss 魚出現廣播，Boss 魚顯示特效動畫與高倍率標示 | Integration |
 | US-FISH-002 / AC-2 | Boss 魚存活 | 玩家命中 Boss 魚 | 服務器扣除 Boss 血量，廣播最新 Boss HP 狀態給全房間 | Integration |
 | US-FISH-002 / AC-3 | Boss 魚 HP 歸零 | 最後一擊玩家命中 | 最後一擊玩家獲得高倍率獎勵，全屏特效播放，全房間廣播「[玩家名] 擊殺 Boss！」 | E2E |
 | US-FISH-002 / AC-4 | Boss 魚 60 秒未被擊殺 | Boss 超時 | Boss 魚游出畫面消失，無人獲得獎勵，服務器廣播「Boss 逃脫」 | Integration |
+
+**邊界條件：**
+- Boss 魚同一局最多出現次數：數值設計確認前暫定 3 次
+- Boss 血量（HP）：服務器端整數儲存，最小扣血 1
+
+---
+
+### 5.3.1 精英魚系統（P0）
+
+**User Story：**
+> 作為 **玩家**，
+> 我希望能 **看到精英魚出現並以較高砲台倍率射擊獲得中等獎勵**，
+> 以便 **在普通魚與 Boss 魚之間有中間獎勵層，維持期待感節奏**。
+
+**REQ-ID：** US-FISH-003（對應 BRD §5.3 P0 3 種魚類 — 精英魚）
+**優先度：** P0（Must Have）
+**關聯 BRD 目標：** OBJ-5 留存率
+
+**Acceptance Criteria：**
+
+| REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
+|--------------|-------------|------------|------------|---------|
+| US-FISH-003 / AC-1 | 遊戲進行中，精英魚依隨機概率（M% 機率/波次，由數值設計確認，AC 凍結前填入）出現 | 玩家命中精英魚 | 服務器計算獎勵：金幣獎勵 = 子彈費用 × 精英魚倍率（2-5x，數值設計確認前暫定），全房間廣播命中事件 | Integration |
+| US-FISH-003 / AC-2 | 精英魚被命中但未擊殺（精英魚有 HP > 1） | 同一或不同玩家繼續射擊 | 服務器廣播精英魚當前 HP 狀態，最後一擊玩家獲得全部獎勵 | Integration |
+| US-FISH-003 / AC-3 | 精英魚 30 秒未被擊殺 | 精英魚逾時 | 精英魚游出畫面，服務器廣播逃脫事件，本次無人獲獎 | Integration |
+
+**邊界條件：**
+- 精英魚倍率需嚴格介於普通魚（1x）與 Boss 魚（5x+）之間
+- 精英魚同一房間同時最多 N 條（數值設計確認）
 
 ---
 
@@ -273,7 +302,7 @@ C4Context
 | US-RTP-001 / AC-1 | 房間 RTP 引擎啟動 | 執行 100,000 局模擬 | 整體 RTP 誤差 < 0.1%（落在 85%-95% 範圍） | Unit |
 | US-RTP-001 / AC-2 | 任意玩家射擊 | 命中判定執行 | 判定結果 100% 在服務器端執行，客戶端封包無法影響命中結果 | Security |
 | US-RTP-001 / AC-3 | 使用浮點數計算 | 執行 100,000 局 | 禁止：RTP 誤差累積超過 0.1%（使用整數分母 RNG 防止） | Unit |
-| US-RTP-001 / AC-4 | 動態 RTP 調整 | 玩家投入金幣超過閾值 | 服務器端動態調整命中率維持全房間 RTP 在 85-95%，無需重啟服務 | Integration |
+| US-RTP-001 / AC-4 | 動態 RTP 調整，單一玩家在同一局累計投入金幣超過 T 金幣（T 由數值設計確認，**BLOCKED 依賴 OQ5 關閉前填入**）| 服務器動態調整命中率 | 服務器端動態調整命中率維持全房間 RTP 在 85-95%，無需重啟服務 | Integration |
 
 ---
 
@@ -292,8 +321,8 @@ C4Context
 
 | REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
 |--------------|-------------|------------|------------|---------|
-| US-CURR-001 / AC-1 | 玩家首次登入 | 帳號建立完成 | 玩家獲得初始金幣 N（待數值設計確認），鑽石 0 | Integration |
-| US-CURR-001 / AC-2 | 玩家金幣 < 最低砲台費用 | 等待 10 分鐘 | 系統自動恢復免費金幣 M（待數值設計確認），玩家可繼續遊戲 | Integration |
+| US-CURR-001 / AC-1 | 玩家首次登入 | 帳號建立完成 | 玩家獲得初始金幣 N（**BLOCKED** — 等待 OQ5 數值設計確認，截止開發月 1 底），鑽石 0 | Integration |
+| US-CURR-001 / AC-2 | 玩家金幣 < 最低砲台費用 | 等待 10 分鐘 | 系統自動恢復免費金幣 M（**BLOCKED** — 等待 OQ5 確認），玩家可繼續遊戲 | Integration |
 | US-CURR-001 / AC-3 | 玩家嘗試提現鑽石 | 任何提現請求 | 系統拒絕，顯示「鑽石為娛樂虛擬幣，不可提現或折換現金」 | E2E |
 | US-CURR-001 / AC-4 | 多個並發消費請求 | 同一帳號並發扣款 | 服務器端原子操作，無重複扣款（冪等設計） | Integration |
 
@@ -318,6 +347,7 @@ C4Context
 | US-CURR-002 / AC-2 | IAP 支付成功 | App Store 回傳 receipt | 服務器驗證 receipt 後發放鑽石，2 秒內玩家餘額更新 | Integration |
 | US-CURR-002 / AC-3 | IAP 支付中途失敗 | 網路中斷或取消 | 玩家鑽石不增加，金流不扣款（IAP 平台保護）；30 秒後可重試 | Integration |
 | US-CURR-002 / AC-4 | Receipt 重複提交 | 同一 receipt 重複驗證 | 服務器冪等設計，拒絕重複發放，記錄告警日誌 | Security |
+| US-CURR-002 / AC-5 | 玩家選擇購買高倍率砲台道具（鑽石道具）| IAP 驗證成功 | 玩家砲台倍率提升至 X 倍（X 由數值設計確認，AC 凍結前填入），UI 顯示剩餘時間倒數（若限時）或永久升級標示；砲台效果在 3 秒內生效 | E2E |
 
 ---
 
@@ -337,9 +367,10 @@ C4Context
 | REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
 |--------------|-------------|------------|------------|---------|
 | US-JACK-001 / AC-1 | 房間中有玩家投入金幣 | 每筆下注完成 | Jackpot 池數字即時更新（全服廣播），客戶端顯示跳動動畫 | Integration |
-| US-JACK-001 / AC-2 | Jackpot 觸發條件達成 | 服務器判定 Jackpot | 全屏特效播放，獲獎玩家獲得當前池中全部獎勵，Jackpot 池重置為基礎值 | E2E |
+| US-JACK-001 / AC-2 | Jackpot 觸發條件達成 | 服務器判定 Jackpot | 全屏特效播放，獲獎玩家獲得當前池中全部獎勵，Jackpot 池重置為基礎種子金額（例：10,000 金幣，具體數值由數值設計確認，AC 凍結前填入）| E2E |
 | US-JACK-001 / AC-3 | 服務器重啟 | 重啟後 | Jackpot 池狀態從持久化存儲恢復，不丟失累積金額 | Integration |
 | US-JACK-001 / AC-4 | 同時多人滿足觸發條件 | 並發觸發 | 服務器原子判定，僅一名玩家獲得 Jackpot，其他玩家繼續遊戲 | Integration |
+| US-JACK-001 / AC-5 | 玩家下注 X 金幣（X 為任意有效值）| 服務器處理該筆下注 | Jackpot 池增加 X × Y%（Y 為設計累積比例，由數值設計確認，AC 凍結前填入），誤差 < 0.01 金幣 | Unit |
 
 ---
 
@@ -361,6 +392,7 @@ C4Context
 | US-JACK-002 / AC-1 | 商店頁面 / 遊戲內道具說明 | 玩家查看 Jackpot 相關道具 | 顯示觸發機率（如「觸發機率 1:10,000」），格式符合開發月 1 確認之揭示格式 | Manual |
 | US-JACK-002 / AC-2 | 遊戲內 Jackpot 說明頁 | 玩家點擊「Jackpot 說明」 | 顯示觸發條件、觸發機率、獎勵計算說明，語言對應玩家設備語言 | E2E |
 | US-JACK-002 / AC-3 | Jackpot 機率變更時 | PM 更新機率設定 | 揭示 UI 同步更新（不硬編碼），商店描述由 PM 手動更新確認 | Manual |
+| US-JACK-002 / AC-4 | Jackpot 設定頁面顯示機率 P（如 1:10,000）| 執行 100,000 局服務器端模擬 | 實際觸發率與揭示機率 P 的誤差 < 10%（符合 Apple/Google 機率揭示合規要求） | Unit |
 
 ---
 
@@ -381,12 +413,54 @@ C4Context
 |--------------|-------------|------------|------------|---------|
 | US-PRIV-001 / AC-1 | 玩家首次啟動 App | App 啟動完成 | 顯示隱私政策同意彈窗，必須「同意」方可進入遊戲主畫面 | E2E |
 | US-PRIV-001 / AC-2 | 玩家點擊「不同意」 | 彈窗中點擊拒絕 | 顯示說明「本服務需要您同意才能使用」，提供「關閉應用」選項 | E2E |
-| US-PRIV-001 / AC-3 | 玩家同意後 | 同意記錄保存 | 資料庫記錄同意時間戳、IP、隱私政策版本（符合 PDPA §14 同意記錄義務） | Integration |
+| US-PRIV-001 / AC-3 | 玩家同意後 | 同意記錄保存 | 資料庫記錄同意時間戳、IP、隱私政策版本（符合台灣 PDPA §7、§8 同意義務及 §18 安全維護措施）| Integration |
 | US-PRIV-001 / AC-4 | 隱私政策更新 | 新版本政策發布 | 現有玩家下次登入時再次顯示同意彈窗，要求重新同意 | E2E |
 
 ---
 
-### 5.10 帳號刪除申請入口（P0）
+### 5.10.1 同意撤回（MVP 最小可行）
+
+**User Story：**
+> 作為 **任何玩家**，
+> 我希望能 **撤回對行銷通知的同意**，
+> 以便 **行使台灣 PDPA 第 11 條賦予的隨時撤回同意權利**。
+
+**REQ-ID：** US-PRIV-004（對應 PDPA 第 11 條同意撤回義務）
+**優先度：** P0（Must Have — 法規強制，MVP 最小實作）
+
+**Acceptance Criteria：**
+
+| REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
+|--------------|-------------|------------|------------|---------|
+| US-PRIV-004 / AC-1 | 玩家已登入 | 進入設定 → 隱私設定 | 顯示同意管理頁：「行銷通知同意」開關（已同意者顯示開啟） | E2E |
+| US-PRIV-004 / AC-2 | 玩家關閉「行銷通知同意」開關 | 點擊確認撤回 | 資料庫 `user_consents` 記錄 `revoked_at` 時間戳，後續不再傳送行銷推播 | Integration |
+| US-PRIV-004 / AC-3 | 玩家撤回必要同意（隱私政策）| 系統提示說明 | 顯示「撤回必要同意等同申請刪除帳號」，引導至帳號刪除流程（US-PRIV-002）| E2E |
+
+> **注意**：完整資料存取權（匯出 JSON）與可攜性保留至 Phase 2；撤回必要同意觸發刪除流程符合 PDPA 最小化合規。
+
+---
+
+### 5.11.1 更正個人資料（MVP）
+
+**User Story：**
+> 作為 **任何玩家**，
+> 我希望能 **編輯我的暱稱與 Email**，
+> 以便 **行使台灣 PDPA 第 11 條及 GDPR 更正權（Right to Rectification）**。
+
+**REQ-ID：** US-PRIV-003（對應 §17.3 GDPR/PDPA Rights Matrix — 更正權 MVP）
+**優先度：** P0（Must Have — 法規強制，MVP 最小實作）
+
+**Acceptance Criteria：**
+
+| REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
+|--------------|-------------|------------|------------|---------|
+| US-PRIV-003 / AC-1 | 玩家已登入 | 進入設定 → 個人資料 → 編輯暱稱 | 顯示暱稱編輯欄位（最長 50 字元），點擊儲存後立即生效並廣播更新給同房間玩家 | E2E |
+| US-PRIV-003 / AC-2 | 玩家修改 Email | 輸入新 Email 並點擊送出 | 系統發送確認信至新 Email；舊 Email 繼續有效至確認完成；確認信連結 24 小時內有效 | Integration |
+| US-PRIV-003 / AC-3 | 玩家輸入無效 Email 格式 | 點擊送出 | 顯示「請輸入有效的 Email 格式」，不發送確認信，不修改資料庫 | E2E |
+
+---
+
+### 5.12 帳號刪除申請入口（P0）
 
 **User Story：**
 > 作為 **任何玩家**，
@@ -481,6 +555,7 @@ stateDiagram-v2
 | 房間狀態廣播頻率 | 20 次/秒（50ms tick） | 服務器計時器 | 降頻至 10 次/秒 |
 | 客戶端 FPS（Cocos） | ≥ 30 FPS（中端手機） | 設備效能測試 | LOD 降級 |
 | IAP 驗證回應 | < 3s | APM | 排隊重試機制 |
+| API 吞吐量（射擊事件）| ≥ 10,000 RPS（500 房間 × 4 人 × 5 次/秒），P99 < 100ms | k6 壓測 | 水平擴展 + 限流 |
 
 ### 7.2 可用性（Availability）
 
@@ -676,6 +751,7 @@ stateDiagram-v2
 - [ ] OQ1 法務意見書取得（或應急方案已確認）
 - [ ] Runbook 已完成，Rollback 方案已驗證
 - [ ] 監控 Dashboard 已就緒，告警通道已測試
+- [ ] STRIDE 威脅建模完成，涵蓋 RTP 操控、IAP Receipt 偽造、封包重放三大攻擊面
 
 **No-Go 條件（任一存在就不上線）：**
 - [ ] OQ1 法務意見書未取得且無應急方案
@@ -745,6 +821,13 @@ stateDiagram-v2
 | `ff_iap_enabled` | OFF（Alpha）→ ON（Beta+）| Beta 玩家起 | Beta 測試開始 | 是（立即關閉 IAP）| GA + 30 天 |
 | `ff_privacy_consent` | ON | 新用戶 | 首次啟動 | 否（法規強制，不可關閉）| 永久保留 |
 | `ff_multiplayer_4p` | ON | 所有玩家 | 永遠啟用 | 是（降級為單機模式）| GA + 30 天 |
+| `ff_rtp_engine` | ON | 所有玩家 | 永遠啟用 | 是（5 分鐘內生效，降級為固定 85% RTP 安全模式）| GA + 30 天穩定後移除 |
+| `ff_dual_currency` | ON | 所有玩家 | 永遠啟用 | 是（關閉免費金幣自動恢復，防止異常金幣增發）| GA + 30 天 |
+
+**Flag 管理原則：**
+- 所有 P0 功能均有 Kill Switch Feature Flag（含 ff_rtp_engine、ff_dual_currency）
+- Flag 在功能穩定 GA 後 30 天內評估移除（避免 Flag debt）
+- Flag 狀態變更需記錄在 Decision Log
 
 ---
 
@@ -809,6 +892,10 @@ stateDiagram-v2
 | `users.nickname` | 識別資料 | 明文儲存，Log 遮罩部分字元 | 台灣 PDPA §2 | 帳號存活期 + 30 天 |
 | `sessions.ip_address` | 網路識別碼 | 不加密，Log 匿名化（後兩段遮罩）| 合法利益 | 90 天後自動刪除 |
 | `user_consents.ip_address` | 網路識別碼 | 不加密（同意記錄完整性）| PDPA 同意記錄義務 | 帳號存活期 |
+| `user_consents.user_agent` | 裝置識別資料 | 不加密，Log 遮罩 OS 版本以後欄位 | PDPA §7、§18 法規義務 | 帳號存活期 |
+| `users.device_id` | 裝置識別資料 | Hash 儲存（SHA-256），不可逆 | 合法利益（反作弊）| 90 天後移除明文，Hash 保留 |
+
+> **Email 匿名化說明**：帳號刪除申請後 30 天執行匿名化（Email 替換為隨機字符）；`transactions` 記錄依稅法保留 7 年，但僅保留匿名化後的 `user_id` 和交易金額，不再含識別性 Email。AES-256-GCM 加密範疇限於 `users.email` 欄位；`nickname` 明文儲存（低敏感 PII，Log 遮罩已足夠）；若未來增加姓名、手機等高敏感欄位，須同等加密。
 
 ---
 
@@ -861,18 +948,21 @@ stateDiagram-v2
 
 ## 15. Requirement Traceability Matrix (RTM)
 
-| REQ-ID | BRD 目標 | User Story 章節 | AC# | 設計章節（PDD） | 技術方案（EDD） | 測試案例 ID | 狀態 |
-|--------|---------|----------------|-----|----------------|----------------|-----------|------|
-| US-ROOM-001 | OBJ-4 技術 SLA、A2 | §5.1 | AC-1~AC-5 | PDD §待 PDD 生成後補填 | EDD §待 EDD 生成後補填 | TC-ROOM-001 | DRAFT |
-| US-FISH-001 | OBJ-5 留存率、A1 | §5.2 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-001 | DRAFT |
-| US-FISH-002 | OBJ-5 留存率、A1 | §5.3 | AC-1~AC-4 | PDD §— | EDD §— | TC-FISH-002 | DRAFT |
-| US-RTP-001 | OBJ-2 付費轉化、R2 | §5.4 | AC-1~AC-4 | PDD §— | EDD §— | TC-RTP-001 | DRAFT |
-| US-CURR-001 | OBJ-2 付費轉化 | §5.5 | AC-1~AC-4 | PDD §— | EDD §— | TC-CURR-001 | DRAFT |
-| US-CURR-002 | OBJ-2/OBJ-3 | §5.6 | AC-1~AC-4 | PDD §— | EDD §— | TC-CURR-002 | DRAFT |
-| US-JACK-001 | OBJ-5 留存率 | §5.7 | AC-1~AC-4 | PDD §— | EDD §— | TC-JACK-001 | DRAFT |
-| US-JACK-002 | §9.1 平台合規 | §5.8 | AC-1~AC-3 | PDD §— | EDD §— | TC-JACK-002 | DRAFT |
-| US-PRIV-001 | §9.1 PDPA | §5.9 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-001 | DRAFT |
-| US-PRIV-002 | §9.1 PDPA | §5.10 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-002 | DRAFT |
+| REQ-ID | BRD 目標 | User Story 章節 | AC# | 設計章節（PDD） | 技術方案（EDD） | 測試案例 ID | Feature Flag | 狀態 |
+|--------|---------|----------------|-----|----------------|----------------|-----------|------------|------|
+| US-ROOM-001 | OBJ-4 技術 SLA、A2 | §5.1 | AC-1~AC-5 | PDD §待補填 | EDD §待補填 | TC-ROOM-001 | ff_multiplayer_4p | DRAFT |
+| US-FISH-001 | OBJ-5 留存率、A1 | §5.2 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-001 | ff_boss_fish_enabled | DRAFT |
+| US-FISH-002 | OBJ-5 留存率、A1 | §5.3 | AC-1~AC-4 | PDD §— | EDD §— | TC-FISH-002 | ff_boss_fish_enabled | DRAFT |
+| US-FISH-003 | OBJ-5 留存率（精英魚）| §5.3.1 | AC-1~AC-3 | PDD §— | EDD §— | TC-FISH-003 | ff_boss_fish_enabled | DRAFT |
+| US-RTP-001 | OBJ-2 付費轉化、R2 | §5.4 | AC-1~AC-4 | PDD §— | EDD §— | TC-RTP-001 | ff_rtp_engine | DRAFT |
+| US-CURR-001 | OBJ-2 付費轉化 | §5.5 | AC-1~AC-4 | PDD §— | EDD §— | TC-CURR-001 | ff_dual_currency | DRAFT |
+| US-CURR-002 | OBJ-2/OBJ-3 | §5.6 | AC-1~AC-5 | PDD §— | EDD §— | TC-CURR-002 | ff_iap_enabled | DRAFT |
+| US-JACK-001 | OBJ-5 留存率 | §5.7 | AC-1~AC-5 | PDD §— | EDD §— | TC-JACK-001 | ff_jackpot_enabled | DRAFT |
+| US-JACK-002 | §9.1 平台合規 | §5.8 | AC-1~AC-4 | PDD §— | EDD §— | TC-JACK-002 | ff_jackpot_enabled | DRAFT |
+| US-PRIV-001 | §9.1 PDPA | §5.9 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-001 | ff_privacy_consent | DRAFT |
+| US-PRIV-002 | §9.1 PDPA | §5.12 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-002 | N/A（法規強制）| DRAFT |
+| US-PRIV-003 | PDPA 更正權 | §5.11.1 | AC-1~AC-3 | PDD §— | EDD §— | TC-PRIV-003 | N/A | DRAFT |
+| US-PRIV-004 | PDPA 撤回同意 | §5.10.1 | AC-1~AC-3 | PDD §— | EDD §— | TC-PRIV-004 | N/A（法規強制）| DRAFT |
 
 ---
 
@@ -894,8 +984,8 @@ stateDiagram-v2
 
 | # | 原則 | 本產品實作方式 | 合規狀態 |
 |---|------|------------|---------|
-| 1 | Proactive not Reactive | 威脅建模（STRIDE）在 EDD 設計階段完成；RTP 服務器端執行防客戶端篡改 | ☐ EDD 確認後 |
-| 2 | Privacy as Default | 資料蒐集預設最小化（僅 Email + 暱稱）；行銷追蹤預設關閉 | ☐ 待確認 |
+| 1 | Proactive not Reactive | 威脅建模（STRIDE）在 EDD 設計階段完成，必須涵蓋 RTP 操控、IAP Receipt 偽造、封包重放三大攻擊面；Go/No-Go §9.3 新增 STRIDE 完成檢查點 | ☐ EDD 確認後 |
+| 2 | Privacy as Default | 資料蒐集預設最小化（僅 Email + 暱稱）；Firebase Analytics 行銷事件（marketing_* 前綴）需玩家主動 opt-in（US-PRIV-004），預設不傳送；設備 ID Hash 儲存，不明文 | ☐ 待 US-PRIV-004 實作 |
 | 3 | Privacy Embedded into Design | PII 欄位（Email）AES-256-GCM 加密；Log 遮罩 user_id | ☐ 待實作 |
 | 4 | Full Functionality | 隱私保護不降低遊戲功能；PDPA 合規與遊戲體驗並行 | ☐ 待確認 |
 | 5 | End-to-End Security | TLS 1.3 + AES-256 靜態加密 + JWT 金鑰輪換 | ☐ 待實作 |
@@ -910,18 +1000,20 @@ stateDiagram-v2
 | `nickname` | `users` | 識別資料 | 遊戲顯示名稱 | 契約必要 | 帳號存活期 + 30 天 | 明文（無敏感性）|
 | `ip_address` | `sessions` | 網路識別碼 | 安全分析、反作弊 | 合法利益 | 90 天 | 不加密（匿名化日誌）|
 | `ip_address` | `user_consents` | 網路識別碼 | PDPA 同意記錄完整性 | 法規義務 | 帳號存活期 | 不加密 |
+| `user_agent` | `user_consents` | 裝置識別資料 | PDPA 同意記錄完整性（裝置環境證明）| 法規義務（PDPA §7、§18）| 帳號存活期 | 不加密（Log 遮罩 OS 以後欄位）|
+| `device_id` | `users`（反重複帳號索引）| 裝置識別資料 | 反作弊 / 反重複帳號（BRD §7.4）| 合法利益（PDPA §19I）| 90 天後自動 Hash 移除明文 | Hash 儲存（SHA-256，不可逆）|
 
 ### 17.3 使用者隱私權實作矩陣
 
 | GDPR / PDPA 權利 | 功能需求 | 實作期限 | 負責人 |
 |---------|---------|---------|--------|
 | 存取權 | 設定 → 匯出我的資料（JSON）| Phase 2 | Engineering |
-| 更正權 | 設定 → 編輯暱稱 / Email | MVP | Engineering |
+| 更正權 | 設定 → 編輯暱稱 / Email（US-PRIV-003）| MVP | Engineering |
 | 刪除權 | 設定 → 申請刪除帳號（US-PRIV-002）| MVP | Engineering |
 | 限制處理 | 帳號暫停功能（待刪除期間）| MVP | Engineering |
 | 可攜性 | 資料匯出 JSON/CSV | Phase 2 | Engineering |
 | 反對權 | 行銷通知退訂 | Phase 2 | Engineering |
-| 撤回同意 | 隱私設定 → 一鍵撤回非必要同意 | Phase 2 | Engineering |
+| 撤回同意 | 隱私設定 → 撤回行銷通知同意（US-PRIV-004，MVP）；撤回必要同意 → 引導帳號刪除（US-PRIV-002）| MVP（行銷同意）/ Phase 2（完整）| Engineering |
 
 ### 17.4 同意管理（Consent Management）
 
