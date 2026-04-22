@@ -109,7 +109,7 @@ C4Component
 - **Server-authoritative design**: ALL game outcome calculations (RTP, fish spawn paths, jackpot trigger, bullet-hit adjudication) execute server-side. Client is display-only. This satisfies US-RTP-001/AC-2 and PRD §7.4 anti-cheat requirements.
 - **Integer-denominator RNG**: Probabilities expressed as `hits_per_N` integers to prevent floating-point drift (PRD BRD §0.1 technical risk R2, US-RTP-001/AC-3).
 - **Colyseus Schema v2**: `@type` decorators from `@colyseus/schema` v2, not v1 annotations. MapSchema / ArraySchema for fish and player collections.
-- **Redis for jackpot pool**: Hot path; atomic `HINCRBYFLOAT` (integer cents) avoids PostgreSQL round-trip per shot. PostgreSQL remains the source of truth, written on trigger or server restart.
+- **Redis for jackpot pool**: Hot path; atomic `INCRBYFLOAT game:jackpot:pool <contribution>` (plain string key) avoids PostgreSQL round-trip per shot. Jackpot claim uses a Lua script for atomic GETDEL+SET. PostgreSQL remains the source of truth, written on trigger or server restart.
 
 ### §1.3 Non-Functional Requirements Mapping
 
@@ -153,6 +153,10 @@ export class FishState extends Schema {
     @type('float32') posY: number = 0;
     @type('int32')   rewardMultiplier: number = 1;
     @type('boolean') alive: boolean = true;
+    // JSON-encoded Bezier path control points: [{x,y},{x,y},{x,y}] (3-4 points)
+    // All clients reconstruct the identical deterministic path from this server-provided data
+    @type('string')  pathData: string = '';
+    @type('float32') speed: number = 1.0;
 }
 
 export class BulletState extends Schema {
@@ -216,10 +220,13 @@ export class GameRoom extends Room<GameState> {
     }
 
     async onJoin(client: Client, options: JoinOptions) {
+        // Validate nickname from client: max 50 chars, non-empty
+        const nickname = (options.nickname ?? '').slice(0, 50).trim();
+        if (!nickname) throw new Error('invalid_nickname');
         const player = new PlayerState();
         player.playerId = client.sessionId;
         // Use verified userId from client.auth (set by onAuth) — NOT unverified options
-        player.nickname = options.nickname;
+        player.nickname = nickname;
         player.gold = await WalletService.getGold(client.auth.userId);
         player.slotIndex = this._assignSlot();
         this.state.players.set(client.sessionId, player);
@@ -227,10 +234,12 @@ export class GameRoom extends Room<GameState> {
         if (this.state.playerCount >= 4) this._transitionToPlaying();
     }
 
-    async onLeave(client: Client, consented: boolean) {
+    // Colyseus 0.15: second param is a numeric WebSocket close code, NOT a boolean
+    // code === 1000 = intentional disconnect (user left); any other code = unexpected disconnect
+    async onLeave(client: Client, code: number) {
         const player = this.state.players.get(client.sessionId);
         if (player) { player.isConnected = false; }
-        if (!consented) {
+        if (code !== 1000) {
             try {
                 // allow reconnection within 10s (PRD US-ROOM-001/AC-4)
                 // allowReconnection throws if client does not reconnect within timeout
@@ -278,8 +287,11 @@ export interface RTPConfig {
     fishConfigs: FishConfig[];
 }
 
+// Shared type — import in RTPEngine, FishSpawner, and schema files
+export type FishType = 'normal' | 'elite' | 'boss';
+
 export interface FishConfig {
-    fishType: 'normal' | 'elite' | 'boss';
+    fishType: FishType;
     baseMultiplier: number;     // payout = bet * baseMultiplier
     hitRateNumerator: number;   // integer; hit probability = numerator / denominator
     hitRateDenominator: number; // fixed denominator (e.g. 100_000)
@@ -358,17 +370,22 @@ Fish spawn includes a **server-computed Bezier path** (3-4 control points) so al
 ```
 Client sends: { bulletId, fishId, cannonMultiplier, betAmount }
 Server:
-  1. Validate: player has sufficient gold (betAmount <= player.gold)
+  1. Validate: player has sufficient gold (betAmount <= player.gold — checked against PlayerState.gold)
   2. Validate: fishId exists and is alive
   3. Deduct betAmount from player wallet (atomic, via WalletService.debitGold)
+     → Update player.gold in schema: this.state.players.get(sessionId)!.gold -= betAmount
   4. Call RTPEngine.adjudicate(fishType, betAmount, cannonMultiplier)
   5. If hit:
      a. Decrement fish HP by 1 (server tracks HP via FishState.hp in schema)
-     b. If HP == 0: call WalletService.creditGold(userId, payout, 'earn'); broadcast fish_killed;
-        remove fish from state (triggers automatic schema delta to all clients)
+     b. If HP == 0: call WalletService.creditGold(userId, payout, 'earn');
+        → Update player.gold in schema: this.state.players.get(sessionId)!.gold += payout
+        Broadcast fish_killed; remove fish from state (triggers automatic schema delta to all clients)
      c. Else: HP decrement auto-synced via schema delta patch (no separate fish_damaged message needed)
   6. Check jackpot trigger (JackpotManager.tryTrigger with verified userId)
-  7. Send shoot_result to shooter client (hit/miss, payout amount)
+     → If jackpot won: update player.gold in schema += jackpotAmount
+  7. INSERT INTO rtp_logs (room_id, user_id, fish_type, bet_amount, multiplier, hit, payout, rtp_at_time)
+     with current RTPEngine.currentRtp value — regulatory audit trail (permanent retention)
+  8. Send shoot_result to shooter client (hit/miss, payout amount)
 ```
 
 **Anti-double-spend**: Wallet deduction is a database transaction with `FOR UPDATE` row lock. Bullet validation rejects concurrent duplicate `bulletId` values within the same session.
@@ -390,16 +407,23 @@ Server:
 // src/engine/JackpotManager.ts
 export class JackpotManager {
     private static _instance: JackpotManager;
+    private static _initPromise: Promise<JackpotManager> | null = null;  // race-condition guard
     private _redis: Redis;
 
-    public static async getInstance(): Promise<JackpotManager> {
-        if (!JackpotManager._instance) {
-            const mgr = new JackpotManager();
-            mgr._redis = new Redis(process.env.REDIS_URL!);
-            await mgr.restorePool();
-            JackpotManager._instance = mgr;
+    // Concurrent callers await the same promise — prevents double initialization under HPA multi-pod startup
+    public static getInstance(): Promise<JackpotManager> {
+        if (!JackpotManager._initPromise) {
+            JackpotManager._initPromise = (async () => {
+                if (!JackpotManager._instance) {
+                    const mgr = new JackpotManager();
+                    mgr._redis = new Redis(process.env.REDIS_URL!);
+                    await mgr.restorePool();
+                    JackpotManager._instance = mgr;
+                }
+                return JackpotManager._instance;
+            })();
         }
-        return JackpotManager._instance;
+        return JackpotManager._initPromise;
     }
 
     // userId: verified user UUID (from client.auth set by onAuth) — NOT Colyseus sessionId
@@ -420,7 +444,8 @@ export class JackpotManager {
         const poolStr = await this._redis.eval(
             LUA_ATOMIC_CLAIM, 1, 'game:jackpot:pool', String(JACKPOT_SEED_AMOUNT)
         ) as string | null;
-        const poolAmount = parseInt(poolStr ?? '0', 10);
+        // INCRBYFLOAT stores a float string; Math.round avoids truncation of fractional contributions
+        const poolAmount = Math.round(parseFloat(poolStr ?? '0'));
         if (poolAmount <= 0) return null;   // another instance claimed it concurrently
 
         // Credit winner's wallet and record history in a single DB transaction
@@ -503,6 +528,30 @@ export async function creditGold(userId: string, amount: number, type: string = 
             [userId, type, amount]
         );
     });
+}
+
+/** Returns current gold balance for a player (used in onJoin to populate PlayerState) */
+export async function getGold(userId: string): Promise<number> {
+    const row = await db.query('SELECT gold FROM user_wallets WHERE user_id=$1', [userId]);
+    return row.rows[0]?.gold ?? 0;
+}
+
+/** Batch-flush any pending async wallet writes (called in onDispose) — placeholder for write-behind cache */
+export async function flushBatch(): Promise<void> {
+    // No-op in MVP (all mutations are synchronous transactions). Add write-behind cache here if needed.
+}
+
+/** Restore daily gold for active users below the free-gold threshold (blocked by OQ5) */
+export async function restoreDailyGold(): Promise<void> {
+    const DAILY_GOLD_THRESHOLD = parseInt(process.env.DAILY_GOLD_THRESHOLD ?? '0', 10);
+    const DAILY_GOLD_AMOUNT    = parseInt(process.env.DAILY_GOLD_AMOUNT    ?? '0', 10);
+    if (!DAILY_GOLD_THRESHOLD || !DAILY_GOLD_AMOUNT) return;  // OQ5: values TBD
+    await db.query(
+        `UPDATE user_wallets SET gold = gold + $1 WHERE gold < $2 AND user_id IN (
+           SELECT id FROM users WHERE deletion_status = 'active'
+         )`,
+        [DAILY_GOLD_AMOUNT, DAILY_GOLD_THRESHOLD]
+    );
 }
 
 // iapVerificationResult contains: platform, productId, diamondAmount from the store receipt
@@ -596,7 +645,7 @@ async requestDeletion(userId: string): Promise<void> {
 // Cron job runs daily (see §2.7): processes deletion_requests WHERE scheduled_for <= NOW()
 async executeScheduledDeletions(): Promise<void> {
     const rows = await db.query(
-        "SELECT user_id FROM deletion_requests WHERE scheduled_for <= NOW() AND executed_at IS NULL"
+        "SELECT user_id FROM deletion_requests WHERE scheduled_for <= NOW() AND executed_at IS NULL AND cancelled_at IS NULL"
     );
     for (const row of rows.rows) {
         await db.transaction(async (trx) => {
@@ -628,6 +677,13 @@ Body: { nickname?: string, email?: string }
 ```
 
 Email confirmation token stored in Redis with 24-hour TTL: `SET email_confirm:<token> <userId:newEmail> EX 86400`.
+On confirmation link click, the server atomically updates **both** columns:
+```sql
+UPDATE users
+SET email = $encryptedNewEmail, email_hash = $hmacNewEmail
+WHERE id = $userId AND deletion_status = 'active'
+```
+Both `email` and `email_hash` must be updated together — updating only `email` without `email_hash` would break future uniqueness lookups.
 
 #### Consent Revocation Flow (US-PRIV-004)
 
@@ -791,6 +847,8 @@ CREATE TABLE rtp_logs (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_rtp_logs_room ON rtp_logs(room_id, created_at DESC);
+CREATE INDEX idx_game_sessions_started_at ON game_sessions(started_at);
+CREATE INDEX idx_game_sessions_room_id ON game_sessions(room_id);
 ```
 
 **Email encryption**: `users.email` stored as `BYTEA` (AES-256-GCM with server-managed KEK via environment variable or Vault). `users.email_hash` stores `HMAC-SHA256(plaintext_email, HMAC_SECRET_KEY)` for uniqueness lookup (since AES-GCM is non-deterministic). Decryption occurs only in application layer; never logged.
@@ -801,6 +859,7 @@ CREATE INDEX idx_rtp_logs_room ON rtp_logs(room_id, created_at DESC);
 
 ```yaml
 # k8s minimal spec (HPA-enabled)
+# NOTE: Replace ${GIT_SHA} with the actual commit hash via CI/CD (never use :latest in production)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -813,7 +872,8 @@ spec:
     spec:
       containers:
         - name: game-server
-          image: fishing-game-server:latest
+          image: fishing-game-server:${GIT_SHA}   # injected by CI/CD pipeline; never :latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 2567     # Colyseus WebSocket
             - containerPort: 3000     # REST API
@@ -824,6 +884,12 @@ spec:
               valueFrom: { secretKeyRef: { name: redis-secret, key: url } }
             - name: AES_KEY
               valueFrom: { secretKeyRef: { name: crypto-secret, key: aes-key } }
+            - name: HMAC_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: crypto-secret, key: hmac-key } }
+            - name: JWT_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: jwt-secret, key: private-key } }
+            - name: JWT_PUBLIC_KEY
+              valueFrom: { secretKeyRef: { name: jwt-secret, key: public-key } }
           resources:
             requests: { cpu: "500m", memory: "512Mi" }
             limits:   { cpu: "2",    memory: "2Gi" }
@@ -831,13 +897,41 @@ spec:
             httpGet: { path: /health, port: 3000 }
             initialDelaySeconds: 10
             periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 3000 }  # returns 200 only after DB+Redis connected
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+---
+# Service with sticky sessions required for Colyseus multi-pod WebSocket routing
+apiVersion: v1
+kind: Service
+metadata:
+  name: fishing-game-svc
+  annotations:
+    # Nginx Ingress sticky session for WebSocket — ensures client always reconnects to same pod
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "colyseus-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+spec:
+  selector: { app: fishing-game }
+  ports:
+    - name: ws
+      port: 2567
+      targetPort: 2567
+    - name: rest
+      port: 3000
+      targetPort: 3000
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: fishing-game-hpa
 spec:
-  scaleTargetRef: { kind: Deployment, name: fishing-game-server }
+  scaleTargetRef:
+    apiVersion: apps/v1     # required by autoscaling/v2
+    kind: Deployment
+    name: fishing-game-server
   minReplicas: 2
   maxReplicas: 5
   metrics:
@@ -950,13 +1044,17 @@ export class NetworkManager extends Component {
     }
 
     private async _handleDisconnect(code: number) {
+        // Capture token before the loop — _room may be nulled by SDK during disconnect handling
+        const reconnectToken = this._room?.reconnectionToken;
+        if (!reconnectToken) { this._emitEvent('reconnect_failed'); return; }
+
         // Use iterative loop (not recursion) to avoid stack overflow across multiple retries
         while (this._reconnectAttempts < NetworkManager.MAX_RECONNECT) {
             this._emitEvent('reconnecting', { attempt: this._reconnectAttempts + 1 });
             const delay = NetworkManager.RECONNECT_DELAYS[this._reconnectAttempts];
             await new Promise(r => setTimeout(r, delay));
             try {
-                this._room = await this._client.reconnect(this._room!.reconnectionToken);
+                this._room = await this._client.reconnect(reconnectToken);
                 this._reconnectAttempts = 0;
                 this._emitEvent('reconnected');
                 return;
@@ -976,8 +1074,8 @@ export class NetworkManager extends Component {
 
 #### State Sync Handling (onStateChange Callbacks)
 
-- **Fish pool updates**: `state.fish.onAdd` → `FishPool.spawn(fishData)`; `state.fish.onRemove` → `FishPool.recycle(fishId)`
-- **Player state changes**: `state.players.onChange` → update CannonHUD labels (gold, nickname)
+- **Fish pool updates**: `state.fish.onAdd((fish, key) => FishPool.spawn(fish))`; `state.fish.onRemove((fish, key) => FishPool.recycle(fish.fishId))`
+- **Player state changes**: `state.players.onAdd((player, key) => { player.listen('gold', newVal => updateHUD(key, newVal)); player.listen('nickname', ...) })` — Colyseus Schema v2 MapSchema uses `.onAdd` + per-item `.listen()`, NOT `.onChange`
 - **Jackpot pool**: `state.listen('jackpotPool', (newVal) => NumberRoller.updateValue(newVal))` — Colyseus Schema v2 uses `state.listen('fieldName', cb)` for primitive field listeners, NOT `state.onChange('fieldName', cb)`
 - **Room state transitions**: `state.listen('roomState', (newVal) => ...)` → trigger scene-level state machine (WaitingOverlay, BossAnnouncement, etc.)
 
@@ -1146,3 +1244,4 @@ All game outcomes computed server-side. Client cannot influence:
 |---------|------|--------|---------|
 | v1.0 | 2026-04-22 | tobala | Initial EDD generated from PRD v1.1 + PDD v1.5. Covers full backend (Colyseus room, RTPEngine, JackpotManager, WalletService, PrivacyService, PostgreSQL schema, k8s spec) and client (ObjectPool, NetworkManager, SafeAreaAdapter, privacy UI components) architecture. 13 US-IDs traced. |
 | v1.1 | 2026-04-22 | tobala | Review Round 1 fix — 26 findings resolved: onMessage override removed; allowReconnection try/catch added; onAuth JWT guard added; Jackpot Lua atomic claim + missing creditGold; iap_receipts missing NOT NULL columns; AES-256-GCM UNIQUE→HMAC-SHA256; shoot message field alignment; RTP 85-95%→92-96%; BigInt basis-point precision; state.listen API correction; ObjectPool key capitalisation; spawnFish component map; fish_damaged removed (schema delta); NetworkManager recursive→loop; privacy_policies table added; 2 missing cron jobs added; creditGold function added; Math.random()→crypto.randomInt() |
+| v1.2 | 2026-04-22 | tobala | Review Round 2 fix — 20 findings resolved: §1.2 HINCRBYFLOAT stale ref; JackpotManager _initPromise singleton guard; executeScheduledDeletions filters cancelled_at; parseInt→parseFloat for INCRBYFLOAT result; PlayerState.gold updated after wallet mutations; FishState pathData+speed fields added; onLeave boolean→numeric close code; nickname validation in onJoin; state.players.onChange→onAdd+listen; k8s :latest→${GIT_SHA}+imagePullPolicy; readinessProbe added; HPA apiVersion added; JWT+HMAC secrets in env; email confirmation updates both email+email_hash; rtp_logs INSERT in hit flow; game_sessions indexes added; Service+sticky session annotation added; FishType exported; WalletService stubs added; reconnect token captured before loop |
