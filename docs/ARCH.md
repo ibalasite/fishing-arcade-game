@@ -131,17 +131,14 @@ sequenceDiagram
     GR->>GR: assign slotIndex (0=BL, 1=BR, 2=TL, 3=TR)
     GR->>GR: state.players.set(sessionId, playerState)
     GR->>PG: INSERT game_sessions / UPDATE player_ids, player_count
-    GR-->>C: Schema state patch (all players, room state='WAITING')
-
     alt playerCount < 4 (players 1–3 joined)
-        Note over GR,C: Room stays WAITING — WaitingOverlay shows player count
-        GR-->>C: State delta broadcast (player added, playerCount updated)
+        GR-->>C: Schema delta patch (new player added; roomState='WAITING')
         Note over C: Client shows WaitingOverlay with "Waiting for players (N/4)"
     else playerCount == 4 (room full)
         Note over GR: _transitionToPlaying() called
         GR->>GR: state.roomState = 'PLAYING'
         GR->>GR: FishSpawner.start() — begin normal wave schedule
-        GR-->>C: State patch broadcast (roomState='PLAYING')
+        GR-->>C: Schema delta patch (all players; roomState='PLAYING')
         C->>C: UILayer hides WaitingOverlay; game begins
     end
 ```
@@ -167,50 +164,55 @@ sequenceDiagram
         GR->>GR: activeBullets.add(bulletId); check size <= 10
         GR->>GR: 1. Validate: player.gold >= betAmount
         GR->>GR: 2. Validate: fishId exists and alive in state.fish
-        GR->>WS: debitGold(userId, betAmount)
-        WS->>PG: BEGIN; SELECT gold FOR UPDATE; UPDATE -betAmount; INSERT transactions; COMMIT
-        PG-->>WS: OK
-        WS-->>GR: OK
-        GR->>GR: state.players.get(sessionId).gold -= betAmount  [schema update]
-        
-        GR->>RTP: adjudicate(fishType, betAmount, cannonMultiplier)
-        RTP->>RTP: _dynamicAdjust(fishCfg) — scale hitRateNumerator if RTP drifts
-        RTP->>RTP: roll = crypto.randomInt(denominator)
-        RTP-->>GR: {hit: boolean, payout: number}
-        
-        alt hit == true
-            GR->>GR: FishState.hp -= 1
-            alt hp == 0 (fish killed)
-                GR->>WS: creditGold(userId, payout, 'earn')
-                WS->>PG: BEGIN; UPDATE gold +payout; INSERT transactions; COMMIT
-                GR->>GR: state.players.get(sessionId).gold += payout  [schema update]
-                GR->>GR: state.fish.delete(fishId)  [auto-broadcasts delta]
-                Note over GR,C: fish_killed implicit via schema delta (no separate message)
-            else hp > 0
-                Note over GR,C: HP decrement auto-synced via schema delta patch
+        alt validation fails (insufficient gold OR fish not found)
+            GR-->>C: send('shoot_error', {code: 'INVALID_SHOOT', reason})
+            GR->>GR: activeBullets.delete(bulletId)
+        else validation passes
+            GR->>WS: debitGold(userId, betAmount)
+            WS->>PG: BEGIN; SELECT gold FOR UPDATE; UPDATE -betAmount; INSERT transactions; COMMIT
+            PG-->>WS: OK
+            WS-->>GR: OK
+            GR->>GR: state.players.get(sessionId).gold -= betAmount  [schema update]
+            
+            GR->>RTP: adjudicate(fishType, betAmount, cannonMultiplier)
+            RTP->>RTP: _dynamicAdjust(fishCfg) — scale hitRateNumerator if RTP drifts
+            RTP->>RTP: roll = crypto.randomInt(denominator)
+            RTP-->>GR: {hit: boolean, payout: number}
+            
+            alt hit == true
+                GR->>GR: FishState.hp -= 1
+                alt hp == 0 (fish killed)
+                    GR->>WS: creditGold(userId, payout, 'earn')
+                    WS->>PG: BEGIN; UPDATE gold +payout; INSERT transactions; COMMIT
+                    GR->>GR: state.players.get(sessionId).gold += payout  [schema update]
+                    GR->>GR: state.fish.delete(fishId)  [auto-broadcasts delta]
+                    Note over GR,C: fish_killed implicit via schema delta (no separate message)
+                else hp > 0
+                    Note over GR,C: HP decrement auto-synced via schema delta patch
+                end
+                
+                GR->>JP: tryTrigger(cannonMultiplier, userId)
+                JP->>JP: odds = JACKPOT_ODDS[multiplier]; roll = crypto.randomInt(odds)
+                alt jackpot triggered (roll == 0)
+                    JP->>RD: EVAL Lua: GETDEL game:jackpot:pool; SET game:jackpot:pool SEED
+                    RD-->>JP: poolAmount string
+                    JP->>PG: BEGIN; INSERT jackpot_history; UPDATE user_wallets +poolAmount; INSERT transactions('jackpot'); COMMIT
+                    JP-->>GR: {winnerId, amount}
+                    GR->>GR: state.players.get(sessionId).gold += jackpotAmount
+                    GR->>RTP: addExternalPayout(jackpotAmount)  [RTP accounting]
+                    GR->>GR: broadcast('jackpot_won', {winnerId, amount})
+                    GR-->>C: message: jackpot_won → celebration animation
+                else no jackpot
+                    JP-->>GR: null
+                end
+            else hit == false (miss)
+                Note over GR,C: Gold already debited (bet cost); no payout; no fish state change
             end
             
-            GR->>JP: tryTrigger(cannonMultiplier, userId)
-            JP->>JP: odds = JACKPOT_ODDS[multiplier]; roll = crypto.randomInt(odds)
-            alt jackpot triggered (roll == 0)
-                JP->>RD: EVAL Lua: GETDEL game:jackpot:pool; SET game:jackpot:pool SEED
-                RD-->>JP: poolAmount string
-                JP->>PG: BEGIN; INSERT jackpot_history; UPDATE user_wallets +poolAmount; INSERT transactions('jackpot'); COMMIT
-                JP-->>GR: {winnerId, amount}
-                GR->>GR: state.players.get(sessionId).gold += jackpotAmount
-                GR->>RTP: addExternalPayout(jackpotAmount)  [RTP accounting]
-                GR->>GR: broadcast('jackpot_won', {winnerId, amount})
-                GR-->>C: message: jackpot_won → celebration animation
-            else no jackpot
-                JP-->>GR: null
-            end
-        else hit == false (miss)
-            Note over GR,C: Gold already debited (bet cost); no payout; no fish state change
+            GR->>PG: INSERT rtp_logs (fire-and-forget, catch+log on error)
+            GR-->>C: send('shoot_result', {hit: true/false, payout})
+            GR->>GR: activeBullets.delete(bulletId)
         end
-        
-        GR->>PG: INSERT rtp_logs (fire-and-forget, catch+log on error)
-        GR-->>C: send('shoot_result', {hit, payout: 0 if miss})
-        GR->>GR: activeBullets.delete(bulletId)
     end
 ```
 
@@ -418,7 +420,7 @@ stateDiagram-v2
 |-------|-----------|---------|-----------|
 | Game Client | Cocos Creator | 4.x | User-specified; native iOS/Android build; Spine animation support; TypeScript; hot-update support |
 | Realtime Backend | Colyseus | 0.15 | MIT license; room-based isolation; built-in Schema v2 delta serialisation; matches existing `sam-gong-game` stack |
-| Backend Language | TypeScript + Node.js | 5.x / 20 LTS | Full-stack TypeScript reduces context switching; team familiarity; async/non-blocking I/O suitable for realtime game server |
+| Backend Language | TypeScript + Node.js | TS 5.x / Node 20 LTS | Full-stack TypeScript reduces context switching; team familiarity; async/non-blocking I/O suitable for realtime game server |
 | REST Framework | Express | 4.x | Minimal, well-understood; OpenAPI spec generation via swagger-jsdoc; lightweight for game backend |
 | Primary Database | PostgreSQL | 15 | ACID guarantees for wallet atomicity; `FOR UPDATE` row-lock prevents double-spend; JSONB for schema evolution; 7-year audit retention |
 | Cache / Jackpot State | Redis | 7 | Sub-millisecond atomic `INCRBYFLOAT` for jackpot pool accumulation; session token TTL; rate-limit counters; avoids PG round-trip per shot |
