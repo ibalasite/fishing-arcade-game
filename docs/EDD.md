@@ -194,6 +194,7 @@ export class GameRoom extends Room<GameState> {
     private _fishSpawner: FishSpawner;
     private _jackpotManager: JackpotManager;
     private _tickInterval: ReturnType<typeof setInterval>;
+    private _disposed = false;  // guard: setInterval cleared but callback may fire once more in same event loop tick
 
     // onAuth verifies JWT before onJoin (Colyseus 0.15 — called with request headers)
     async onAuth(client: Client, options: JoinOptions, request: http.IncomingMessage) {
@@ -240,10 +241,14 @@ export class GameRoom extends Room<GameState> {
         this.state.playerCount = this.state.players.size;
         if (this.state.playerCount >= 4) this._transitionToPlaying();
 
-        // Update session player count on each join
+        // Update session: append userId to player_ids array + refresh player_count and room_state
         await db.query(
-            `UPDATE game_sessions SET player_count = $1, room_state = $2 WHERE room_id = $3`,
-            [this.state.playerCount, this.state.roomState, this.roomId]
+            `UPDATE game_sessions
+             SET player_ids   = array_append(player_ids, $1::uuid),
+                 player_count = $2,
+                 room_state   = $3
+             WHERE room_id = $4`,
+            [client.auth.userId, this.state.playerCount, this.state.roomState, this.roomId]
         );
     }
 
@@ -272,6 +277,7 @@ export class GameRoom extends Room<GameState> {
     // NOTE: Do NOT override onMessage(). Use this.onMessage(type, cb) in onCreate() only.
 
     async onDispose() {
+        this._disposed = true;    // prevents any in-flight tick from writing state after dispose begins
         clearInterval(this._tickInterval);
         // Clear boss escape timers to prevent post-dispose callbacks
         this._bossEscapeTimers.forEach(t => clearTimeout(t));
@@ -290,7 +296,7 @@ export class GameRoom extends Room<GameState> {
 
 #### State Synchronisation Strategy
 
-- **20Hz server tick**: fish position interpolation + room state broadcast via Colyseus delta-encode. Each tick also refreshes `this.state.rtpNumerator = Math.round(this._rtpEngine.currentRtp * 100)` to keep the client-visible RTP indicator current.
+- **20Hz server tick**: fish position interpolation + room state broadcast via Colyseus delta-encode. Each tick also refreshes `this.state.rtpNumerator = Math.round(this._rtpEngine.currentRtp * 100)` to keep the client-visible RTP indicator current. **Dispose guard**: `_tick()` must check `if (this._disposed) return;` as its first line — `setInterval` can fire once more after `clearInterval` returns within the same event-loop turn.
 - **Bullet events**: sent as targeted one-off messages (not state schema), avoiding per-bullet schema overhead.
 - **Client-side interpolation**: client moves fish along server-provided Bezier path using elapsed time, correcting on each state patch. Bullet travel is purely client-predicted; server only broadcasts hit/miss outcome.
 - **Jackpot pool**: broadcast via GameState schema `jackpotPool` field on every state patch. NumberRoller animates the delta client-side.
@@ -443,13 +449,46 @@ Server:
   6. Check jackpot trigger (JackpotManager.tryTrigger with verified userId)
      → If jackpot won: update player.gold in schema += jackpotAmount
      → Call this._rtpEngine.addExternalPayout(jackpotAmount) to include in RTP accounting
-  7. INSERT INTO rtp_logs (room_id, user_id, fish_type, bet_amount, multiplier, hit, payout, rtp_at_time)
-     with current RTPEngine.currentRtp value — regulatory audit trail (permanent retention)
+  7. Fire-and-forget INSERT INTO rtp_logs (async; does NOT block shoot_result response):
+     `db.query('INSERT INTO rtp_logs ...', [...]).catch(err => logger.error('rtp_log_write_failed', err))`
+     Queue is drained in onDispose (await all pending rtp log writes before room closes).
+     Regulatory audit trail — permanent retention. Out-of-band write cannot lose data on normal shutdown.
   8. Send shoot_result to shooter client (hit/miss, payout amount)
   9. Remove bulletId from player's active-bullet Set
 ```
 
 **Anti-double-spend**: Wallet deduction is a database transaction with `FOR UPDATE` row lock. Bullet deduplication via in-memory Set prevents concurrent duplicates within the same session.
+
+**Non-shoot message rate limiting**: `set_multiplier` and `start_game` messages have separate per-client throttles enforced at message handler entry:
+```typescript
+// In GameRoom private state:
+private _msgRateLimits = new Map<string, { count: number; windowStart: number }>();
+
+_checkRateLimit(sessionId: string, type: string, maxPerSec: number): boolean {
+    const key = `${sessionId}:${type}`;
+    const now = Date.now();
+    const entry = this._msgRateLimits.get(key) ?? { count: 0, windowStart: now };
+    if (now - entry.windowStart > 1000) { entry.count = 0; entry.windowStart = now; }
+    entry.count++;
+    this._msgRateLimits.set(key, entry);
+    return entry.count <= maxPerSec;
+}
+
+_handleSetMultiplier(client: Client, data: unknown): void {
+    if (!this._checkRateLimit(client.sessionId, 'set_multiplier', 10)) {
+        console.warn(`rate_limit set_multiplier ${client.sessionId}`); return;
+    }
+    // ... multiplier logic ...
+}
+
+_handleStartGame(client: Client, data: unknown): void {
+    if (!this._checkRateLimit(client.sessionId, 'start_game', 1)) {  // 1/s max
+        console.warn(`rate_limit start_game ${client.sessionId}`); return;
+    }
+    // ... game start logic ...
+}
+```
+Rate limits: `set_multiplier` max 10/s per client; `start_game` max 1/s per client. Exceeding limit: silently drop + WARN log (do not throw — Colyseus throws disconnect the client on unhandled errors).
 
 #### Boss Fish Escape Timeout (US-FISH-002)
 
@@ -836,23 +875,69 @@ Revoking `privacy_policy` consent: server returns HTTP 409 with `{ redirect: 'ac
 
 All endpoints versioned under `/api/v1/`. Auth via JWT Bearer token (15min access + 30-day refresh).
 
+#### Error Response Format
+
+All endpoints return a consistent envelope on error:
+
+```json
+{
+  "error": {
+    "code": "string",       // machine-readable: "invalid_credentials" | "rate_limited" | "not_found" | etc.
+    "message": "string",    // human-readable, safe to display
+    "details": {}           // optional: validation errors, field-level errors
+  }
+}
+```
+
+Standard HTTP status codes: 400 (validation), 401 (unauthenticated), 403 (forbidden), 409 (conflict/state error), 422 (business rule violation), 429 (rate limit), 500 (server error). Error messages never expose stack traces, SQL errors, or internal system details.
+
+#### Endpoint Table
+
 | Method | Endpoint | Auth | Description | US-ID |
 |--------|----------|------|-------------|-------|
-| POST | `/auth/register` | None | Email+password register; issue JWT | — |
-| POST | `/auth/login` | None | Login; issue JWT pair | — |
-| POST | `/auth/refresh` | Refresh JWT | Rotate token pair | — |
-| GET | `/user/profile` | JWT | Get nickname, email (masked), wallet | — |
-| PATCH | `/user/profile` | JWT | Update nickname / initiate email change | US-PRIV-003 |
-| GET | `/user/wallet` | JWT | Gold + diamond balance | US-CURR-001 |
-| POST | `/iap/verify` | JWT | Verify Apple/Google receipt; credit diamond | US-CURR-002 |
-| GET | `/privacy/consents` | JWT | List user's consent records | US-PRIV-001 |
-| POST | `/privacy/consent/grant` | JWT | Grant a consent type | US-PRIV-001 |
-| POST | `/privacy/consent/revoke` | JWT | Revoke marketing consent | US-PRIV-004 |
-| POST | `/privacy/account/delete` | JWT | Submit deletion request | US-PRIV-002 |
-| DELETE | `/privacy/account/delete` | JWT | Cancel pending deletion | US-PRIV-002 |
-| GET | `/game/jackpot` | JWT | Current jackpot pool amount | US-JACK-001 |
-| GET | `/game/jackpot/odds` | None (public) | Jackpot odds table for disclosure | US-JACK-002 |
-| GET | `/health` | None | Liveness probe | — |
+| POST | `/api/v1/auth/register` | None | Email+password register; issue JWT pair | — |
+| POST | `/api/v1/auth/login` | None | Login; issue JWT pair | — |
+| POST | `/api/v1/auth/refresh` | Refresh JWT | Rotate token pair | — |
+| GET | `/api/v1/user/profile` | JWT | Get nickname, email (masked), wallet | — |
+| PATCH | `/api/v1/user/profile` | JWT | Update nickname / initiate email change | US-PRIV-003 |
+| GET | `/api/v1/user/wallet` | JWT | Gold + diamond balance | US-CURR-001 |
+| POST | `/api/v1/iap/verify` | JWT | Verify Apple/Google receipt; credit diamond | US-CURR-002 |
+| GET | `/api/v1/privacy/consents` | JWT | List user's consent records | US-PRIV-001 |
+| POST | `/api/v1/privacy/consent/grant` | JWT | Grant a consent type | US-PRIV-001 |
+| POST | `/api/v1/privacy/consent/revoke` | JWT | Revoke marketing consent | US-PRIV-004 |
+| POST | `/api/v1/privacy/account/delete` | JWT | Submit deletion request | US-PRIV-002 |
+| DELETE | `/api/v1/privacy/account/delete` | JWT | Cancel pending deletion | US-PRIV-002 |
+| GET | `/api/v1/game/jackpot` | JWT | Current jackpot pool amount | US-JACK-001 |
+| GET | `/api/v1/game/jackpot/odds` | None (public) | Jackpot odds table for disclosure | US-JACK-002 |
+| GET | `/health` | None | Liveness probe (k8s livenessProbe) | — |
+| GET | `/health/ready` | None | Readiness probe — 200 only after DB+Redis connected (k8s readinessProbe) | — |
+
+#### Auth Endpoint Schemas
+
+**POST `/api/v1/auth/register`**
+```
+Request:  { email: string, password: string, nickname: string }
+          email: RFC 5322; password: ≥8 chars, ≥1 uppercase, ≥1 digit; nickname: ≤50 chars non-empty
+Response 201: { accessToken: string, refreshToken: string, expiresIn: 900 }
+Error 400: { error: { code: "validation_error", details: { field: "email", message: "invalid format" } } }
+Error 409: { error: { code: "email_taken", message: "Email already registered" } }
+```
+
+**POST `/api/v1/auth/login`**
+```
+Request:  { email: string, password: string }
+Response 200: { accessToken: string, refreshToken: string, expiresIn: 900 }
+Error 401: { error: { code: "invalid_credentials", message: "Email or password incorrect" } }
+           (generic message intentional — do not distinguish 'email not found' vs 'wrong password')
+```
+
+**POST `/api/v1/auth/refresh`**
+```
+Request:  { refreshToken: string }
+Response 200: { accessToken: string, refreshToken: string, expiresIn: 900 }
+             (refresh token is rotated — old token invalidated immediately)
+Error 401: { error: { code: "invalid_refresh_token" } }
+```
 
 **Rate Limiting**: All auth endpoints: 10 req/min per IP. IAP verify: 5 req/min per user. Profile update: 20 req/min per user. Implemented via `express-rate-limit` + Redis store.
 
@@ -924,12 +1009,14 @@ CREATE TABLE jackpot_history (
 
 -- Game Sessions (audit / analytics)
 CREATE TABLE game_sessions (
-    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    room_id     VARCHAR(100) NOT NULL,
-    started_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ended_at    TIMESTAMPTZ,
-    ip_address  INET,       -- logged for anti-cheat; masked in logs; deleted after 90 days
-    player_ids  UUID[]      NOT NULL
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id      VARCHAR(100) NOT NULL,
+    started_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    ended_at     TIMESTAMPTZ,
+    ip_address   INET,                                    -- logged for anti-cheat; masked in logs; deleted after 90 days
+    player_ids   UUID[]       NOT NULL DEFAULT '{}',     -- appended in onJoin; default empty array allows INSERT before any player joins
+    player_count INTEGER      NOT NULL DEFAULT 0,        -- maintained by onCreate/onJoin/onDispose for quick analytics queries
+    room_state   VARCHAR(20)  NOT NULL DEFAULT 'WAITING' -- WAITING|PLAYING|ENDED; mirrors GameState.roomState
 );
 
 -- User Consents (PDPA)
@@ -977,6 +1064,8 @@ CREATE TABLE rtp_logs (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_rtp_logs_room ON rtp_logs(room_id, created_at DESC);
+CREATE INDEX idx_rtp_logs_user ON rtp_logs(user_id, created_at DESC);  -- regulatory 'all bets by user' query
+CREATE INDEX idx_jackpot_history_winner ON jackpot_history(winner_id, triggered_at DESC);  -- player jackpot history query
 CREATE INDEX idx_game_sessions_started_at ON game_sessions(started_at);
 CREATE INDEX idx_game_sessions_room_id ON game_sessions(room_id);
 ```
@@ -1000,6 +1089,7 @@ spec:
     matchLabels: { app: fishing-game }
   template:
     spec:
+      terminationGracePeriodSeconds: 60   # allows onDispose (pool persist, session UPDATE) to complete before SIGKILL
       containers:
         - name: game-server
           image: fishing-game-server:${GIT_SHA}   # injected by CI/CD pipeline; never :latest
@@ -1052,6 +1142,73 @@ spec:
     - name: rest
       port: 3000
       targetPort: 3000
+---
+---
+# PodDisruptionBudget — ensures at least 1 replica is available during node drain / rolling update
+# Prevents both replicas being evicted simultaneously (which would break 99.9% SLA)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fishing-game-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: fishing-game }
+---
+# NetworkPolicy — restrict ingress/egress to named peers only (defence-in-depth for wallet data)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fishing-game-netpol
+spec:
+  podSelector:
+    matchLabels: { app: fishing-game }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - port: 2567    # Colyseus WebSocket
+        - port: 3000    # REST API
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: postgresql }
+      ports: [{ port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app: redis }
+      ports: [{ port: 6379 }]
+    - ports: [{ port: 443 }]   # Apple/Google IAP validation outbound
+---
+# Ingress — TLS termination + WebSocket upgrade + sticky session routing
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fishing-game-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"    # keep WebSocket connections alive
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "colyseus-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+spec:
+  tls:
+    - hosts: [game.example.com]
+      secretName: fishing-game-tls   # cert-manager TLS secret (Let's Encrypt or purchased cert)
+  rules:
+    - host: game.example.com
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service: { name: fishing-game-svc, port: { number: 3000 } }
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: fishing-game-svc, port: { number: 2567 } }
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -1199,8 +1356,24 @@ export class NetworkManager extends Component {
         const bulletId = crypto.randomUUID();  // client-generated for dedup; server validates uniqueness
         this._room?.send('shoot', { bulletId, fishId, betAmount, cannonMultiplier });
     }
+
+    /**
+     * Internal event bus using Cocos cc.EventTarget (inherited by Component).
+     * Consumers attach: networkMgr.node.on('reconnected', cb, target)
+     * Internal emit: this._emitEvent('reconnected') → this.node.emit('reconnected', data)
+     */
+    private _emitEvent(type: string, data?: unknown): void {
+        this.node.emit(type, data);
+    }
 }
 ```
+
+**Event names and payloads** emitted by NetworkManager:
+| Event | Payload | Consumer |
+|-------|---------|---------|
+| `reconnecting` | `{ attempt: number }` | UI overlay: "Reconnecting (1/3)…" |
+| `reconnected` | — | Hide overlay, resume game |
+| `reconnect_failed` | — | Show "Connection lost" dialog; route to lobby |
 
 #### §3.2.1 JWT Refresh Token — Mobile Secure Storage
 
@@ -1266,6 +1439,37 @@ const { accessToken } = await this._http.post('/api/auth/refresh', { refreshToke
 
 ### §3.3 Core Game Components
 
+#### DataManager
+
+`DataManager` is a persistent singleton (added to `director.persistRootNode` alongside `NetworkManager`) that caches local copies of player state for UI consumption without querying Colyseus schema on every frame.
+
+```typescript
+// scripts/managers/DataManager.ts
+export class DataManager {
+    private static _instance: DataManager;
+    static getInstance(): DataManager { ... }
+
+    // Profile
+    get nickname(): string;
+    get userId(): string;
+    updateFromAuth(payload: JWTPayload): void;  // called after login/refresh
+
+    // Wallet — updated from Colyseus state patches via state.players.onAdd + player.listen()
+    get gold(): number;
+    get diamond(): number;
+    updateGold(newVal: number): void;    // called by NetworkManager on state patch
+    updateDiamond(newVal: number): void;
+
+    // Cache invalidation: call reset() on logout or room leave
+    reset(): void;
+}
+```
+
+**Invalidation rules:**
+- Wallet: updated on every `player.listen('gold', cb)` / `player.listen('diamond', cb)` Colyseus callback in NetworkManager — no polling needed.
+- Profile: updated on `POST /api/v1/auth/login` response and `POST /api/v1/auth/refresh`; re-fetched from `GET /api/v1/user/profile` if stale flag is set after PATCH.
+- UILayer reads from DataManager only — never directly from Colyseus schema.
+
 #### CannonComponent Implementation Notes
 
 Full state machine: `IDLE → CHARGING → FIRING → COOLING`. Key implementation rules:
@@ -1273,10 +1477,45 @@ Full state machine: `IDLE → CHARGING → FIRING → COOLING`. Key implementati
 - **Aim line rendering**: `Graphics` component redraws every frame (`update()`). Use `cc.Graphics.moveTo / lineTo / stroke`. Dashed line via manual segment iteration.
 - **Reduce Motion**: call `MotionPreference.isReduceMotionEnabled()` at `onLoad`. If true, skip idle barrel sway, muzzle pulse, and charging vibration animations. (PDD §3.1 F8 spec)
 
+#### ObjectPoolManager + BaseFish Contract
+
+```typescript
+// scripts/utils/ObjectPoolManager.ts — singleton, manages CC4.x ObjectPool<Node> instances
+
+export class ObjectPoolManager {
+    private static _instance: ObjectPoolManager;
+    private _pools = new Map<string, NodePool>();
+    private _prefabs = new Map<string, Prefab>();
+
+    static getInstance(): ObjectPoolManager { ... }
+
+    /** Register a prefab under a key; must be called before getPool() for that key */
+    registerPrefab(key: string, prefab: Prefab): void;
+
+    /**
+     * Get (or create) a pool for the given key.
+     * @param prewarmCount  If > 0 and pool is new, pre-instantiate this many nodes immediately.
+     */
+    getPool(key: string, prewarmCount?: number): NodePool;
+
+    /** Release all pools and destroy all pooled nodes — call before scene transition */
+    clearAllPools(): void;
+}
+
+// scripts/components/fish/BaseFish.ts — abstract base component every fish variant extends
+export abstract class BaseFish extends Component {
+    /** Called by spawnFish() immediately after pool.get(). Syncs node to server state. */
+    abstract initWithServerData(data: FishState): void;
+
+    /** Called each frame; advances fish along its pre-computed Bezier path */
+    abstract updatePath(dt: number): void;
+}
+```
+
 #### Fish ObjectPool Implementation
 
 ```typescript
-// Uses ObjectPoolManager (PDD §4.3.2) with CC4.x ObjectPool<Node>
+// Uses ObjectPoolManager above; CC4.x ObjectPool<Node> handler: { onFree, reuse }
 // handler: { onFree: node => node.active = false, reuse: node => node.active = true }
 
 // In GameRoom scene onLoad:
@@ -1386,6 +1625,33 @@ All game outcomes computed server-side. Client cannot influence:
 | JWT claims | Never include PII beyond `userId` (UUID) and `role` |
 | Log masking | Pino `redact` config: `['*.email', '*.password', '*.receiptData']`; `user_id` displayed as `user-****-<last4>` |
 
+### §4.4 Test Strategy — EDD-Level Test Anchors
+
+This section maps each US-ID to its primary test type, test case ID, and a concrete test description. These anchors are consumed by `TEST-PLAN.md` (downstream) for full test case expansion.
+
+| REQ-ID | Test Case ID | Type | Description / Key Assertion |
+|--------|-------------|------|------------------------------|
+| US-ROOM-001 | TC-ROOM-001 | Integration | Join 4 clients; verify room transitions to PLAYING; 5th client gets rejected with capacity error |
+| US-ROOM-001 | TC-ROOM-002 | Integration | Disconnect client (code ≠ 1000); verify allowReconnection holds state 10s; reconnect within window; verify gold restored |
+| US-FISH-001 | TC-FISH-001 | Integration | Send `shoot` with sufficient gold; verify gold debited, `shoot_result` received, rtp_log row inserted |
+| US-FISH-001 | TC-FISH-002 | Integration | Send duplicate `bulletId`; verify silently dropped (no double-debit, no double rtp_log row) |
+| US-FISH-001 | TC-FISH-003 | Integration | Send `shoot` with gold < betAmount; verify HTTP 400 / message dropped; gold unchanged |
+| US-FISH-002 | TC-FISH-004 | Integration | Spawn boss; send no kill messages for 60s; verify boss removed from state and `boss_escaped` broadcast |
+| US-RTP-001 | TC-RTP-001 | Simulation | Run 100,000 adjudications at each fish type; verify aggregate RTP stays within 92%–96% band |
+| US-RTP-001 | TC-RTP-002 | Unit | Verify `_dynamicAdjust` returns base hitRateNumerator with no adjustment when totalBet < MIN_SAMPLE_BETS |
+| US-JACK-001 | TC-JACK-001 | Integration | Accumulate jackpot to trigger threshold; verify pool claimed, `jackpot_won` broadcast, winner_id in `jackpot_history`; second concurrent claim rejected (Lua script atomicity) |
+| US-JACK-001 | TC-JACK-002 | Integration | Kill server mid-room; restart; verify Redis pool restored from PostgreSQL seed value |
+| US-CURR-001 | TC-CURR-001 | Integration | Concurrent shoot from same player with same betAmount × 2; verify `FOR UPDATE` lock prevents double-debit (wallet never goes negative) |
+| US-CURR-002 | TC-CURR-002 | Integration | Submit IAP receipt twice with same `receipt_hash`; verify idempotent response (200 on repeat, no duplicate diamond credit) |
+| US-PRIV-001 | TC-PRIV-001 | Integration | Grant consent → revoke consent → verify `user_consents` table has correct `revoked_at`; Firebase marketing events disabled flag set |
+| US-PRIV-002 | TC-PRIV-002 | Integration | Submit deletion → run `executeScheduledDeletions` cron (fast-forward to scheduled_for) → verify email anonymised, `deletion_requests.executed_at` set |
+| US-PRIV-002 | TC-PRIV-003 | Integration | Submit deletion → call `cancelDeletion` → verify `cancelled_at` set, `deletion_status=active`; cron skips this user |
+| US-PRIV-003 | TC-PRIV-004 | Integration | PATCH email → verify confirmation token in Redis → simulate click → verify both `email` and `email_hash` updated atomically |
+| US-PRIV-004 | TC-PRIV-005 | Integration | Revoke `privacy_policy` consent; verify HTTP 409 returned with `{ redirect: 'account_deletion' }` |
+
+**RTP simulation gate** (CI mandatory): `TC-RTP-001` runs in CI on every PR touching `RTPEngine.ts`. Gate: all fish types within 92%–96%. Failure blocks merge.
+**Wallet double-spend gate** (CI mandatory): `TC-CURR-001` uses a dedicated concurrency test harness (2 concurrent requests, pg `FOR UPDATE`). Failure blocks merge.
+
 ---
 
 ## §5 Requirements Traceability (REQ-ID → EDD Section Mapping)
@@ -1431,4 +1697,5 @@ All game outcomes computed server-side. Client cannot influence:
 | v1.0 | 2026-04-22 | tobala | Initial EDD generated from PRD v1.1 + PDD v1.5. Covers full backend (Colyseus room, RTPEngine, JackpotManager, WalletService, PrivacyService, PostgreSQL schema, k8s spec) and client (ObjectPool, NetworkManager, SafeAreaAdapter, privacy UI components) architecture. 13 US-IDs traced. |
 | v1.1 | 2026-04-22 | tobala | Review Round 1 fix — 26 findings resolved: onMessage override removed; allowReconnection try/catch added; onAuth JWT guard added; Jackpot Lua atomic claim + missing creditGold; iap_receipts missing NOT NULL columns; AES-256-GCM UNIQUE→HMAC-SHA256; shoot message field alignment; RTP 85-95%→92-96%; BigInt basis-point precision; state.listen API correction; ObjectPool key capitalisation; spawnFish component map; fish_damaged removed (schema delta); NetworkManager recursive→loop; privacy_policies table added; 2 missing cron jobs added; creditGold function added; Math.random()→crypto.randomInt() |
 | v1.2 | 2026-04-22 | tobala | Review Round 2 fix — 20 findings resolved: §1.2 HINCRBYFLOAT stale ref; JackpotManager _initPromise singleton guard; executeScheduledDeletions filters cancelled_at; parseInt→parseFloat for INCRBYFLOAT result; PlayerState.gold updated after wallet mutations; FishState pathData+speed fields added; onLeave boolean→numeric close code; nickname validation in onJoin; state.players.onChange→onAdd+listen; k8s :latest→${GIT_SHA}+imagePullPolicy; readinessProbe added; HPA apiVersion added; JWT+HMAC secrets in env; email confirmation updates both email+email_hash; rtp_logs INSERT in hit flow; game_sessions indexes added; Service+sticky session annotation added; FishType exported; WalletService stubs added; reconnect token captured before loop |
+| v1.4 | 2026-04-22 | tobala | Review Round 4 fix — 15 findings resolved: game_sessions DDL added player_count+room_state columns; player_ids DEFAULT '{}'; onJoin uses array_append; PodDisruptionBudget minAvailable=1 added; terminationGracePeriodSeconds=60 in Deployment; NetworkPolicy restricting ingress/egress; Ingress resource with TLS+WebSocket upgrade annotations; standard error response envelope in §2.5; API table paths prefixed with /api/v1/; auth register+login+refresh request/response schemas documented; /health/ready added to endpoint table; WebSocket non-shoot message rate limiting (_checkRateLimit); rtp_logs INSERT moved to async fire-and-forget; ObjectPoolManager+BaseFish TypeScript interface contracts; NetworkManager._emitEvent() defined with Cocos cc.EventTarget; _disposed boolean guard in GameRoom; rtp_logs user index; jackpot_history winner index; DataManager singleton described; §4.4 Test Strategy with 17 test case anchors |
 | v1.3 | 2026-04-22 | tobala | Review Round 3 fix — 10 findings resolved: HitResult/JackpotResult TypeScript interfaces added; RTPEngine addExternalPayout() for jackpot inclusion in _totalPaid; MIN_SAMPLE_BETS=200 guard in _dynamicAdjust; bullet deduplication (_activeBullets Map); boss fish 60s escape timeout (_bossEscapeTimers Map + clearTimeout in onDispose); per-room RTP isolation risk added as R5; cancelDeletion() added to PrivacyService; restoreDailyGold() now INSERTs transactions rows for wallet-reconcile; §3.2.1 JWT refresh token mobile secure storage (iOS Keychain + Android Keystore via jsb.reflection); game_sessions INSERT in onCreate + UPDATE in onJoin + UPDATE in onDispose |
