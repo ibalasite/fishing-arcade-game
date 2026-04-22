@@ -73,6 +73,24 @@ cocos_build() {
     <!-- Polyfills bundle. -->|' "$INDEX_HTML"
     log "Injected Colyseus CDN into index.html"
   fi
+
+  # Override launchScene to MainMenu (Boot.ts script class fails to resolve in built output)
+  local SETTINGS_JSON="$CLIENT_DIR/build/web-desktop/src/settings.json"
+  if [ -f "$SETTINGS_JSON" ]; then
+    python3 -c "
+import json, os
+path = '$SETTINGS_JSON'
+d = json.load(open(path))
+if d.get('launch', {}).get('launchScene') != 'db://assets/scenes/MainMenu.scene':
+    d['launch']['launchScene'] = 'db://assets/scenes/MainMenu.scene'
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(d, f, separators=(',', ':'))
+    os.replace(tmp, path)
+    print('Patched launchScene → MainMenu.scene')
+"
+    log "launchScene verified: MainMenu.scene"
+  fi
 }
 
 # ── Step 1: Upload build context to PVC ──────────────────────────────────────
