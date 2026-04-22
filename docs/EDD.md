@@ -447,8 +447,11 @@ Server:
         Broadcast fish_killed; remove fish from state (triggers automatic schema delta to all clients)
      c. Else: HP decrement auto-synced via schema delta patch (no separate fish_damaged message needed)
   6. Check jackpot trigger (JackpotManager.tryTrigger with verified userId)
-     → If jackpot won: update player.gold in schema += jackpotAmount
-     → Call this._rtpEngine.addExternalPayout(jackpotAmount) to include in RTP accounting
+     → If jackpot won:
+       a. update player.gold in schema += jackpotAmount
+       b. Call this._rtpEngine.addExternalPayout(jackpotAmount) to include in RTP accounting
+       c. this.broadcast('jackpot_won', { winnerId: client.auth.userId, amount: jackpotAmount })
+          — all room clients receive this; client §3.2 NetworkManager._handleJackpotWon() plays celebration animation
   7. Fire-and-forget INSERT INTO rtp_logs (async; does NOT block shoot_result response):
      `db.query('INSERT INTO rtp_logs ...', [...]).catch(err => logger.error('rtp_log_write_failed', err))`
      Queue is drained in onDispose (await all pending rtp log writes before room closes).
@@ -741,7 +744,7 @@ Client (Cocos)            App Store / Google Play          Backend
     |                              |                           |
     |--- purchaseProduct() ------->|                           |
     |<-- receipt/purchaseToken ----|                           |
-    |--- POST /api/iap/verify -----|-------------------------->|
+    |--- POST /api/v1/iap/verify --|-------------------------->|
     |                              |                           |--- validateReceipt(receipt)
     |                              |<--------------------------|
     |                              |--- OK / INVALID ---------->|
@@ -757,9 +760,13 @@ Client (Cocos)            App Store / Google Play          Backend
 
 ```sql
 -- Matches PRD §17.4 definition
+-- ON DELETE RESTRICT (not CASCADE): PDPA requires consent records to be retained as evidence
+-- even after account deletion/anonymisation. executeScheduledDeletions soft-anonymises the users row;
+-- it does NOT hard-delete it, so CASCADE would not trigger in the normal flow.
+-- However, RESTRICT prevents accidental consent record loss from any future admin hard-delete.
 CREATE TABLE user_consents (
     id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     consent_type   VARCHAR(100) NOT NULL,   -- 'privacy_policy' | 'marketing'
     granted        BOOLEAN      NOT NULL,
     granted_at     TIMESTAMPTZ,
@@ -820,9 +827,15 @@ async executeScheduledDeletions(): Promise<void> {
         await db.transaction(async (trx) => {
             // Anonymise PII (PDPA hard delete of identifiable data)
             const anon = `deleted_${randomUUID().slice(0, 8)}`;
+            const anonEmail = `${anon}@deleted.invalid`;
+            // CRITICAL: must update BOTH email (encrypted) AND email_hash (HMAC).
+            // Leaving email_hash as HMAC of the original real email would retain a reversible
+            // fingerprint of the deleted user's address — a direct PDPA compliance failure.
             await trx.query(
-                "UPDATE users SET email=$1, nickname=$2, deletion_status='deleted' WHERE id=$3",
-                [encrypt(`${anon}@deleted.invalid`), anon, row.user_id]
+                `UPDATE users
+                 SET email = $1, email_hash = $2, nickname = $3, deletion_status = 'deleted'
+                 WHERE id = $4`,
+                [encrypt(anonEmail), hmac(anonEmail, process.env.HMAC_SECRET_KEY!), anon, row.user_id]
             );
             // Retain transactions for 7 years (tax law) — user_id stays as UUID reference only
             await trx.query(
@@ -837,7 +850,7 @@ async executeScheduledDeletions(): Promise<void> {
 #### Data Correction API (US-PRIV-003)
 
 ```
-PATCH /api/user/profile
+PATCH /api/v1/user/profile
 Body: { nickname?: string, email?: string }
 
 - nickname: validate ≤50 chars; update immediately; broadcast to Colyseus room via GameRoom.broadcast
@@ -857,7 +870,7 @@ Both `email` and `email_hash` must be updated together — updating only `email`
 #### Consent Revocation Flow (US-PRIV-004)
 
 ```
-POST /api/privacy/consent/revoke
+POST /api/v1/privacy/consent/revoke
 Body: { consentType: 'marketing' }
 
 1. INSERT INTO user_consents(user_id, consent_type, granted, revoked_at, policy_version, created_at)
@@ -1019,10 +1032,10 @@ CREATE TABLE game_sessions (
     room_state   VARCHAR(20)  NOT NULL DEFAULT 'WAITING' -- WAITING|PLAYING|ENDED; mirrors GameState.roomState
 );
 
--- User Consents (PDPA)
+-- User Consents (PDPA) — ON DELETE RESTRICT: consent records must be retained for PDPA evidence
 CREATE TABLE user_consents (
     id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     consent_type   VARCHAR(100) NOT NULL,
     granted        BOOLEAN      NOT NULL,
     granted_at     TIMESTAMPTZ,
@@ -1377,7 +1390,7 @@ export class NetworkManager extends Component {
 
 #### §3.2.1 JWT Refresh Token — Mobile Secure Storage
 
-Access tokens (RS256, 15-min TTL) are obtained via `POST /api/auth/login` and refreshed by `POST /api/auth/refresh` using a long-lived refresh token (7-day TTL, HTTP-only cookie on web; native Keychain/Keystore on mobile).
+Access tokens (RS256, 15-min TTL) are obtained via `POST /api/v1/auth/login` and refreshed by `POST /api/v1/auth/refresh` using a long-lived refresh token (30-day TTL, HTTP-only cookie on web; native Keychain/Keystore on mobile).
 
 **iOS — Keychain via jsb.reflection:**
 ```typescript
@@ -1577,10 +1590,10 @@ See PDD §3.3 for full implementation. Key constraint: CC4.x `tween()` only anim
 
 | Component | Trigger | Key Behaviour |
 |-----------|---------|---------------|
-| `PrivacyConsentModal` | First app launch; policy version change | Blocks all input; requires explicit tap "同意並繼續遊戲"; calls `POST /api/privacy/consent/grant`; stores version locally |
-| `JackpotOddsModal` | Shop page; Settings → Jackpot odds | Displays odds table from `GET /game/jackpot/odds`; date-stamped; meets App Store/Google Play disclosure requirement |
-| `ConsentManagementUI` | Settings → Privacy | Toggle for marketing consent; calls `POST /api/privacy/consent/revoke`; disables Firebase `marketing_*` events client-side |
-| `AccountDeletionFlow` | Settings → Delete Account | Two-step: explanation + "DELETE" confirmation; calls `POST /api/privacy/account/delete`; shows 30-day countdown |
+| `PrivacyConsentModal` | First app launch; policy version change | Blocks all input; requires explicit tap "同意並繼續遊戲"; calls `POST /api/v1/privacy/consent/grant`; stores version locally |
+| `JackpotOddsModal` | Shop page; Settings → Jackpot odds | Displays odds table from `GET /api/v1/game/jackpot/odds`; date-stamped; meets App Store/Google Play disclosure requirement |
+| `ConsentManagementUI` | Settings → Privacy | Toggle for marketing consent; calls `POST /api/v1/privacy/consent/revoke`; disables Firebase `marketing_*` events client-side |
+| `AccountDeletionFlow` | Settings → Delete Account | Two-step: explanation + "DELETE" confirmation; calls `POST /api/v1/privacy/account/delete`; shows 30-day countdown |
 | `ProfileEditModal` | Settings → Nickname / Email edit | Nickname: immediate; Email: sends confirmation link via server |
 
 All privacy modals use WCAG AAA contrast (white text on `#0B2447`). Accessibility labels set via `AccessibilityHelper.setAccessibilityLabel()` using `jsb.reflection` bridge (PDD §5.1.3 F12 spec). `PrivacyConsentModal` focus order: consent checkbox → view-policy link → agree button → disagree button.
@@ -1697,5 +1710,6 @@ This section maps each US-ID to its primary test type, test case ID, and a concr
 | v1.0 | 2026-04-22 | tobala | Initial EDD generated from PRD v1.1 + PDD v1.5. Covers full backend (Colyseus room, RTPEngine, JackpotManager, WalletService, PrivacyService, PostgreSQL schema, k8s spec) and client (ObjectPool, NetworkManager, SafeAreaAdapter, privacy UI components) architecture. 13 US-IDs traced. |
 | v1.1 | 2026-04-22 | tobala | Review Round 1 fix — 26 findings resolved: onMessage override removed; allowReconnection try/catch added; onAuth JWT guard added; Jackpot Lua atomic claim + missing creditGold; iap_receipts missing NOT NULL columns; AES-256-GCM UNIQUE→HMAC-SHA256; shoot message field alignment; RTP 85-95%→92-96%; BigInt basis-point precision; state.listen API correction; ObjectPool key capitalisation; spawnFish component map; fish_damaged removed (schema delta); NetworkManager recursive→loop; privacy_policies table added; 2 missing cron jobs added; creditGold function added; Math.random()→crypto.randomInt() |
 | v1.2 | 2026-04-22 | tobala | Review Round 2 fix — 20 findings resolved: §1.2 HINCRBYFLOAT stale ref; JackpotManager _initPromise singleton guard; executeScheduledDeletions filters cancelled_at; parseInt→parseFloat for INCRBYFLOAT result; PlayerState.gold updated after wallet mutations; FishState pathData+speed fields added; onLeave boolean→numeric close code; nickname validation in onJoin; state.players.onChange→onAdd+listen; k8s :latest→${GIT_SHA}+imagePullPolicy; readinessProbe added; HPA apiVersion added; JWT+HMAC secrets in env; email confirmation updates both email+email_hash; rtp_logs INSERT in hit flow; game_sessions indexes added; Service+sticky session annotation added; FishType exported; WalletService stubs added; reconnect token captured before loop |
+| v1.5 | 2026-04-22 | tobala | Review Round 5 fix — 5 findings resolved: executeScheduledDeletions now anonymises email_hash (PDPA compliance — prevents reversible fingerprint surviving deletion); jackpot_won broadcast added to shoot step 6 documentation; refresh token TTL unified to 30-day across §2.5 and §3.2.1; API path /api/v1/ prefix fixed in 5 remaining §2.4+§3.6 locations (IAP diagram, Data Correction, Consent Revocation, 3 client component calls); user_consents ON DELETE CASCADE → ON DELETE RESTRICT with PDPA retention rationale |
 | v1.4 | 2026-04-22 | tobala | Review Round 4 fix — 15 findings resolved: game_sessions DDL added player_count+room_state columns; player_ids DEFAULT '{}'; onJoin uses array_append; PodDisruptionBudget minAvailable=1 added; terminationGracePeriodSeconds=60 in Deployment; NetworkPolicy restricting ingress/egress; Ingress resource with TLS+WebSocket upgrade annotations; standard error response envelope in §2.5; API table paths prefixed with /api/v1/; auth register+login+refresh request/response schemas documented; /health/ready added to endpoint table; WebSocket non-shoot message rate limiting (_checkRateLimit); rtp_logs INSERT moved to async fire-and-forget; ObjectPoolManager+BaseFish TypeScript interface contracts; NetworkManager._emitEvent() defined with Cocos cc.EventTarget; _disposed boolean guard in GameRoom; rtp_logs user index; jackpot_history winner index; DataManager singleton described; §4.4 Test Strategy with 17 test case anchors |
 | v1.3 | 2026-04-22 | tobala | Review Round 3 fix — 10 findings resolved: HitResult/JackpotResult TypeScript interfaces added; RTPEngine addExternalPayout() for jackpot inclusion in _totalPaid; MIN_SAMPLE_BETS=200 guard in _dynamicAdjust; bullet deduplication (_activeBullets Map); boss fish 60s escape timeout (_bossEscapeTimers Map + clearTimeout in onDispose); per-room RTP isolation risk added as R5; cancelDeletion() added to PrivacyService; restoreDailyGold() now INSERTs transactions rows for wallet-reconcile; §3.2.1 JWT refresh token mobile secure storage (iOS Keychain + Android Keystore via jsb.reflection); game_sessions INSERT in onCreate + UPDATE in onJoin + UPDATE in onDispose |
