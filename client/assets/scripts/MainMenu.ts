@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, Button, director, Node, UITransform, Color, Layers } from 'cc';
+import { _decorator, Component, Label, Button, director, Node, UITransform, Color, Layers, Camera } from 'cc';
 
 const { ccclass, property } = _decorator;
 
@@ -11,6 +11,9 @@ export class MainMenu extends Component {
   playButton: Button | null = null;
 
   start() {
+    console.log('[MainMenu] start(), jackpotLabel=', this.jackpotLabel);
+    console.log('[MainMenu] Layers.Enum.UI_2D=', Layers.Enum.UI_2D);
+    console.log('[MainMenu] this.node.parent=', this.node.parent?.name);
     if (!this.jackpotLabel) {
       this.buildUI();
     }
@@ -18,7 +21,13 @@ export class MainMenu extends Component {
   }
 
   private buildUI() {
+    console.log('[MainMenu] buildUI() called');
     const canvas = this.node.parent!;
+    console.log('[MainMenu] canvas=', canvas.name, 'children=', canvas.children.length);
+
+    // Log any cameras in scene
+    const allCameras = canvas.getComponentsInChildren(Camera);
+    console.log('[MainMenu] cameras in canvas children=', allCameras.length);
 
     const titleNode = this.makeLabel(canvas, 'Fishing Arcade', 64, 0, 220);
     titleNode.getComponent(Label)!.isBold = true;
@@ -31,6 +40,8 @@ export class MainMenu extends Component {
 
     this.makeLabel(canvas, 'SHOP', 36, 0, -80)
         .on(Node.EventType.TOUCH_END, this.onShopButtonClicked, this);
+
+    console.log('[MainMenu] buildUI done, canvas children=', canvas.children.length);
   }
 
   private makeLabel(parent: Node, text: string, fontSize: number, x: number, y: number): Node {
@@ -49,6 +60,7 @@ export class MainMenu extends Component {
     lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
     lbl.verticalAlign = Label.VerticalAlign.CENTER;
     lbl.color = new Color(255, 255, 255, 255);
+    console.log('[MainMenu] makeLabel', text, 'layer=', node.layer, 'pos=', node.getPosition().toString());
     return node;
   }
 
