@@ -158,7 +158,7 @@ RootScene（根場景）
 │   └── SafeAreaAdapter（安全區域適配節點）
 │       ├── TopInset（劉海 / 打孔屏上方留白）
 │       └── BottomInset（Home Bar 下方留白）
-└── PersistentScene（常駐場景，addPersistRootNode）
+└── PersistentNodes（建立於 Boot.scene，以 director.addPersistRootNode() 標記，跨場景保留；F-R2-13）
     ├── AudioManager（音效管理器）
     ├── NetworkManager（WebSocket 連接管理）
     └── DataManager（玩家資料快取）
@@ -432,6 +432,14 @@ GameRoom（Scene Root）
 - **進度圖示**：4 個玩家槽位圖示（●=已入場，○=等待），當有玩家加入時，○ 以 0.3s bounce 動畫切換為 ●（Neon Cyan 填充）
 - **Loading 動畫**：三條水平海浪線（Neon Cyan），交替上下 offset（不使用旋轉 spinner，符合街機風格）
 - **等待超過 15s 時**：新增提示「人數不足時將以 AI 補位」（Amber 色）
+- **F-R2-08 Reduce Motion**：若 `isReduceMotionEnabled() === true`，停用海浪 Loading 動畫，改顯示靜態「搜尋中…」文字；slot 切換動畫改為直接替換圖示（無 bounce）
+- **F-R2-09 無障礙標籤規格**：
+
+| 元素 | accessibilityLabel | accessibilityHint |
+|------|-------------------|-----------------|
+| 玩家槽位（已入場 ●）| 「第 N 位玩家：已加入」| — |
+| 玩家槽位（等待 ○）| 「第 N 位玩家：等待中」| — |
+| [取消配對] 按鈕 | 「取消配對按鈕」| 「點擊後返回主畫面」|
 
 ---
 
@@ -462,6 +470,16 @@ GameRoom（Scene Root）
 - **進度條顏色**：重連中 → Crisis Red；最後一次嘗試中 → Amber；成功 → Success Green（0.3s transition）
 - **成功後**：覆蓋層以 `opacity 1→0`（0.5s）淡出，遊戲狀態由服務器同步恢復
 - **[返回主畫面] 按鈕**：僅在重連失敗後啟用（重連中為灰色 disabled）
+- **F-R2-08 Reduce Motion**：若 `isReduceMotionEnabled() === true`，停用進度條顏色 transition，直接以 Crisis Red 靜態顯示重連狀態
+- **F-R2-09 + F-R2-10 無障礙標籤規格**：
+
+| 元素 | accessibilityLabel | accessibilityHint |
+|------|-------------------|-----------------|
+| [立即重試] 按鈕 | 「立即重試按鈕」| 「點擊立即嘗試重新連線」|
+| [返回主畫面] 按鈕（可用）| 「返回主畫面按鈕」| 「放棄重連，返回主畫面」|
+| [返回主畫面] 按鈕（F-R2-10 disabled 狀態）| 「返回主畫面按鈕，目前不可用」| 「請等待重連完成，或重試失敗後可返回」|
+
+> F-R2-10 fix：disabled 狀態的 [返回主畫面] 按鈕保留在無障礙樹中（`Button.interactable = false` 但節點 `active = true`），讓 VoiceOver/TalkBack 使用者可發現此選項，並透過 hint 得知原因。
 
 ---
 
@@ -575,26 +593,28 @@ GameRoom（Scene Root）
 └───────────────────────────────────────────────────────────┘
 ```
 
-**分區樹狀結構：**
+**分區樹狀結構（F-R2-07 fix：與 ASCII 線框一致）：**
 
 ```
-設定主頁
-├── 個人資料區
-│   ├── 暱稱顯示 + [編輯] 按鈕（→ US-PRIV-003）
-│   └── Email 顯示 + [更改] 按鈕（→ US-PRIV-003）
-├── 遊戲設定區
+設定主頁（ScrollView）
+├── 個人資料卡片
+│   ├── 暱稱顯示 + [✏ 編輯] 按鈕（→ US-PRIV-003）
+│   └── Email 顯示 + [✉ 更改] 按鈕（→ US-PRIV-003）
+├── 遊戲設定卡片
 │   ├── 音效開關（Toggle）
 │   ├── 音樂開關（Toggle）
-│   └── 語言選擇（Picker）
-├── 隱私設定區（→ US-PRIV-004）
-│   ├── 行銷通知同意（Toggle，可撤回）
+│   └── 語言選擇（Picker → 子彈窗）
+├── 隱私設定卡片（→ US-PRIV-004）
+│   ├── 行銷推播通知（Toggle，可撤回）
 │   └── 查看隱私政策（連結至完整文件）
-├── 帳號管理區
-│   └── 刪除帳號（→ US-PRIV-002，紅色警示按鈕）
-└── 其他
-    ├── 客服聯繫
-    ├── Jackpot 機率說明（法規揭示連結）
-    └── 版本資訊
+├── 其他卡片
+│   ├── 客服聯繫（→ WebView 或 Email）
+│   ├── Jackpot 機率說明（→ JackpotOddsModal）
+│   └── 版本資訊（靜態文字，不可互動）
+│
+└── [危險區域分隔線 + 額外間距 24px]
+    └── [⚠ 刪除帳號]（Crisis Red 空心按鈕，獨立於所有卡片之外）
+        （→ US-PRIV-002；視覺上與上方設定項明確分離，防止誤觸）
 ```
 
 #### §2.4.2 個人資料編輯介面（US-PRIV-003）
@@ -904,6 +924,9 @@ export class NumberRoller extends Component {
 │  │  ✓ 我已閱讀並同意隱私政策           │  │
 │  └──────────────────────────────────┘   │
 │                                          │
+│  隱私政策版本：v1.0（2026-04-22）         │  ← F-R2-11 fix
+│  （12sp，#C8D6E5，由後台動態注入版本號）   │
+│                                          │
 │  [不同意，關閉 App]    [同意並繼續遊戲]  │
 └──────────────────────────────────────────┘
 ```
@@ -967,6 +990,14 @@ export class NumberRoller extends Component {
 - **表格樣式**：Glassmorphism 底，表頭 Neon Cyan，數字 Orbitron Bold 電光金
 - **合規說明**：最後一行「最後更新」日期由後台動態注入；若日期距今超過 90 天，顯示 Amber 警示
 - **[知道了，關閉] 按鈕**：霓虹橘，高度 `48px`，全寬
+- **F-R2-12 無障礙讀取順序規格**：Cocos Creator Label 節點的無障礙樹讀取順序不保證與視覺行列一致；實作時每個表格**行（row）**包裝在一個父容器節點，並設定該節點的複合 `accessibilityLabel`，例如：
+  ```typescript
+  setAccessibilityLabel(row1Node, '砲台倍率 1 倍，Jackpot 觸發機率 1 比 500,000，期望 RTP 92%');
+  setAccessibilityLabel(row2Node, '砲台倍率 10 倍，Jackpot 觸發機率 1 比 50,000，期望 RTP 93%');
+  setAccessibilityLabel(row3Node, '砲台倍率 50 倍，Jackpot 觸發機率 1 比 10,000，期望 RTP 95%');
+  setAccessibilityLabel(row4Node, '砲台倍率 100 倍，Jackpot 觸發機率 1 比 5,000，期望 RTP 95%');
+  ```
+  個別 Label 子節點從無障礙樹移除（`node._uiProperties.uiTransformComp.contentSize` = 0 × 0 以外的實作由 EDD 確認），確保螢幕報讀器以整行為單位朗讀。
 
 ---
 
@@ -991,6 +1022,7 @@ export class NumberRoller extends Component {
 - **顏色**：底色 `rgba(255,45,85,0.95)`（Crisis Red 半透明），文字白色，圓角 `12px`
 - **[前往商城購買鑽石] 按鈕**：內嵌文字連結，底線，白色，點擊後觸發場景跳轉至 Shop
 - **防重複觸發**：同一個射擊動作最多觸發一次 Toast；3 秒冷卻期內不重複顯示
+- **F-R2-15 對比度風險說明**：白色文字在 `rgba(255,45,85,0.95)` 上有效背景約 `#F42B51`，對比度約 4.5:1（WCAG AA 邊界）。遊戲場景動態背景（金色/青色粒子）可能降低半透明層的有效對比。建議實作時在裝置上以最壞情況背景（Boss 命中特效啟動中）驗證對比；若不通過，將背景不透明度調整至 1.0（`#FF2D55` 對白色對比度為 5.9:1，充分通過 AA）。
 
 ---
 
@@ -1021,10 +1053,11 @@ export class SafeAreaAdapter extends Component {
         const leftPad = safeArea.x;
         const rightPad = screenSize.width - safeArea.x - safeArea.width;
 
-        this.topInset.setContentSize(screenSize.width, topPad);
-        this.bottomInset.setContentSize(screenSize.width, bottomPad);
-        this.leftInset.setContentSize(leftPad, screenSize.height);
-        this.rightInset.setContentSize(rightPad, screenSize.height);
+        // F-R2-03 fix: CC4.x 移除 Node.setContentSize()，改用 UITransform 組件
+        this.topInset.getComponent(UITransform).setContentSize(screenSize.width, topPad);
+        this.bottomInset.getComponent(UITransform).setContentSize(screenSize.width, bottomPad);
+        this.leftInset.getComponent(UITransform).setContentSize(leftPad, screenSize.height);
+        this.rightInset.getComponent(UITransform).setContentSize(rightPad, screenSize.height);
     }
 }
 ```
@@ -1076,10 +1109,13 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 **實作方式：**
 
 ```typescript
+// F-R2-05 fix: CC4.x 橫屏鎖定使用 screen.setOrientation()，而非 CC3.x 的 jsb.device.setDeviceOrientation()
+import { screen, ScreenOrientation, sys } from 'cc';
+
 // 在 Boot.scene 初始化時執行
-sys.gameType === sys.GameType.DesktopBrowser
-    ? null
-    : jsb.device.setDeviceOrientation(jsb.DeviceOrientation.LandscapeRight);
+if (sys.gameType !== sys.GameType.DesktopBrowser) {
+    screen.setOrientation(ScreenOrientation.LANDSCAPE_RIGHT);
+}
 ```
 
 **Android `AndroidManifest.xml`：**
@@ -1121,17 +1157,28 @@ sys.gameType === sys.GameType.DesktopBrowser
 
 ```typescript
 // utils/ObjectPoolManager.ts
-// F4 fix: CC4.x 已移除 NodePool，改用泛型 ObjectPool<T>
+// F4 fix + F-R2-01/F-R2-02 fix:
+// CC4.x ObjectPool<T> 接受 creator + handler 物件（非三個獨立函式參數）
+// _prefabs 需顯式宣告並透過 registerPrefab() 注入
 export class ObjectPoolManager {
     private _pools: Map<string, ObjectPool<Node>> = new Map();
+    private _prefabs: Map<string, Prefab> = new Map();  // F-R2-02 fix
+
+    /** 註冊 Prefab，在 Boot.scene 或 GameRoom.scene 初始化時呼叫 */
+    public registerPrefab(key: string, prefab: Prefab): void {
+        this._prefabs.set(key, prefab);
+    }
 
     getPool(prefabKey: string, warmUpCount: number): ObjectPool<Node> {
         if (!this._pools.has(prefabKey)) {
             const prefab = this._prefabs.get(prefabKey);
+            // F-R2-01 fix: CC4.x ObjectPool 接受 creator 函式 + handler 物件
             const pool = new ObjectPool<Node>(
-                () => instantiate(prefab),           // creator：建立新節點
-                (node) => { node.active = false; },  // onPut：回收時隱藏
-                (node) => { node.active = true; }    // onGet：取出時顯示
+                () => instantiate(prefab),
+                {
+                    onFree: (node) => { node.active = false; },  // 回收時隱藏
+                    reuse: (node) => { node.active = true; }     // 取出時顯示
+                }
             );
             // 預熱 N 個節點（避免遊戲中動態 instantiate 造成 GC 峰值）
             for (let i = 0; i < warmUpCount; i++) {
@@ -1229,20 +1276,21 @@ Cocos Creator 4.x 沒有直接的 `accessibilityLabel` 屬性，需透過 `jsb.r
 
 ```typescript
 // utils/AccessibilityHelper.ts
+// F-R2-04 fix: 移除 _uiTransformComp.nativeObject 偽造屬性查詢（始終為 undefined）
+// 直接使用 node.uuid 作為原生端識別符（jsb.reflection 呼叫中已正確使用）
 export function setAccessibilityLabel(node: Node, label: string, hint?: string): void {
     if (!jsb) return;  // Web 平台跳過
-    const nativeView = node.getComponent(UITransform)?._uiTransformComp?.nativeObject;
-    if (!nativeView) return;
+    if (!node) return;
 
     if (sys.os === sys.OS.IOS) {
-        // iOS：UIView.accessibilityLabel + accessibilityHint
+        // iOS：AppController 原生端以 uuid 查找對應 UIView，設定 accessibilityLabel
         jsb.reflection.callStaticMethod(
             'AppController',
             'setAccessibilityLabel:hint:forNodeId:',
             `${label}|${hint ?? ''}|${node.uuid}`
         );
     } else if (sys.os === sys.OS.ANDROID) {
-        // Android：ViewCompat.setAccessibilityDelegate + contentDescription
+        // Android：Cocos2dxHelper 原生端以 uuid 查找對應 View，設定 contentDescription
         jsb.reflection.callStaticMethod(
             'org/cocos2dx/lib/Cocos2dxHelper',
             'setAccessibilityLabel',
@@ -1280,12 +1328,13 @@ export function isReduceMotionEnabled(): boolean {
         // F13 fix: Android 透過 Settings.Global.ANIMATOR_DURATION_SCALE 偵測
         // ANIMATOR_DURATION_SCALE = 0 時，使用者已在開發者選項中關閉動畫（等同 Reduce Motion）
         // 正常值為 1.0；無障礙設定的「移除動畫」也會設為 0
+        // F-R2-14 fix: JNI '()F' 回傳值在 JSB 中為 JS number，不需 string 轉型
         const scale = jsb.reflection.callStaticMethod(
             'org/cocos2dx/lib/Cocos2dxHelper',
             'getAnimatorDurationScale',
             '()F'
-        );
-        return parseFloat(scale as string) === 0;
+        ) as number;
+        return scale === 0;
     }
 
     return false;
@@ -1398,7 +1447,12 @@ assets/
 │   ├── fish/
 │   ├── cannon/
 │   ├── ui/
-│   │   ├── PrivacyConsentModal.prefab
+│   │   │   ├── PrivacyConsentModal.prefab
+│   │   ├── SettingsOverlay.prefab
+│   │   ├── WaitingLobbyOverlay.prefab
+│   │   ├── NetworkReconnectOverlay.prefab
+│   │   ├── JackpotOddsModal.prefab
+│   │   ├── CoinInsufficientToast.prefab
 │   │   ├── JackpotDisplay.prefab
 │   │   └── PrimaryButton.prefab
 │   └── effects/
@@ -1406,8 +1460,8 @@ assets/
 │   ├── Boot.scene
 │   ├── MainMenu.scene
 │   ├── GameRoom.scene
-│   ├── Shop.scene
-│   └── Settings.scene       # 若獨立場景，否則為 Prefab
+│   └── Shop.scene
+│   # F-R2-06: Settings 為 ModalStack Prefab overlay，無獨立 Scene 檔案（見 §1.4）
 └── scripts/                 # TypeScript 腳本（依功能模組分組）
     ├── cannon/
     ├── fish/
