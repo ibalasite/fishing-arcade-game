@@ -40,7 +40,13 @@ interface JwtPayload {
 interface ShootMessage {
   bulletId: string;
   fishId: string;
-  cannonMultiplier: number;
+  /**
+   * Client-reported cannon multiplier — ignored by the server.
+   * The server uses the authoritative player.multiplier (set via set_multiplier message)
+   * for all game calculations to prevent anti-cheat exploits.
+   * Kept in the interface for client backward compatibility.
+   */
+  cannonMultiplier?: number;
   betAmount: number;
   targetX?: number;
   targetY?: number;
@@ -347,22 +353,20 @@ export class GameRoom extends Room<GameState> {
   // ---------------------------------------------------------------------------
 
   private async _adjudicateShot(client: Client, data: ShootMessage): Promise<void> {
-    const { bulletId, fishId, cannonMultiplier, betAmount } = data;
+    const { bulletId, fishId, betAmount } = data;
     const sessionId = client.sessionId;
     const userId = (client.auth as JwtPayload).userId;
 
     const player = this.state.players.get(sessionId);
     if (!player) return;
 
-    // 1. Validate all shot parameters before any side effects
-    if (
-      !Number.isInteger(cannonMultiplier) ||
-      cannonMultiplier < MIN_MULTIPLIER ||
-      cannonMultiplier > MAX_MULTIPLIER
-    ) {
-      client.send('shoot_result', { bulletId, hit: false, payout: 0, error: 'invalid_multiplier' });
-      return;
-    }
+    // Anti-cheat: use the server-authoritative multiplier (set via set_multiplier message
+    // and stored in player.multiplier). Ignore the client-provided cannonMultiplier to
+    // prevent clients from claiming higher multiplier (better jackpot odds / larger payout)
+    // without paying the corresponding higher bet.
+    const authorativeMultiplier = player.multiplier;
+
+    // 1. Validate bet amount and balance
     if (!Number.isInteger(betAmount) || betAmount <= 0) {
       client.send('shoot_result', { bulletId, hit: false, payout: 0, error: 'invalid_bet' });
       return;
@@ -383,9 +387,9 @@ export class GameRoom extends Room<GameState> {
     await this._walletService.debitGold(userId, betAmount);
     player.gold -= betAmount;
 
-    // 4. RTP adjudication
+    // 4. RTP adjudication — use server-authoritative multiplier for payout scaling
     const fishType = fish.fishType as import('../engine/RTPEngine').FishType;
-    const result = this._rtpEngine.adjudicate(fishType, betAmount, cannonMultiplier);
+    const result = this._rtpEngine.adjudicate(fishType, betAmount, authorativeMultiplier);
 
     let payout = 0;
 
@@ -411,9 +415,9 @@ export class GameRoom extends Room<GameState> {
       }
     }
 
-    // 6. Jackpot contribution + trigger check
+    // 6. Jackpot contribution + trigger check — use server-authoritative multiplier for odds
     await this._jackpotManager.contribute(betAmount);
-    const jackpotResult = await this._jackpotManager.tryTrigger(cannonMultiplier, userId);
+    const jackpotResult = await this._jackpotManager.tryTrigger(authorativeMultiplier, userId);
     if (jackpotResult) {
       player.gold += jackpotResult.amount;
       this._rtpEngine.addExternalPayout(jackpotResult.amount);
@@ -428,7 +432,7 @@ export class GameRoom extends Room<GameState> {
     // 7. Fire-and-forget RTP audit log (does NOT block response)
     db.query(
       "INSERT INTO rtp_logs(room_id, session_id, user_id, fish_type, bet_amount, multiplier, hit, payout, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
-      [this.roomId, sessionId, userId, fishType, betAmount, cannonMultiplier, result.hit, payout],
+      [this.roomId, sessionId, userId, fishType, betAmount, authorativeMultiplier, result.hit, payout],
     ).catch(err => console.error('rtp_log_write_failed', err));
 
     // 8. Send result to shooter
@@ -439,9 +443,10 @@ export class GameRoom extends Room<GameState> {
     const bulletState = new BulletState();
     bulletState.bulletId = bulletId;
     bulletState.ownerId = sessionId;
-    bulletState.multiplier = cannonMultiplier;
-    bulletState.targetX = data.targetX ?? 0;
-    bulletState.targetY = data.targetY ?? 0;
+    bulletState.multiplier = authorativeMultiplier;
+    // Sanitise optional visual position fields — coerce to finite number (client display only)
+    bulletState.targetX = Number.isFinite(data.targetX) ? (data.targetX as number) : 0;
+    bulletState.targetY = Number.isFinite(data.targetY) ? (data.targetY as number) : 0;
     this.state.bullets.set(bulletId, bulletState);
     setTimeout(() => {
       if (!this._disposed) this.state.bullets.delete(bulletId);
