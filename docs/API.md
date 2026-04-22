@@ -181,6 +181,7 @@ Authenticate and issue JWT pair.
 **Error responses:**
 | Code | Error Code | Description |
 |------|-----------|-------------|
+| 400 | `validation_error` | Missing or malformed `email` / `password` fields |
 | 401 | `invalid_credentials` | Email or password incorrect (generic — does not distinguish email-not-found vs wrong password) |
 
 ---
@@ -235,6 +236,11 @@ Retrieve current player's profile and wallet summary.
 }
 ```
 
+**Error responses:**
+| Code | Error Code | Description |
+|------|-----------|-------------|
+| 401 | `unauthorized` | Missing or expired access token |
+
 ---
 
 #### PATCH `/api/v1/user/profile`
@@ -271,6 +277,7 @@ Update nickname or initiate email change (US-PRIV-003).
 | Code | Error Code | Description |
 |------|-----------|-------------|
 | 400 | `validation_error` | Invalid nickname or email format |
+| 401 | `unauthorized` | Missing or expired access token |
 | 409 | `email_taken` | New email already in use |
 
 ---
@@ -289,6 +296,11 @@ Retrieve current gold and diamond balances (US-CURR-001).
   "updatedAt": "2026-04-22T12:00:00Z"
 }
 ```
+
+**Error responses:**
+| Code | Error Code | Description |
+|------|-----------|-------------|
+| 401 | `unauthorized` | Missing or expired access token |
 
 ---
 
@@ -331,6 +343,7 @@ Verify Apple or Google purchase receipt and credit diamonds (US-CURR-002).
 | Code | Error Code | Description |
 |------|-----------|-------------|
 | 400 | `validation_error` | Missing or invalid fields |
+| 401 | `unauthorized` | Missing or expired access token |
 | 402 | `invalid_receipt` | Store rejected the receipt |
 | 429 | `rate_limited` | Exceeds 5 req/min per user |
 
@@ -372,6 +385,11 @@ List all consent records for the authenticated user (US-PRIV-001).
 }
 ```
 
+**Error responses:**
+| Code | Error Code | Description |
+|------|-----------|-------------|
+| 401 | `unauthorized` | Missing or expired access token |
+
 ---
 
 #### POST `/api/v1/privacy/consent/grant`
@@ -397,6 +415,12 @@ Grant a consent type (US-PRIV-001).
 ```json
 { "success": true }
 ```
+
+**Error responses:**
+| Code | Error Code | Description |
+|------|-----------|-------------|
+| 400 | `validation_error` | Invalid `consentType` value or missing `policyVersion` |
+| 401 | `unauthorized` | Missing or expired access token |
 
 ---
 
@@ -425,6 +449,8 @@ Revoke a consent type (US-PRIV-004).
 **Error responses:**
 | Code | Error Code | Description |
 |------|-----------|-------------|
+| 400 | `validation_error` | Invalid `consentType` value |
+| 401 | `unauthorized` | Missing or expired access token |
 | 409 | `consent_not_revocable` | Attempt to revoke `privacy_policy`; body includes `{ "redirect": "account_deletion" }` |
 
 ---
@@ -447,6 +473,7 @@ Submit account deletion request (30-day scheduled soft delete) (US-PRIV-002).
 **Error responses:**
 | Code | Error Code | Description |
 |------|-----------|-------------|
+| 401 | `unauthorized` | Missing or expired access token |
 | 409 | `deletion_already_pending` | Deletion request already exists |
 
 ---
@@ -465,6 +492,7 @@ Cancel a pending deletion request (US-PRIV-002).
 **Error responses:**
 | Code | Error Code | Description |
 |------|-----------|-------------|
+| 401 | `unauthorized` | Missing or expired access token |
 | 409 | `deletion_not_cancellable` | Deletion already executed or no pending request |
 
 ---
@@ -484,6 +512,11 @@ Retrieve current jackpot pool amount (US-JACK-001).
   "currency": "gold"
 }
 ```
+
+**Error responses:**
+| Code | Error Code | Description |
+|------|-----------|-------------|
+| 401 | `unauthorized` | Missing or expired access token |
 
 ---
 
