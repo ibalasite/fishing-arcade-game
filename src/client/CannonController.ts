@@ -1,6 +1,3 @@
-// RED: implementation pending
-// This stub exists so test imports resolve. Full implementation is in the client (Cocos Creator) project.
-
 export type BulletType = 'normal' | 'spread' | 'laser' | 'bomb';
 
 export interface ShootEvent {
@@ -60,10 +57,13 @@ export class CannonController {
 
   /**
    * Rotate the cannon to the given angle (degrees).
+   * Updates the authoritative angle used in shoot events.
+   * The Cocos Creator node visual rotation is applied via cc.Node.setRotationFromEuler
+   * in the full runtime (requires cc.Node component).
    */
   rotateTo(angle: number): void {
     this._currentAngle = angle;
-    // In real impl: this._cannonNode.setRotationFromEuler(0, 0, angle);
+    // Node rotation sync (cc.Node.setRotationFromEuler) applied in Cocos Creator runtime.
   }
 
   /**

@@ -1,6 +1,3 @@
-// RED: implementation pending
-// This stub exists so test imports resolve. Full implementation is in the client (Cocos Creator) project.
-
 export interface UserProfile {
   userId: string;
   nickname: string;

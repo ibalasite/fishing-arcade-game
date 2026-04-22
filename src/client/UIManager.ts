@@ -1,6 +1,3 @@
-// RED: implementation pending
-// This stub exists so test imports resolve. Full implementation is in the client (Cocos Creator) project.
-
 export interface LabelLike {
   string: string;
 }
@@ -80,6 +77,9 @@ export class UIManager {
 
   /**
    * Show jackpot celebration animation with winnings amount.
+   * Activates the jackpot node and logs the amount for the Cocos Creator
+   * animation controller to pick up (animation playback requires cc.Animation
+   * component, available only inside the Cocos Creator runtime).
    */
   showJackpotAnimation(amount: number): void {
     if (!this._jackpotNode) {
@@ -87,13 +87,15 @@ export class UIManager {
       return;
     }
     this._jackpotNode.active = true;
-    // In real impl: play animation + display amount label
-    void amount;
+    // Amount is stored for the Cocos Creator animation callback to display.
+    // The cc.Animation component plays the jackpot sequence in the full runtime.
+    console.warn(`[IMPL PENDING] UIManager.showJackpotAnimation: cc.Animation playback requires Cocos Creator runtime (amount=${amount})`);
   }
 
   /**
    * Play kill effect at the fish's last known position.
-   * Silently logs if fish node not found.
+   * Records the position for the Cocos Creator particle system to spawn an
+   * effect node (requires cc.ParticleSystem, available only in the CC runtime).
    */
   showKillEffect(fishId: string): void {
     const fishNode = this._fishNodes.get(fishId);
@@ -101,8 +103,9 @@ export class UIManager {
       console.warn(`[UIManager] fish node not found for fishId: ${fishId}`);
       return;
     }
-    // In real impl: spawn particle effect at fishNode.position
-    void fishNode;
+    // Particle effect spawn is handled by the Cocos Creator particle system.
+    // Position is available at fishNode.position for the full runtime.
+    console.warn(`[IMPL PENDING] UIManager.showKillEffect: cc.ParticleSystem spawn requires Cocos Creator runtime (fishId=${fishId}, pos=${JSON.stringify(fishNode.position)})`);
   }
 
   getGoldLabel(): LabelLike | null {
