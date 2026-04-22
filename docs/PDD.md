@@ -827,7 +827,15 @@ export class BossFish extends Component {
         // 3. Boss 從畫面外游入（2s 進場動畫）
         // 4. 進場特效（震動 + 粒子爆炸）
     }
-    public onDamaged(hpRatio: number): void { /* 更新 HP 條 + 受擊動畫 */ }
+    public onDamaged(hpRatio: number): void {
+        // F2 fix: 明確更新 hpBar + hpLabel（WCAG 1.4.1，顏色+數字雙重指示）
+        // F3 note: BossFish 服務器傳入 hpRatio（0.0–1.0）；EliteFish 傳入 current/max（絕對值）——
+        //          兩者對應不同的 Colyseus Schema 欄位（詳見 EDD 網路協議章節）
+        this.hpBar.progress = hpRatio;
+        this.hpLabel.string = `${Math.round(hpRatio * 100)}%`;
+        // 顏色切換由 EDD 以 tween 或 Material override 實作（Neon Lime / Amber / Crisis Red）
+        // 受擊動畫：播放 Spine 'hurt' clip（0.2s）
+    }
     public onKilled(killerName: string): void {
         // 全屏死亡爆炸特效（2s）
         // 廣播 "[killerName] 擊殺 Boss！"
@@ -1530,6 +1538,12 @@ assets/
 | +N 金幣浮動 | 金幣增加 | 0.5s | cubicOut | translateY -40px + opacity 1→0 | 每次命中 |
 | 彈窗出現 | ModalStack push | 0.3s | cubicOut | opacity 0→1 + scale 0.95→1.0 | 通用 Modal 動畫 |
 | 頁面切換 | 場景載入完成 | 0.3s | linear | opacity 0→1 | Loading 結束淡入 |
+| Boss 廣播 Banner 滑入 | Boss 出現 | 0.3s | ease-out | translateY 全寬橫幅從上方滑入 | 5s 後自動淡出 |
+| WaitingLobby 海浪動畫 | 配對等待中（loop）| 1.2s | ease-in-out | translateY ±4px（三條線交替 offset）| Reduce Motion: 停用 |
+| WaitingLobby Slot 切換 | 玩家加入 | 0.3s | bounceOut | scale ○→● | Reduce Motion: 直接替換 |
+| NetworkReconnect 成功淡出 | 重連成功 | 0.5s | linear | opacity 1→0 | 遊戲狀態同步後淡出 |
+| CoinInsufficientToast 滑入 | 金幣不足射擊 | 0.25s | ease-out | translateY 底部 +40px → 0 | 位於砲台 HUD 上方 |
+| CoinInsufficientToast 淡出 | 3s 後自動 | 0.3s | linear | opacity 1→0 | 亦可點擊 [前往商城] 觸發 |
 
 ---
 
