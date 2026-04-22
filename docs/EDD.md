@@ -217,6 +217,13 @@ export class GameRoom extends Room<GameState> {
 
         // 20Hz state tick (50ms)
         this._tickInterval = setInterval(() => this._tick(), 50);
+
+        // Record room creation in game_sessions (analytics + admin dashboard)
+        await db.query(
+            `INSERT INTO game_sessions(room_id, started_at, player_count, room_state, ip_address)
+             VALUES($1, NOW(), 0, 'WAITING', NULL)`,
+            [this.roomId]
+        );
     }
 
     async onJoin(client: Client, options: JoinOptions) {
@@ -232,6 +239,12 @@ export class GameRoom extends Room<GameState> {
         this.state.players.set(client.sessionId, player);
         this.state.playerCount = this.state.players.size;
         if (this.state.playerCount >= 4) this._transitionToPlaying();
+
+        // Update session player count on each join
+        await db.query(
+            `UPDATE game_sessions SET player_count = $1, room_state = $2 WHERE room_id = $3`,
+            [this.state.playerCount, this.state.roomState, this.roomId]
+        );
     }
 
     // Colyseus 0.15: second param is a numeric WebSocket close code, NOT a boolean
@@ -260,8 +273,17 @@ export class GameRoom extends Room<GameState> {
 
     async onDispose() {
         clearInterval(this._tickInterval);
+        // Clear boss escape timers to prevent post-dispose callbacks
+        this._bossEscapeTimers.forEach(t => clearTimeout(t));
+        this._bossEscapeTimers.clear();
         await this._jackpotManager.persistPool();
         await WalletService.flushBatch();
+        // Mark session as ended (ended_at + final player count for analytics)
+        await db.query(
+            `UPDATE game_sessions SET ended_at = NOW(), player_count = $1, room_state = 'ENDED'
+             WHERE room_id = $2 AND ended_at IS NULL`,
+            [this.state.playerCount, this.roomId]
+        );
     }
 }
 ```
@@ -281,6 +303,13 @@ export class GameRoom extends Room<GameState> {
 
 ```typescript
 // src/engine/RTPEngine.ts
+import crypto from 'crypto';
+import { db } from '../db';
+
+// Return types
+export interface HitResult    { hit: boolean; payout: number; }
+export interface JackpotResult { winnerId: string; amount: number; }
+
 export interface RTPConfig {
     targetRtpMin: number;   // 0.92 — BRD §0.1 specifies 92-96% overall RTP
     targetRtpMax: number;   // 0.96
@@ -297,12 +326,21 @@ export interface FishConfig {
     hitRateDenominator: number; // fixed denominator (e.g. 100_000)
 }
 
+// Minimum bets before dynamic adjustment activates (prevents near-100% hits early in a room)
+const MIN_SAMPLE_BETS = 200;
+const MIN_BET_AMOUNT  = 1;    // minimum coin bet; used to gate adjustment
+
 export class RTPEngine {
     private _totalBet = 0n;       // BigInt to avoid float overflow
     private _totalPaid = 0n;
     private _config: RTPConfig;
 
     constructor(config: RTPConfig) { this._config = config; }
+
+    /** Called when jackpot is paid out — ensures jackpot payouts are included in RTP accounting */
+    addExternalPayout(amount: number): void {
+        this._totalPaid += BigInt(amount);
+    }
 
     /**
      * Server-authoritative hit adjudication.
@@ -335,6 +373,8 @@ export class RTPEngine {
     }
 
     private _dynamicAdjust(cfg: FishConfig): number {
+        // Suppress adjustment until MIN_SAMPLE_BETS accumulated — prevents extreme swings on room startup
+        if (this._totalBet < BigInt(MIN_SAMPLE_BETS * MIN_BET_AMOUNT)) return cfg.hitRateNumerator;
         const rtp = this.currentRtp;
         if (rtp > this._config.targetRtpMax) {
             // Scale numerator down proportionally
@@ -367,9 +407,28 @@ Fish spawn includes a **server-computed Bezier path** (3-4 control points) so al
 
 #### Bullet Hit Detection (Server-Authoritative)
 
+**Bullet deduplication** (per-player in-memory Set):
+```typescript
+// In GameRoom: per-player in-flight bullet set; capped at 10 (matches rate-limit)
+private _activeBullets = new Map<string, Set<string>>();  // sessionId → Set<bulletId>
+
+_handleShoot(client: Client, data: ShootMessage): void {
+    const bullets = this._activeBullets.get(client.sessionId) ?? new Set<string>();
+    if (bullets.has(data.bulletId)) return;  // duplicate — silently drop
+    if (bullets.size >= 10) return;          // rate-limit: max 10 active bullets
+    bullets.add(data.bulletId);
+    this._activeBullets.set(client.sessionId, bullets);
+    // ... adjudication ...
+    bullets.delete(data.bulletId);           // release after result sent
+}
+// onLeave cleanup:
+this._activeBullets.delete(client.sessionId);
+```
+
 ```
 Client sends: { bulletId, fishId, cannonMultiplier, betAmount }
 Server:
+  0. Validate bulletId not in player's active-bullet Set (dedup); reject if duplicate or Set size >= 10
   1. Validate: player has sufficient gold (betAmount <= player.gold — checked against PlayerState.gold)
   2. Validate: fishId exists and is alive
   3. Deduct betAmount from player wallet (atomic, via WalletService.debitGold)
@@ -383,12 +442,46 @@ Server:
      c. Else: HP decrement auto-synced via schema delta patch (no separate fish_damaged message needed)
   6. Check jackpot trigger (JackpotManager.tryTrigger with verified userId)
      → If jackpot won: update player.gold in schema += jackpotAmount
+     → Call this._rtpEngine.addExternalPayout(jackpotAmount) to include in RTP accounting
   7. INSERT INTO rtp_logs (room_id, user_id, fish_type, bet_amount, multiplier, hit, payout, rtp_at_time)
      with current RTPEngine.currentRtp value — regulatory audit trail (permanent retention)
   8. Send shoot_result to shooter client (hit/miss, payout amount)
+  9. Remove bulletId from player's active-bullet Set
 ```
 
-**Anti-double-spend**: Wallet deduction is a database transaction with `FOR UPDATE` row lock. Bullet validation rejects concurrent duplicate `bulletId` values within the same session.
+**Anti-double-spend**: Wallet deduction is a database transaction with `FOR UPDATE` row lock. Bullet deduplication via in-memory Set prevents concurrent duplicates within the same session.
+
+#### Boss Fish Escape Timeout (US-FISH-002)
+
+```typescript
+// Boss fish has a 60-second escape timer; if no player kills it, it escapes (no payout)
+private _bossEscapeTimers = new Map<string, NodeJS.Timeout>();  // fishId → timer
+
+_spawnBoss(bossState: FishState): void {
+    this.state.fish.set(bossState.fishId, bossState);
+    const timer = setTimeout(() => {
+        if (this.state.fish.has(bossState.fishId)) {
+            this.state.fish.delete(bossState.fishId);   // auto-remove from schema
+            this.broadcast('boss_escaped', { fishId: bossState.fishId });
+            this.state.roomState = 'PLAYING';
+        }
+        this._bossEscapeTimers.delete(bossState.fishId);
+    }, 60_000);
+    this._bossEscapeTimers.set(bossState.fishId, timer);
+}
+
+// When boss is killed (hp == 0 in _handleShoot), cancel the timer:
+_onBossKilled(fishId: string): void {
+    const timer = this._bossEscapeTimers.get(fishId);
+    if (timer) { clearTimeout(timer); this._bossEscapeTimers.delete(fishId); }
+}
+
+// In onDispose — prevent timer leaks after room is disposed:
+this._bossEscapeTimers.forEach(t => clearTimeout(t));
+this._bossEscapeTimers.clear();
+```
+
+No gold refund for bets spent during a boss that escapes (bets deducted at fire time per normal flow).
 
 #### Jackpot Pool Accumulation and Trigger Logic (US-JACK-001/US-JACK-002)
 
@@ -465,6 +558,10 @@ export class JackpotManager {
         });
         return { winnerId: userId, amount: poolAmount };
     }
+
+    // Called by GameRoom._handleShoot after tryTrigger resolves — must be called from room context
+    // to have access to _rtpEngine:
+    // if (jackpotResult) { this._rtpEngine.addExternalPayout(jackpotResult.amount); }
 
     async persistPool() {
         const pool = await this._redis.get('game:jackpot:pool');
@@ -546,12 +643,27 @@ export async function restoreDailyGold(): Promise<void> {
     const DAILY_GOLD_THRESHOLD = parseInt(process.env.DAILY_GOLD_THRESHOLD ?? '0', 10);
     const DAILY_GOLD_AMOUNT    = parseInt(process.env.DAILY_GOLD_AMOUNT    ?? '0', 10);
     if (!DAILY_GOLD_THRESHOLD || !DAILY_GOLD_AMOUNT) return;  // OQ5: values TBD
-    await db.query(
-        `UPDATE user_wallets SET gold = gold + $1 WHERE gold < $2 AND user_id IN (
-           SELECT id FROM users WHERE deletion_status = 'active'
-         )`,
-        [DAILY_GOLD_AMOUNT, DAILY_GOLD_THRESHOLD]
-    );
+    // Must INSERT transactions rows so wallet-reconcile cron can cross-check; UPDATE alone leaves no audit trail
+    await db.transaction(async (trx) => {
+        const eligible = await trx.query(
+            `SELECT uw.user_id FROM user_wallets uw
+             JOIN users u ON u.id = uw.user_id
+             WHERE uw.gold < $1 AND u.deletion_status = 'active'`,
+            [DAILY_GOLD_THRESHOLD]
+        );
+        if (eligible.rowCount === 0) return;
+        const ids = eligible.rows.map((r: { user_id: string }) => r.user_id);
+        await trx.query(
+            `UPDATE user_wallets SET gold = gold + $1 WHERE user_id = ANY($2::uuid[])`,
+            [DAILY_GOLD_AMOUNT, ids]
+        );
+        // Insert one transaction row per user so wallet-reconcile cron matches balance
+        await trx.query(
+            `INSERT INTO transactions(user_id, type, amount, currency, created_at)
+             SELECT unnest($1::uuid[]), 'daily_restore', $2, 'gold', NOW()`,
+            [ids, DAILY_GOLD_AMOUNT]
+        );
+    });
 }
 
 // iapVerificationResult contains: platform, productId, diamondAmount from the store receipt
@@ -638,6 +750,24 @@ async requestDeletion(userId: string): Promise<void> {
     // Immediately set account as pending deletion
     await db.query(
         "UPDATE users SET deletion_status='pending', deletion_requested_at=NOW() WHERE id=$1",
+        [userId]
+    );
+}
+
+async cancelDeletion(userId: string): Promise<void> {
+    const result = await db.query(
+        `UPDATE deletion_requests
+         SET cancelled_at = NOW()
+         WHERE user_id = $1 AND executed_at IS NULL AND cancelled_at IS NULL
+         RETURNING user_id`,
+        [userId]
+    );
+    if (result.rowCount === 0) {
+        // Deletion already executed or no pending request
+        throw Object.assign(new Error('deletion_not_cancellable'), { statusCode: 409 });
+    }
+    await db.query(
+        "UPDATE users SET deletion_status='active', deletion_requested_at=NULL WHERE id=$1",
         [userId]
     );
 }
@@ -1072,6 +1202,61 @@ export class NetworkManager extends Component {
 }
 ```
 
+#### §3.2.1 JWT Refresh Token — Mobile Secure Storage
+
+Access tokens (RS256, 15-min TTL) are obtained via `POST /api/auth/login` and refreshed by `POST /api/auth/refresh` using a long-lived refresh token (7-day TTL, HTTP-only cookie on web; native Keychain/Keystore on mobile).
+
+**iOS — Keychain via jsb.reflection:**
+```typescript
+// scripts/native/SecureStorage.ts
+declare const jsb: { reflection: { callStaticMethod: (cls: string, method: string, sig: string, ...args: string[]) => string } };
+
+export class SecureStorage {
+    static set(key: string, value: string): void {
+        if (sys.isNative && sys.platform === sys.Platform.IOS) {
+            // Calls Swift: SecureStorage.set(key:value:) which stores in kSecClassGenericPassword
+            jsb.reflection.callStaticMethod('SecureStorage', 'setKey:value:', '(NSString*,NSString*)V', key, value);
+        } else {
+            // Web fallback: sessionStorage only (access token) — refresh token via HTTP-only cookie
+            sessionStorage.setItem(key, value);
+        }
+    }
+
+    static get(key: string): string {
+        if (sys.isNative && sys.platform === sys.Platform.IOS) {
+            return jsb.reflection.callStaticMethod('SecureStorage', 'getKey:', '(NSString*)NSString*', key);
+        }
+        return sessionStorage.getItem(key) ?? '';
+    }
+}
+```
+
+**Android — Keystore via jsb.reflection:**
+```typescript
+if (sys.isNative && sys.platform === sys.Platform.ANDROID) {
+    // Calls Java: SecureStorageHelper.set(key, value) — stores encrypted in EncryptedSharedPreferences
+    // backed by Android Keystore hardware-backed key (API 23+)
+    jsb.reflection.callStaticMethod('com/example/fishing/SecureStorageHelper', 'set',
+        '(Ljava/lang/String;Ljava/lang/String;)V', key, value);
+}
+```
+
+**Usage in NetworkManager:**
+```typescript
+// On login success:
+SecureStorage.set('refresh_token', response.refreshToken);
+
+// On access token expiry (401):
+const refreshToken = SecureStorage.get('refresh_token');
+const { accessToken } = await this._http.post('/api/auth/refresh', { refreshToken });
+// Re-join room with fresh token
+```
+
+**Security constraints:**
+- Refresh tokens are single-use; server invalidates on use (rotation).
+- `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` (iOS) — token cannot be migrated to another device via iCloud backup.
+- Android EncryptedSharedPreferences backed by hardware-backed key (Keystore API 23+); no software fallback in production.
+
 #### State Sync Handling (onStateChange Callbacks)
 
 - **Fish pool updates**: `state.fish.onAdd((fish, key) => FishPool.spawn(fish))`; `state.fish.onRemove((fish, key) => FishPool.recycle(fish.fishId))`
@@ -1235,6 +1420,7 @@ All game outcomes computed server-side. Client cannot influence:
 | R2 | Redis jackpot pool loss on crash before persist | MEDIUM — financial integrity | Engineering | Dev Month 1 | 5-minute persist cron + onDispose hook; Redis AOF persistence enabled |
 | R3 | Apple IAP sandbox vs production receipt routing | MEDIUM — IAP verification | Engineering | Dev Month 3 | Environment-based endpoint switching; test both in Beta phase |
 | R4 | PDPA cross-border transfer (GCP US region) | LOW/MEDIUM | Legal | 2026 Q3 | Prefer GCP Asia region (Taiwan/Singapore); legal review if US region required |
+| R5 | Per-room RTPEngine isolation means short-session rooms (<200 bets) cannot guarantee ±0.1% RTP accuracy required for regulatory reporting | MEDIUM — regulatory | Engineering | Dev Month 1 | Persist `totalBet`/`totalPaid` to PostgreSQL on `onDispose`; restore on `onCreate`; OR use Redis `HSET game:rtp:<roomType>` for cross-room aggregate. Cross-room aggregate RTP is the reportable metric — single-room accuracy is not the requirement. |
 
 ---
 
@@ -1245,3 +1431,4 @@ All game outcomes computed server-side. Client cannot influence:
 | v1.0 | 2026-04-22 | tobala | Initial EDD generated from PRD v1.1 + PDD v1.5. Covers full backend (Colyseus room, RTPEngine, JackpotManager, WalletService, PrivacyService, PostgreSQL schema, k8s spec) and client (ObjectPool, NetworkManager, SafeAreaAdapter, privacy UI components) architecture. 13 US-IDs traced. |
 | v1.1 | 2026-04-22 | tobala | Review Round 1 fix — 26 findings resolved: onMessage override removed; allowReconnection try/catch added; onAuth JWT guard added; Jackpot Lua atomic claim + missing creditGold; iap_receipts missing NOT NULL columns; AES-256-GCM UNIQUE→HMAC-SHA256; shoot message field alignment; RTP 85-95%→92-96%; BigInt basis-point precision; state.listen API correction; ObjectPool key capitalisation; spawnFish component map; fish_damaged removed (schema delta); NetworkManager recursive→loop; privacy_policies table added; 2 missing cron jobs added; creditGold function added; Math.random()→crypto.randomInt() |
 | v1.2 | 2026-04-22 | tobala | Review Round 2 fix — 20 findings resolved: §1.2 HINCRBYFLOAT stale ref; JackpotManager _initPromise singleton guard; executeScheduledDeletions filters cancelled_at; parseInt→parseFloat for INCRBYFLOAT result; PlayerState.gold updated after wallet mutations; FishState pathData+speed fields added; onLeave boolean→numeric close code; nickname validation in onJoin; state.players.onChange→onAdd+listen; k8s :latest→${GIT_SHA}+imagePullPolicy; readinessProbe added; HPA apiVersion added; JWT+HMAC secrets in env; email confirmation updates both email+email_hash; rtp_logs INSERT in hit flow; game_sessions indexes added; Service+sticky session annotation added; FishType exported; WalletService stubs added; reconnect token captured before loop |
+| v1.3 | 2026-04-22 | tobala | Review Round 3 fix — 10 findings resolved: HitResult/JackpotResult TypeScript interfaces added; RTPEngine addExternalPayout() for jackpot inclusion in _totalPaid; MIN_SAMPLE_BETS=200 guard in _dynamicAdjust; bullet deduplication (_activeBullets Map); boss fish 60s escape timeout (_bossEscapeTimers Map + clearTimeout in onDispose); per-room RTP isolation risk added as R5; cancelDeletion() added to PrivacyService; restoreDailyGold() now INSERTs transactions rows for wallet-reconcile; §3.2.1 JWT refresh token mobile secure storage (iOS Keychain + Android Keystore via jsb.reflection); game_sessions INSERT in onCreate + UPDATE in onJoin + UPDATE in onDispose |
