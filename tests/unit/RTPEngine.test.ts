@@ -320,6 +320,28 @@ describe('RTPEngine', () => {
   });
 
   describe('_dynamicAdjust — RTP below min (underpaying path)', () => {
+    it('returns 0 numerator when rtp=0 and base numerator is 0 (unkillable fish guard)', () => {
+      // Setup: 200+ bets above MIN_SAMPLE_BETS, zero numerator fish, zero totalPaid
+      // → rtp = 0 < targetRtpMin, but numerator is 0 → must stay 0 (not cap at denom-1)
+      const zeroNumeratorConfig: RTPConfig = {
+        ...BASE_CONFIG,
+        fishConfigs: [
+          { fishType: 'normal', baseMultiplier: 2, hitRateNumerator: 0, hitRateDenominator: 100_000 },
+        ],
+      };
+      const engine = new RTPEngine(zeroNumeratorConfig);
+      // Push totalBet above sample threshold
+      for (let i = 0; i < 201; i++) {
+        engine.adjudicate('normal', 1, 1);
+      }
+      // RTP = 0 (no hits), totalBet > 200 → _dynamicAdjust runs
+      // numerator = 0 → should stay 0 (unkillable fish config unchanged)
+      // The result should still be hit=false for all adjudications (numerator stays 0)
+      const result = engine.adjudicate('normal', 1, 1);
+      expect(result.hit).toBe(false);
+      expect(result.payout).toBe(0);
+    });
+
     it('scales numerator up when RTP < targetRtpMin and base numerator > 0', () => {
       // 200+ bets at 50 gold, zero hits → RTP = 0 < 0.92, nonzero numerator → scale up
       const normalHitConfig: RTPConfig = {

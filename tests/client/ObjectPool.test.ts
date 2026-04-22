@@ -154,6 +154,31 @@ describe('ObjectPoolManager', () => {
     });
   });
 
+  // ---- get() with undefined prefab.name ----
+
+  describe('get(prefab) — prefab without name', () => {
+    it('falls back to "default" pool key when prefab.name is undefined', () => {
+      // Given: a prefab with no name property
+      const namelessPrefab: PrefabLike = {}; // name is undefined
+      // When: a node is put under 'default' key and retrieved via nameless prefab
+      const existingNode = makeNode('default');
+      pool.put('default', existingNode);
+      // Then: get returns the pooled node (resolved via 'default' fallback key)
+      const retrieved = pool.get(namelessPrefab);
+      expect(retrieved).toBe(existingNode);
+    });
+
+    it('creates a node named "default" when pool is empty and prefab.name is undefined', () => {
+      // Given: pool is empty, prefab has no name
+      const namelessPrefab: PrefabLike = {};
+      // When: get is called
+      const node = pool.get(namelessPrefab);
+      // Then: new node with name 'default' is returned
+      expect(node.name).toBe('default');
+      expect(node.active).toBe(true);
+    });
+  });
+
   // ---- clearPoolFor() ----
 
   describe('clearPoolFor(prefabKey)', () => {

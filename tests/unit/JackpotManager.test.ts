@@ -248,5 +248,37 @@ describe('JackpotManager', () => {
       const result = await mgr.triggerForTest('user-race', 0);
       expect(result).toBeNull();
     });
+
+    it('_claimPool executes Lua atomic claim when roll hits (forced via crypto.randomInt spy)', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [{ current_amount: '7777' }], rowCount: 1 });
+      mockRedisSet.mockResolvedValueOnce('OK');
+
+      const mgr = await JackpotManager.getInstance(mockDb as never, mockRedis as never);
+
+      // Force crypto.randomInt to return 0 (jackpot trigger)
+      const cryptoModule = require('crypto');
+      const randomIntSpy = jest.spyOn(cryptoModule, 'randomInt').mockReturnValueOnce(0);
+
+      // Clear any queued mock values and set fresh unconditional return for eval
+      mockRedisEval.mockReset();
+      mockRedisEval.mockResolvedValueOnce('7777');
+
+      const trxQuery = jest.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // INSERT jackpot_history
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // UPDATE user_wallets
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }); // INSERT transactions
+
+      mockTransaction.mockImplementationOnce(async (callback: (trx: DbClient) => Promise<void>) => {
+        const trx: DbClient = { query: trxQuery, transaction: jest.fn() };
+        await callback(trx);
+      });
+
+      const result = await mgr.tryTrigger(1, 'user-jackpot-forced');
+      randomIntSpy.mockRestore();
+
+      expect(result).not.toBeNull();
+      expect(result?.winnerId).toBe('user-jackpot-forced');
+      expect(result?.amount).toBe(7777);
+    });
   });
 });

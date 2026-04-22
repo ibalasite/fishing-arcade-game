@@ -172,6 +172,40 @@ describe('PrivacyService', () => {
 
       expect(mockTransaction).not.toHaveBeenCalled();
     });
+
+    it('logs error and continues processing remaining users when one transaction fails', async () => {
+      // Arrange: two pending users, first transaction fails, second succeeds
+      const pendingRows = [{ user_id: 'user-fail' }, { user_id: 'user-ok' }];
+      mockQuery.mockResolvedValueOnce({ rows: pendingRows, rowCount: 2 });
+
+      const trxQueryOk = jest.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })  // UPDATE users
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }); // UPDATE deletion_requests
+
+      let callIndex = 0;
+      mockTransaction.mockImplementation(async (callback: (trx: DbClient) => Promise<void>) => {
+        if (callIndex === 0) {
+          callIndex++;
+          throw new Error('DB constraint violation for user-fail');
+        }
+        callIndex++;
+        const trx: DbClient = { query: trxQueryOk, transaction: jest.fn() };
+        await callback(trx);
+      });
+
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = makeService();
+      // Should NOT throw — errors are caught per user
+      await expect(service.executeScheduledDeletions()).resolves.toBeUndefined();
+
+      // Error was logged for user-fail
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('user-fail'),
+      );
+      // Second user was still processed
+      expect(trxQueryOk).toHaveBeenCalledTimes(2);
+      errorSpy.mockRestore();
+    });
   });
 
   // -------------------------------------------------------------------------
