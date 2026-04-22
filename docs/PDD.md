@@ -157,7 +157,9 @@ RootScene（根場景）
 │   │   └── HitEffects（命中爆炸特效物件池）
 │   └── SafeAreaAdapter（安全區域適配節點）
 │       ├── TopInset（劉海 / 打孔屏上方留白）
-│       └── BottomInset（Home Bar 下方留白）
+│       ├── BottomInset（Home Bar 下方留白）
+│       ├── LeftInset（iPad 左側安全距離 / Android 橫屏打孔屏）
+│       └── RightInset（iPad 右側安全距離 / Android 橫屏打孔屏）
 └── PersistentNodes（建立於 Boot.scene，以 director.addPersistRootNode() 標記，跨場景保留；F-R2-13）
     ├── AudioManager（音效管理器）
     ├── NetworkManager（WebSocket 連接管理）
@@ -223,6 +225,7 @@ RootScene（根場景）
 - 文字：Noto Sans TC Bold，`20sp`，白色
 - 動畫：Idle 狀態下輕微脈搏縮放（scale 1.0 ↔ 1.03，週期 2s，ease-in-out）
 - Hover/Pressed（觸碰）：亮度提升 20%，scale 0.97
+- **Reduce Motion**：`isReduceMotionEnabled() === true` 時停用 idle 脈搏動畫，保持 scale 1.0 靜態（F8）
 
 **Jackpot 池顯示區：**
 - 背景：Glassmorphism 面板（`rgba(0,245,255,0.08)` + `1px solid rgba(0,245,255,0.3)`）
@@ -531,7 +534,7 @@ GameRoom（Scene Root）
 - 旗艦套餐尺寸：`180px × 232px`；標準套餐：`160px × 200px`；圓角 `16px`
 - 旗艦套餐背景：Glassmorphism（`rgba(255,107,43,0.12)` + `2px solid #FF6B2B`）+ 外層 Neon Coral 光暈
 - 標準套餐背景：Glassmorphism（`rgba(0,245,255,0.06)` + `1px solid rgba(0,245,255,0.25)`）
-- 鑽石圖示：旗艦套餐 `64px`（旋轉 + 強光暈脈搏）；標準套餐 `48px`（微旋轉）
+- 鑽石圖示：旗艦套餐 `64px`（旋轉 + 強光暈脈搏）；標準套餐 `48px`（微旋轉）；**Reduce Motion 時停用旋轉和脈搏動畫（F8）**
 - 金額顯示：Orbitron Bold，旗艦 `28sp`；標準 `24sp`；電光金
 - 台幣價格：Noto Sans TC Regular，`14sp`，`#C8D6E5`
 - 暢銷標籤：熱橘底色 + 「🔥最暢銷」，絕對定位於卡片右上角，旗艦套餐專用
@@ -687,7 +690,7 @@ GameRoom（Scene Root）
 
 | 狀態 | 描述 | 視覺表現 | 持續條件 |
 |------|------|---------|---------|
-| `idle` | 待機 | 砲管微幅搖擺（±3°，週期 3s）；砲口燈光脈搏（Neon Cyan，0.5s）| 無射擊輸入 |
+| `idle` | 待機 | 砲管微幅搖擺（±3°，週期 3s）；砲口燈光脈搏（Neon Cyan，0.5s）；**Reduce Motion 時：停用搖擺和脈搏，靜態顯示（F8）**| 無射擊輸入 |
 | `charging` | 蓄力（高倍率砲台按住蓄力）| 砲管振動；砲口光暈擴大；能量條從 0 充到 100% | 按住發射按鈕期間 |
 | `firing` | 發射 | 砲管後坐力動畫（向後移動 8px，0.05s）；砲彈射出；螢幕輕震（幅度小，iOS 允許的觸覺反饋）| 射擊動作期間（約 0.1s）|
 | `cooling` | 冷卻 | 砲管發熱紅色光暈；倒數計時條；無法射擊（按鈕 disabled 樣式）| 高倍率砲台射擊後冷卻期間 |
@@ -753,6 +756,16 @@ export class CannonComponent extends Component {
 
 ```typescript
 // components/fish/NormalFish.ts — 輕量設計（ObjectPool 大量使用）
+
+// F5 fix: NormalFishServerData 型別定義（完整欄位定義詳見 EDD 網路協議章節）
+interface NormalFishServerData {
+    fishId: string;         // 伺服器唯一 ID，用於命中判定
+    fishType: string;       // 魚種類型（如 'normal_01'）
+    path: Vec3[];           // Bezier 路徑控制點（服務器決定）
+    speed: number;          // 游動速度（px/s）
+    rewardMultiplier: number; // 捕獲倍率
+}
+
 @ccclass('NormalFish')
 export class NormalFish extends Component {
     @property(sp.Skeleton) skeleton: sp.Skeleton = null;
@@ -776,13 +789,15 @@ export class NormalFish extends Component {
 export class EliteFish extends Component {
     @property(sp.Skeleton) skeleton: sp.Skeleton = null;
     @property(ProgressBar) hpBar: ProgressBar = null;
+    @property(Label) hpLabel: Label = null;          // F9 fix: WCAG 1.4.1 — HP% 文字標示，非唯一靠顏色傳達
     @property(Label) multiplierLabel: Label = null;
     @property(ParticleSystem) glowParticle: ParticleSystem = null;  // F5 fix: CC4.x 使用 ParticleSystem，非 CC3.x 的 ParticleSystem2D
 
     public updateHP(current: number, max: number): void {
-        // 更新 HP 條，顏色依 HP% 動態切換
+        // 更新 HP 條，顏色依 HP% 動態切換（F9 fix：同步更新文字百分比）
         const ratio = current / max;
         this.hpBar.progress = ratio;
+        this.hpLabel.string = `${Math.round(ratio * 100)}%`;  // WCAG 1.4.1: 顏色+數字雙重指示
         // ratio > 0.5: Neon Lime; 0.25-0.5: Amber; <0.25: Crisis Red
     }
     public onAppear(): void { /* 出現特效：縮放從 0.5→1.0，0.3s bounce */ }
@@ -802,6 +817,7 @@ export class EliteFish extends Component {
 export class BossFish extends Component {
     @property(sp.Skeleton) skeleton: sp.Skeleton = null;
     @property(ProgressBar) hpBar: ProgressBar = null;
+    @property(Label) hpLabel: Label = null;          // F9 fix: WCAG 1.4.1 — Boss HP% 文字標示
     @property(ParticleSystem) bodyParticle: ParticleSystem = null;  // F6 fix: CC4.x 使用 ParticleSystem
     @property(Node) auraEffect: Node = null;
 
@@ -867,7 +883,7 @@ export class NumberRoller extends Component {
 - 每次更新（服務器廣播累積金額）：0.3s ease-out 滾動到新值
 - 字體：Orbitron Bold，電光金 `#FFD700`
 - 外框：霓虹青色 border（1.5px 發光邊框）
-- 閒置動畫：每 5s 輕微放大縮小脈搏（scale 1.0 ↔ 1.02）
+- 閒置動畫：每 5s 輕微放大縮小脈搏（scale 1.0 ↔ 1.02）；**Reduce Motion 時停用（F8）**
 
 #### §3.3.2 Jackpot 觸發特效規格
 
@@ -1157,16 +1173,30 @@ if (sys.gameType !== sys.GameType.DesktopBrowser) {
 
 ```typescript
 // utils/ObjectPoolManager.ts
-// F4 fix + F-R2-01/F-R2-02 fix:
-// CC4.x ObjectPool<T> 接受 creator + handler 物件（非三個獨立函式參數）
-// _prefabs 需顯式宣告並透過 registerPrefab() 注入
+// F4 fix + F-R2-01/F-R2-02 fix + F2 fix (Round 3):
+// CC4.x ObjectPool<T> 接受 creator + handler 物件；singleton 以 getInstance() 存取
 export class ObjectPoolManager {
+    private static _instance: ObjectPoolManager;
+
+    /** F2 fix: 全域 singleton，跨場景存取必須用此方法 */
+    public static getInstance(): ObjectPoolManager {
+        if (!ObjectPoolManager._instance) {
+            ObjectPoolManager._instance = new ObjectPoolManager();
+        }
+        return ObjectPoolManager._instance;
+    }
+
     private _pools: Map<string, ObjectPool<Node>> = new Map();
-    private _prefabs: Map<string, Prefab> = new Map();  // F-R2-02 fix
+    private _prefabs: Map<string, Prefab> = new Map();
 
     /** 註冊 Prefab，在 Boot.scene 或 GameRoom.scene 初始化時呼叫 */
     public registerPrefab(key: string, prefab: Prefab): void {
         this._prefabs.set(key, prefab);
+    }
+
+    public clearAllPools(): void {
+        this._pools.forEach((pool) => pool.clear());
+        this._pools.clear();
     }
 
     getPool(prefabKey: string, warmUpCount: number): ObjectPool<Node> {
@@ -1204,10 +1234,14 @@ export class ObjectPoolManager {
 **場景切換記憶體釋放：**
 
 ```typescript
+// F1 fix: CC4.x 移除頂層 assetManager.releaseAll()；應透過 Bundle 逐包釋放
+// F2 fix: ObjectPoolManager 需宣告 static instance（singleton）才能跨場景存取
 // 離開 GameRoom 場景時
 director.on(Director.EVENT_BEFORE_SCENE_LAUNCH, () => {
-    ObjectPoolManager.instance.clearAllPools();
-    assetManager.releaseAll();  // 釋放遊戲房間專屬圖集
+    ObjectPoolManager.getInstance().clearAllPools();
+    // 釋放遊戲房間專屬圖集（透過 Bundle API，非頂層 assetManager.releaseAll()）
+    const gameRoomBundle = assetManager.getBundle('game_room');
+    gameRoomBundle?.releaseAll();  // 釋放 fish_normal/elite/boss/cannon/effects 圖集
 });
 ```
 
@@ -1316,9 +1350,14 @@ export function isReduceMotionEnabled(): boolean {
     if (!jsb) return false;  // Web 平台預設不減少動態效果
 
     if (sys.os === sys.OS.IOS) {
-        // iOS：UIAccessibility.isReduceMotionEnabled
+        // F4 fix: UIAccessibilityIsReduceMotionEnabled 是 C 函式 / ObjC property，
+        // 需透過在 AppController.mm 封裝的靜態 ObjC 方法呼叫（CC4.x jsb.reflection 限制）
+        // AppController.mm 需加入：
+        //   + (NSString *)isReduceMotionEnabled {
+        //       return UIAccessibilityIsReduceMotionEnabled() ? @"true" : @"false";
+        //   }
         return jsb.reflection.callStaticMethod(
-            'UIAccessibility',
+            'AppController',
             'isReduceMotionEnabled',
             ''
         ) === 'true';
@@ -1431,8 +1470,9 @@ assets/
 │   │   ├── fish_elite.atlas
 │   │   ├── fish_boss.atlas
 │   │   ├── effects_common.atlas
-│   │   └── cannon.atlas
-│   └── bg/                   # 背景圖（非圖集）
+│   │   ├── cannon.atlas
+│   │   └── bg_seabed.atlas   # F7: 對應 §4.3.1 背景圖集（2048×2048，常駐）
+│   └── bg/                   # 背景 source 圖（供 Atlas 打包用，非直接引用）
 │       ├── seabed_deep.png
 │       ├── seabed_coral.png
 │       └── seabed_seaweed.png
@@ -1447,7 +1487,7 @@ assets/
 │   ├── fish/
 │   ├── cannon/
 │   ├── ui/
-│   │   │   ├── PrivacyConsentModal.prefab
+│   │   ├── PrivacyConsentModal.prefab
 │   │   ├── SettingsOverlay.prefab
 │   │   ├── WaitingLobbyOverlay.prefab
 │   │   ├── NetworkReconnectOverlay.prefab
