@@ -81,13 +81,22 @@ export class WalletService {
     });
   }
 
+  /** Allowed transaction credit types for the gold ledger. */
+  // eslint-disable-next-line no-use-before-define
+  // (Declared inline to avoid circular reference; if this type grows, move to a shared types file.)
+
   /**
    * Credits `amount` gold to the user's wallet.
    *
-   * @param type Transaction type: 'earn' | 'jackpot' | 'daily_restore' | 'refund'.
+   * @param type Transaction type — constrained to known values to prevent
+   *             arbitrary strings being inserted into the transactions table.
    *             Defaults to 'earn'.
    */
-  async creditGold(userId: string, amount: number, type: string = 'earn'): Promise<void> {
+  async creditGold(
+    userId: string,
+    amount: number,
+    type: 'earn' | 'jackpot' | 'daily_restore' | 'refund' = 'earn',
+  ): Promise<void> {
     await this._db.transaction(async (trx) => {
       await trx.query(
         'UPDATE user_wallets SET gold = gold + $1 WHERE user_id = $2',

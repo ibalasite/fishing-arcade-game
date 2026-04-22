@@ -28,7 +28,13 @@ export const JACKPOT_SEED_AMOUNT = 1_000;
 const POOL_KEY = 'game:jackpot:pool';
 
 /** Jackpot contribution rate: each bet contributes this fraction to the pool */
-const CONTRIBUTION_RATE = parseFloat(process.env.JACKPOT_CONTRIB_RATE ?? '0.01');
+const _parsedContribRate = parseFloat(process.env.JACKPOT_CONTRIB_RATE ?? '0.01');
+if (isNaN(_parsedContribRate) || _parsedContribRate <= 0 || _parsedContribRate >= 1) {
+  throw new Error(
+    `JACKPOT_CONTRIB_RATE must be a positive number less than 1 (got "${process.env.JACKPOT_CONTRIB_RATE}").`,
+  );
+}
+const CONTRIBUTION_RATE = _parsedContribRate;
 
 // ---------------------------------------------------------------------------
 // Minimal Redis interface (subset of ioredis used here)

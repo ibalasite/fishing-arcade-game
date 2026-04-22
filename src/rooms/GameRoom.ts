@@ -232,12 +232,18 @@ export class GameRoom extends Room<GameState> {
     if (this._disposed) return;
     if (this.state.roomState !== 'PLAYING' && this.state.roomState !== 'BOSS_FIGHT') return;
 
+    // 0a. Message-level rate limiting (prevents flooding with shoot messages)
+    if (!this._checkRateLimit(client.sessionId, 'shoot', 20)) {
+      // Silently drop — do not reveal rate-limit state to the client
+      return;
+    }
+
     const { bulletId, fishId, cannonMultiplier, betAmount } = data;
 
-    // 0. Bullet deduplication + rate limiting (max MAX_ACTIVE_BULLETS per player)
+    // 0b. Bullet deduplication + active-bullet rate limiting (max MAX_ACTIVE_BULLETS per player)
     const bullets = this._activeBullets.get(client.sessionId) ?? new Set<string>();
     if (bullets.has(bulletId)) return; // duplicate — silently drop
-    if (bullets.size >= MAX_ACTIVE_BULLETS) return; // rate-limit
+    if (bullets.size >= MAX_ACTIVE_BULLETS) return; // in-flight cap
     bullets.add(bulletId);
     this._activeBullets.set(client.sessionId, bullets);
 
@@ -420,7 +426,8 @@ export class GameRoom extends Room<GameState> {
     // 8. Send result to shooter
     client.send('shoot_result', { bulletId, hit: result.hit, payout });
 
-    // Add bullet to state for brief visibility then remove
+    // Add bullet to state for brief visibility then remove.
+    // _disposed guard prevents writing to state after room disposal.
     const bulletState = new BulletState();
     bulletState.bulletId = bulletId;
     bulletState.ownerId = sessionId;
@@ -428,7 +435,9 @@ export class GameRoom extends Room<GameState> {
     bulletState.targetX = data.targetX ?? 0;
     bulletState.targetY = data.targetY ?? 0;
     this.state.bullets.set(bulletId, bulletState);
-    setTimeout(() => { this.state.bullets.delete(bulletId); }, 500);
+    setTimeout(() => {
+      if (!this._disposed) this.state.bullets.delete(bulletId);
+    }, 500);
   }
 
   private _transitionToPlaying(): void {
