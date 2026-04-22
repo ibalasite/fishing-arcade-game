@@ -9,7 +9,7 @@
 |------|------|
 | **DOC-ID** | PRD-FISHING-ARCADE-GAME-20260422 |
 | **產品名稱** | Fishing Arcade Game（多人即時捕魚街機遊戲） |
-| **文件版本** | v1.0 |
+| **文件版本** | v1.1 |
 | **狀態** | DRAFT |
 | **作者（PM）** | tobala（由 /devsop-gen-prd 自動生成） |
 | **日期** | 2026-04-22 |
@@ -24,6 +24,7 @@
 | 版本 | 日期 | 作者 | 變更摘要 |
 |------|------|------|---------|
 | v1.0 | 2026-04-22 | tobala | 初稿（自動生成自 BRD v0.1-draft Round 2） |
+| v1.1 | 2026-04-22 | tobala | STEP-04 Review Round 1-4 修訂：新增 US-FISH-003（精英魚）、US-PRIV-003（更正權）、US-PRIV-004（撤回同意）；新增 ff_rtp_engine、ff_dual_currency、ff_elite_fish_enabled Feature Flags；補充 §17 PII Inventory（device_id、user_agent）；補充 §7.8 Analytics Events（consent_revoked、user_profile_updated、currency_spent）；共 37 個 findings 已修復 |
 
 ---
 
@@ -665,8 +666,9 @@ stateDiagram-v2
 | 帳號刪除申請 | `account_deletion_requested` | 用戶申請刪除帳號 | `{user_id, requested_at}` | PDPA 合規 | 🔲 |
 | 同意撤回 | `consent_revoked` | 玩家關閉行銷通知同意（US-PRIV-004）| `{user_id, consent_type, revoked_at}` | PDPA 合規 | 🔲 |
 | 個人資料更新 | `user_profile_updated` | 玩家儲存暱稱/Email 更新（US-PRIV-003）| `{user_id, field_updated, timestamp}` | PDPA 合規 | 🔲 |
+| 金幣消費 | `currency_spent` | 玩家射擊扣除金幣 | `{user_id, amount_gold, currency_type, room_id, timestamp}` | ARPPU、金幣流通量分析 | 🔲 |
 
-**Event 命名規範：** `{object}_{action}_{result}` 全小寫底線
+**Event 命名規範：** `{object}_{past_participle}` 全小寫底線（如 `fish_caught`、`currency_spent`）
 **Analytics 工具鏈：** Firebase Analytics（MVP）
 
 ---
@@ -768,7 +770,7 @@ stateDiagram-v2
 
 ---
 
-## 9.4 Experiment & A/B Test Plan
+### 9.4 Experiment & A/B Test Plan
 
 #### 實驗優先序矩陣
 
