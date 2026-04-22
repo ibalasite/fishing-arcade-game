@@ -59,6 +59,8 @@ CREATE TABLE user_wallets (
 ```sql
 -- Immutable ledger; rows are never deleted; retained 7 years (tax law)
 -- After user deletion, user_id UUID reference is retained; PII anonymised in users row only
+-- No ON DELETE clause on FK: defaults to ON DELETE RESTRICT — acceptable because the
+-- executeScheduledDeletions cron anonymises the users row but never hard-deletes it.
 CREATE TABLE transactions (
     id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID         NOT NULL REFERENCES users(id),
@@ -78,6 +80,8 @@ CREATE INDEX idx_transactions_user_created ON transactions(user_id, created_at D
 
 ```sql
 -- Idempotency table: receipt_hash uniqueness prevents double diamond grant
+-- No ON DELETE clause on FK: defaults to ON DELETE RESTRICT — user row is never hard-deleted;
+-- receipts are retained 7 years (financial record).
 CREATE TABLE iap_receipts (
     id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id      UUID         NOT NULL REFERENCES users(id),
@@ -108,6 +112,8 @@ INSERT INTO jackpot_pool (id, current_amount) VALUES (1, 10000) ON CONFLICT DO N
 
 ```sql
 -- Audit trail of all jackpot payouts
+-- No ON DELETE clause on winner_id FK: defaults to ON DELETE RESTRICT — user row is never
+-- hard-deleted; jackpot records are retained 7 years (financial record).
 CREATE TABLE jackpot_history (
     id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     winner_id    UUID         NOT NULL REFERENCES users(id),
@@ -145,6 +151,9 @@ CREATE INDEX idx_game_sessions_room_id   ON game_sessions(room_id);
 -- PDPA consent records; ON DELETE RESTRICT: consent records must be retained as evidence
 -- even after account deletion/anonymisation (PDPA compliance).
 -- executeScheduledDeletions soft-anonymises users row; does NOT hard-delete it.
+-- policy_version: intentionally NOT a FK constraint — privacy_policies rows must be
+-- immutable history; a soft reference prevents accidental policy row deletion from
+-- breaking referential integrity. Application layer validates version exists on insert.
 CREATE TABLE user_consents (
     id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -153,9 +162,9 @@ CREATE TABLE user_consents (
     granted        BOOLEAN      NOT NULL,
     granted_at     TIMESTAMPTZ,
     revoked_at     TIMESTAMPTZ,                  -- NULL = not revoked
-    policy_version VARCHAR(20)  NOT NULL,        -- references privacy_policies.version
+    policy_version VARCHAR(20)  NOT NULL,        -- soft ref to privacy_policies.version (no FK; see above)
     ip_address     INET,
-    user_agent     TEXT,                         -- stored for PDPA evidence; OS version beyond masked in logs
+    user_agent     TEXT,                         -- stored for PDPA evidence; OS version and beyond masked in logs
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
@@ -166,6 +175,8 @@ CREATE INDEX idx_user_consents_user_type ON user_consents(user_id, consent_type)
 
 ```sql
 -- Tracks 30-day soft-delete schedule; PK = user_id (one pending request per user)
+-- No ON DELETE clause on FK: defaults to ON DELETE RESTRICT — ensures user row cannot be
+-- hard-deleted while a deletion request exists; cron executes soft-anonymisation instead.
 CREATE TABLE deletion_requests (
     user_id       UUID        PRIMARY KEY REFERENCES users(id),
     requested_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -308,7 +319,7 @@ erDiagram
         BOOLEAN granted
         TIMESTAMPTZ granted_at
         TIMESTAMPTZ revoked_at
-        VARCHAR20 policy_version FK
+        VARCHAR20 policy_version "soft ref — no DB FK; app validates"
         INET ip_address
         TEXT user_agent
         TIMESTAMPTZ created_at
@@ -343,12 +354,12 @@ erDiagram
     }
 
     users ||--|| user_wallets : "1:1 wallet"
-    users ||--o{ transactions : "ledger entries"
-    users ||--o{ iap_receipts : "purchase receipts"
-    users ||--o{ jackpot_history : "jackpot wins"
+    users ||--o{ transactions : "ledger entries (RESTRICT)"
+    users ||--o{ iap_receipts : "purchase receipts (RESTRICT)"
+    users ||--o{ jackpot_history : "jackpot wins (RESTRICT)"
     users ||--o{ user_consents : "consent records (RESTRICT)"
-    users ||--o| deletion_requests : "deletion schedule"
-    privacy_policies ||--o{ user_consents : "policy version"
+    users ||--o| deletion_requests : "deletion schedule (RESTRICT)"
+    privacy_policies }o--o{ user_consents : "soft ref (no DB FK)"
 ```
 
 ---
@@ -372,7 +383,7 @@ erDiagram
 | game_sessions | `ip_address` | INET | Anti-cheat source IP. Last 2 octets masked in logs. Auto-NULLed by `ip-cleanup` CronJob after 90 days. |
 | game_sessions | `player_ids` | UUID[] | Array appended in `onJoin`. Default `'{}'` allows INSERT before any player joins. |
 | game_sessions | `room_state` | VARCHAR(20) | Mirrors `GameState.roomState` for analytics queries without joining real-time state. |
-| user_consents | `policy_version` | VARCHAR(20) | NOT NULL — always records the active policy version at consent time. References `privacy_policies.version`. |
+| user_consents | `policy_version` | VARCHAR(20) | NOT NULL — always records the active policy version at consent time. Soft reference to `privacy_policies.version` — no DB-level FK constraint (intentional: prevents orphan FK errors on historical policy records; application layer validates existence on insert). |
 | user_consents | `revoked_at` | TIMESTAMPTZ | NULL = active consent. Non-NULL = revoked. A new row is inserted for each consent event (immutable audit trail). |
 | rtp_logs | `user_id` | UUID | No FK constraint (intentional). `rtp_logs` is permanent; after account deletion, the UUID is retained as an opaque reference for RTP audit. |
 | rtp_logs | `rtp_at_time` | NUMERIC(5,4) | Running RTP percentage at the moment of adjudication, e.g. `0.9250` = 92.50%. `NUMERIC` avoids floating-point representation errors for financial records. |
