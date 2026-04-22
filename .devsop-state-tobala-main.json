@@ -1,0 +1,22 @@
+{
+  "version": "2.0",
+  "project_dir": "/Users/tobala/projects/fishing-arcade-game",
+  "project_name": "fishing-arcade-game",
+  "project_type": "web-app",
+  "skill_source": "devsop-idea",
+  "current_step": "0",
+  "execution_mode": "full-auto",
+  "review_strategy": "standard",
+  "lang_stack": "TypeScript + Node.js + Colyseus 0.15 + Cocos Creator 4.x",
+  "client_type": "cocos",
+  "brd_path": "docs/BRD.md",
+  "input_type": "doc_local+codebase_git",
+  "input_source": "docs/req/魚機遊戲募資企劃書.md + https://github.com/taishan6868/Fishing-game-source-code",
+  "req_dir": "docs/req",
+  "q1_users": "4-6人同場競技的休閒遊戲玩家，亞洲市場（台灣、東南亞）",
+  "q2_painpoint": "現有捕魚遊戲社交競爭弱、策略性不足、留存率難以維持",
+  "q3_constraints": "Cocos Creator 4.x 客戶端 + Node.js/Colyseus 後端",
+  "q4_scale": "DAU 10,000，4-6人同室，中大規模",
+  "completed_steps": [],
+  "conflict_resolutions": []
+}
