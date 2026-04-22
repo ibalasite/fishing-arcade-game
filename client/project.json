@@ -1,0 +1,14 @@
+{
+  "engine": "cocos-creator-js",
+  "version": "2.0.0",
+  "name": "fishing-arcade-game",
+  "packages": {},
+  "meta": {
+    "GengineJsV8": {},
+    "buildExcludedModules": [],
+    "exactNativeCode": false
+  },
+  "creator": {
+    "version": "4.0.0"
+  }
+}

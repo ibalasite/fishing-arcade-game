@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ES2015",
+    "strict": false,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "cc": ["node_modules/cc/cc.d.ts"]
+    },
+    "lib": ["ES2015", "DOM"]
+  },
+  "include": ["assets/scripts/**/*"],
+  "exclude": ["node_modules"]
+}
