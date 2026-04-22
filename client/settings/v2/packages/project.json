@@ -1,0 +1,17 @@
+{
+    "general": {
+        "designWidth": 1280,
+        "designHeight": 720,
+        "fitWidth": false,
+        "fitHeight": false
+    },
+    "launch": {
+        "launchScene": "db://assets/scenes/MainMenu.scene"
+    },
+    "physicsSystem": {},
+    "renderPipeline": "",
+    "__version__": "1.0.6",
+    "script": {
+        "preserveSymlinks": false
+    }
+}
