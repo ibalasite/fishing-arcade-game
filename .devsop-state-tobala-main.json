@@ -4,7 +4,7 @@
   "project_name": "fishing-arcade-game",
   "project_type": "web-app",
   "skill_source": "devsop-idea",
-  "current_step": "22",
+  "current_step": "23",
   "execution_mode": "full-auto",
   "review_strategy": "standard",
   "lang_stack": "TypeScript + Node.js + Colyseus 0.15 + Cocos Creator 4.x",
@@ -40,7 +40,8 @@
     "18",
     "19",
     "20",
-    "21"
+    "21",
+    "22"
   ],
   "lang_select_path": "docs/lang-select.md",
   "conflict_resolutions": [],

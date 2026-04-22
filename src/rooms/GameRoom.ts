@@ -88,6 +88,11 @@ export class GameRoom extends Room<GameState> {
   private _walletService!: WalletService;
   private _tickInterval!: ReturnType<typeof setInterval>;
 
+  // TODO(EDD §2.2): Integrate FishSpawner (src/engine/FishSpawner.ts) for
+  // continuous wave scheduling of normal/elite/boss fish. Currently fish spawning
+  // is not implemented — FishSpawner is a Phase-1 gap (tracked as ALIGN-GAP-3).
+  // FishSpawner should call this._spawnBoss() for boss fish and manage wave timers.
+
   /**
    * Guard against post-dispose tick callbacks.
    * setInterval can fire once more in the same event-loop tick after clearInterval returns.
@@ -430,9 +435,10 @@ export class GameRoom extends Room<GameState> {
     }
 
     // 7. Fire-and-forget RTP audit log (does NOT block response)
+    // SCHEMA: rtp_logs has no session_id column; rtp_at_time is REQUIRED (NUMERIC 5,4)
     db.query(
-      "INSERT INTO rtp_logs(room_id, session_id, user_id, fish_type, bet_amount, multiplier, hit, payout, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
-      [this.roomId, sessionId, userId, fishType, betAmount, authorativeMultiplier, result.hit, payout],
+      "INSERT INTO rtp_logs(room_id, user_id, fish_type, bet_amount, multiplier, hit, payout, rtp_at_time, created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
+      [this.roomId, userId, fishType, betAmount, authorativeMultiplier, result.hit, payout, this._rtpEngine.currentRtp],
     ).catch(err => console.error('rtp_log_write_failed', err));
 
     // 8. Send result to shooter

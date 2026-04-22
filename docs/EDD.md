@@ -1390,7 +1390,7 @@ export class NetworkManager extends Component {
 
 #### §3.2.1 JWT Refresh Token — Mobile Secure Storage
 
-Access tokens (RS256, 15-min TTL) are obtained via `POST /api/v1/auth/login` and refreshed by `POST /api/v1/auth/refresh` using a long-lived refresh token (30-day TTL, HTTP-only cookie on web; native Keychain/Keystore on mobile).
+Access tokens (HS256, 15-min TTL) are obtained via `POST /api/v1/auth/login` and refreshed by `POST /api/v1/auth/refresh` using a long-lived refresh token (30-day TTL, HTTP-only cookie on web; native Keychain/Keystore on mobile).
 
 **iOS — Keychain via jsb.reflection:**
 ```typescript
@@ -1617,7 +1617,7 @@ All game outcomes computed server-side. Client cannot influence:
 
 | Control | Implementation |
 |---------|----------------|
-| Authentication | JWT (RS256); Access Token 15min TTL; Refresh Token 30 days; stored in memory (not localStorage) |
+| Authentication | JWT (HS256); Access Token 15min TTL; Refresh Token 30 days; stored in memory (not localStorage) |
 | Authorization | RBAC: `player` role for all game endpoints; `admin` role for operational endpoints |
 | HTTPS | TLS 1.3+ at Ingress; internal cluster traffic plain TCP |
 | Rate Limiting | `express-rate-limit` + Redis store; per-IP for auth; per-user for IAP |

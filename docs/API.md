@@ -22,7 +22,7 @@
 
 ## §1 REST API Overview
 
-All REST endpoints are versioned under `/api/v1/`. Authentication uses **JWT RS256** (Bearer token).
+All REST endpoints are versioned under `/api/v1/`. Authentication uses **JWT HS256** (Bearer token).
 
 ### §1.1 Base URL
 
@@ -34,8 +34,8 @@ https://game.example.com/api/v1/
 
 | Token Type | Algorithm | TTL | Storage |
 |-----------|-----------|-----|---------|
-| Access Token | RS256 JWT | 15 minutes | In-memory (not localStorage) |
-| Refresh Token | RS256 JWT | 30 days | iOS: Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`); Android: EncryptedSharedPreferences (Keystore); Web: HTTP-only cookie |
+| Access Token | HS256 JWT | 15 minutes | In-memory (not localStorage) |
+| Refresh Token | HS256 JWT | 30 days | iOS: Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`); Android: EncryptedSharedPreferences (Keystore); Web: HTTP-only cookie |
 
 **Authorization header:**
 ```
@@ -783,7 +783,7 @@ The following state changes are delivered automatically via Colyseus Schema v2 d
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  JWT RS256 Auth Flow                                                  │
+│  JWT HS256 Auth Flow                                                  │
 │                                                                       │
 │  1. Client → POST /api/v1/auth/login                                 │
 │     Server → { accessToken (15 min), refreshToken (30 day) }         │
@@ -793,7 +793,7 @@ The following state changes are delivered automatically via Colyseus Schema v2 d
 │     • refreshToken: SecureStorage (iOS Keychain / Android Keystore)  │
 │                                                                       │
 │  3. Client → Colyseus joinOrCreate('game_room', { token: accessToken })│
-│     Server → onAuth: verifyJwt(token) — RS256 public key verification│
+│     Server → onAuth: verifyJwt(token) — HS256 shared-secret verification│
 │     Server → returns payload { userId, role } → client.auth          │
 │                                                                       │
 │  4. On 401 (token expired during REST call):                         │
