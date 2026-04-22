@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fishing-game-server
+  namespace: fishing-game
+  labels:
+    app: fishing-game-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fishing-game-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: fishing-game-server
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        readOnlyRootFilesystem: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - fishing-game-server
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: server
+          # CI pipeline overrides this image tag with GIT_SHA — never use :latest in production
+          image: ghcr.io/ibalasite/fishing-game-server:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          lifecycle:
+            preStop:
+              exec:
+                # Allow existing WebSocket connections to drain before shutdown
+                command: ["/bin/sh", "-c", "sleep 5"]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+            timeoutSeconds: 3
+          envFrom:
+            - configMapRef:
+                name: fishing-game-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: fishing-game-secrets
+                  key: JWT_SECRET
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fishing-game-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fishing-game-secrets
+                  key: REDIS_URL
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fishing-game-secrets
+                  key: ENCRYPTION_KEY
+            - name: HMAC_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fishing-game-secrets
+                  key: HMAC_SECRET_KEY
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

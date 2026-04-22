@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fishing-game-server-pdb
+  namespace: fishing-game
+  labels:
+    app: fishing-game-server
+spec:
+  # Guarantee at least one pod remains available during voluntary disruptions
+  # (node drains, cluster upgrades) to prevent total game service outage.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: fishing-game-server

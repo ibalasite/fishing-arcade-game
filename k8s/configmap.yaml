@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fishing-game-config
+  namespace: fishing-game
+  labels:
+    app: fishing-game-server
+data:
+  NODE_ENV: production
+  PORT: "3000"
+  LOG_LEVEL: info
+  # Jackpot contribution rate — 1% of each bet feeds the jackpot pool
+  JACKPOT_CONTRIB_RATE: "0.01"
+  # Return-to-player target — must stay at or above regulatory minimum
+  RTP_TARGET: "0.93"
+  # Maximum concurrent players per Colyseus room
+  MAX_PLAYERS_PER_ROOM: "6"

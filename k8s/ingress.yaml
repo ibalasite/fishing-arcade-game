@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fishing-game-ingress
+  namespace: fishing-game
+  labels:
+    app: fishing-game-server
+  annotations:
+    # TLS certificate via cert-manager
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # WebSocket support — long-lived connections require extended timeouts
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/enable-websocket: "true"
+
+    # Cookie-based sticky sessions for Colyseus room affinity
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "fishing-game-session"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+
+    # Upstream keepalive for WebSocket efficiency
+    nginx.ingress.kubernetes.io/upstream-keepalive-connections: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - game.fishing-arcade.example.com
+      secretName: fishing-game-tls
+  rules:
+    - host: game.fishing-arcade.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fishing-game-server
+                port:
+                  number: 3000

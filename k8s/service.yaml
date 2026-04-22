@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fishing-game-server
+  namespace: fishing-game
+  labels:
+    app: fishing-game-server
+spec:
+  type: ClusterIP
+  selector:
+    app: fishing-game-server
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+  # Sticky sessions are required for Colyseus WebSocket rooms.
+  # ClientIP affinity ensures reconnects reach the same pod.
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      # 3 hours — matches typical game session duration
+      timeoutSeconds: 10800
