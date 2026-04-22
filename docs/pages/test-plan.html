@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Plan — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item active"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>Test Plan</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">Test Plan</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#document-control">Document Control</a></li>
+<li class="toc-h3"><a href="#change-log">Change Log</a></li>
+<li><a href="#1-test-strategy-overview">§1 Test Strategy Overview</a></li>
+<li class="toc-h3"><a href="#11-test-pyramid">§1.1 Test Pyramid</a></li>
+<li class="toc-h3"><a href="#12-mandatory-ci-gates-merge-blocking">§1.2 Mandatory CI Gates (Merge-Blocking)</a></li>
+<li class="toc-h3"><a href="#13-test-environments">§1.3 Test Environments</a></li>
+<li class="toc-h3"><a href="#14-test-toolchain">§1.4 Test Toolchain</a></li>
+<li><a href="#2-unit-tests">§2 Unit Tests</a></li>
+<li class="toc-h3"><a href="#21-rtpengine-unit-tests">§2.1 RTPEngine Unit Tests</a></li>
+<li class="toc-h3"><a href="#22-walletservice-unit-tests">§2.2 WalletService Unit Tests</a></li>
+<li class="toc-h3"><a href="#23-jackpotmanager-unit-tests">§2.3 JackpotManager Unit Tests</a></li>
+<li class="toc-h3"><a href="#24-privacyservice-unit-tests">§2.4 PrivacyService Unit Tests</a></li>
+<li class="toc-h3"><a href="#25-fishspawner-unit-tests">§2.5 FishSpawner Unit Tests</a></li>
+<li><a href="#3-integration-tests">§3 Integration Tests</a></li>
+<li class="toc-h3"><a href="#31-setup-pattern">§3.1 Setup Pattern</a></li>
+<li class="toc-h3"><a href="#32-room-tests">§3.2 Room Tests</a></li>
+<li class="toc-h3"><a href="#33-fish-shoot-tests">§3.3 Fish / Shoot Tests</a></li>
+<li class="toc-h3"><a href="#34-rtp-tests">§3.4 RTP Tests</a></li>
+<li class="toc-h3"><a href="#35-jackpot-tests">§3.5 Jackpot Tests</a></li>
+<li class="toc-h3"><a href="#36-currency-tests">§3.6 Currency Tests</a></li>
+<li class="toc-h3"><a href="#37-privacy-pdpa-tests">§3.7 Privacy (PDPA) Tests</a></li>
+<li><a href="#4-e2e-tests-playwright">§4 E2E Tests (Playwright)</a></li>
+<li class="toc-h3"><a href="#41-e2e-environment-setup">§4.1 E2E Environment Setup</a></li>
+<li class="toc-h3"><a href="#42-e2e-test-scenarios">§4.2 E2E Test Scenarios</a></li>
+<li class="toc-h3"><a href="#43-playwright-configuration">§4.3 Playwright Configuration</a></li>
+<li><a href="#5-performance-tests-k6">§5 Performance Tests (k6)</a></li>
+<li class="toc-h3"><a href="#51-sla-gates">§5.1 SLA Gates</a></li>
+<li class="toc-h3"><a href="#52-load-scenarios">§5.2 Load Scenarios</a></li>
+<li class="toc-h3"><a href="#53-k6-script-typescript">§5.3 k6 Script (TypeScript)</a></li>
+<li class="toc-h3"><a href="#54-k6-execution-commands">§5.4 k6 Execution Commands</a></li>
+<li><a href="#6-cicd-integration">§6 CI/CD Integration</a></li>
+<li class="toc-h3"><a href="#61-pipeline-execution-order">§6.1 Pipeline Execution Order</a></li>
+<li class="toc-h3"><a href="#62-coverage-gates">§6.2 Coverage Gates</a></li>
+<li class="toc-h3"><a href="#63-mandatory-merge-gates">§6.3 Mandatory Merge Gates</a></li>
+<li class="toc-h3"><a href="#64-scheduled-tests">§6.4 Scheduled Tests</a></li>
+<li class="toc-h3"><a href="#65-github-actions-example">§6.5 GitHub Actions Example</a></li>
+<li><a href="#7-test-data-management">§7 Test Data Management</a></li>
+<li class="toc-h3"><a href="#71-seed-data-strategy">§7.1 Seed Data Strategy</a></li>
+<li class="toc-h3"><a href="#72-factory-functions">§7.2 Factory Functions</a></li>
+<li class="toc-h3"><a href="#73-cleanup-patterns">§7.3 Cleanup Patterns</a></li>
+<li class="toc-h3"><a href="#74-sensitive-data-rules-in-tests">§7.4 Sensitive Data Rules in Tests</a></li>
+<li><a href="#appendix-a-test-case-index">Appendix A — Test Case Index</a></li>
+<li><a href="#appendix-b-open-test-questions">Appendix B — Open Test Questions</a></li>
+</ul></div>
+        <h1 id="test-plan-fishing-arcade-game">Test Plan — Fishing Arcade Game</h1>
+<!-- DOC-ID: TEST-PLAN-FISHING-ARCADE-GAME-20260422 -->
+<!-- Upstream: EDD-FISHING-ARCADE-GAME-20260422 (docs/EDD.md) v1.1 | PRD-FISHING-ARCADE-GAME-20260422 (docs/PRD.md) v1.1 | API-FISHING-ARCADE-GAME-20260422 (docs/API.md) v1.0 -->
+<!-- Downstream: CI/CD pipeline, merge gates -->
+<hr>
+<h2 id="document-control">Document Control</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Content</th></tr></thead>
+<tbody>
+<tr><td><strong>Project</strong></td><td>fishing-arcade-game</td></tr>
+<tr><td><strong>Version</strong></td><td>v1.0</td></tr>
+<tr><td><strong>Status</strong></td><td>DRAFT</td></tr>
+<tr><td><strong>Author</strong></td><td>tobala (auto-generated by /devsop STEP-14)</td></tr>
+<tr><td><strong>Date</strong></td><td>2026-04-22</td></tr>
+<tr><td><strong>Upstream EDD</strong></td><td>EDD-FISHING-ARCADE-GAME-20260422 (docs/EDD.md) v1.1 IN_REVIEW</td></tr>
+<tr><td><strong>Upstream PRD</strong></td><td>PRD-FISHING-ARCADE-GAME-20260422 (docs/PRD.md) v1.1 APPROVED</td></tr>
+<tr><td><strong>Upstream API</strong></td><td>API-FISHING-ARCADE-GAME-20260422 (docs/API.md) v1.0 DRAFT</td></tr>
+</tbody></table></div>
+<h3 id="change-log">Change Log</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Summary</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h2 id="1-test-strategy-overview">§1 Test Strategy Overview</h2>
+<h3 id="11-test-pyramid">§1.1 Test Pyramid</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">         /\
+        /E2E\           10% — Playwright; full user flows on real Colyseus server
+       /------\
+      /  Integ  \       30% — Jest + Supertest; 17 TC anchors from EDD §4.4
+     /------------\
+    /    Unit       \   60% — Jest; RTPEngine, WalletService, JackpotManager, PrivacyService, FishSpawner
+   /________________\</code></pre></div>
+<div class="table-wrapper"><table>
+<thead><tr><th>Layer</th><th>Framework</th><th>Coverage Target</th><th>Runs On</th></tr></thead>
+<tbody>
+<tr><td>Integration</td><td>Jest 29 + Supertest + Testcontainers</td><td>≥ 70% path coverage</td><td>Every PR (CI gate)</td></tr>
+<tr><td>E2E</td><td>Playwright 1.x</td><td>Critical paths only</td><td>Every PR + nightly</td></tr>
+<tr><td>Performance</td><td>k6 v0.50</td><td>SLA gates (see §5)</td><td>Nightly + weekly load</td></tr>
+</tbody></table></div>
+<h3 id="12-mandatory-ci-gates-merge-blocking">§1.2 Mandatory CI Gates (Merge-Blocking)</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Gate ID</th><th>Trigger</th><th>Test(s)</th><th>Pass Criteria</th></tr></thead>
+<tbody>
+<tr><td>GATE-WALLET</td><td>Any PR touching <code>src/services/WalletService.ts</code></td><td>TC-CURR-001 (double-spend)</td><td>Concurrent debits never produce negative balance</td></tr>
+<tr><td>GATE-PDPA</td><td>Any PR touching <code>src/services/PrivacyService.ts</code></td><td>TC-PRIV-002 (deletion execution)</td><td>Email anonymised; <code>executed_at</code> set; no PII remains</td></tr>
+<tr><td>GATE-UNIT</td><td>All PRs</td><td>Full unit suite</td><td>Coverage ≥ 80% (Istanbul / c8)</td></tr>
+<tr><td>GATE-INTEG</td><td>All PRs</td><td>Full integration suite</td><td>Coverage ≥ 70%; zero failures</td></tr>
+<tr><td>GATE-BUILD</td><td>All PRs</td><td><code>tsc --noEmit</code> + <code>npm run build</code></td><td>Zero TypeScript errors</td></tr>
+</tbody></table></div>
+<h3 id="13-test-environments">§1.3 Test Environments</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Environment</th><th>Database</th><th>Redis</th><th>Colyseus</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><strong>CI</strong></td><td>Testcontainers (ephemeral)</td><td>Testcontainers (ephemeral)</td><td>In-process</td><td>Gate validation on every PR</td></tr>
+<tr><td><strong>Staging</strong></td><td>PostgreSQL 15 (real instance, seeded)</td><td>Redis 7 (real instance)</td><td>Docker Compose (2 replicas)</td><td>E2E + pre-release smoke</td></tr>
+<tr><td><strong>Production Canary</strong></td><td>Production PG (read replica for smoke only)</td><td>Production Redis</td><td>k8s (1 canary pod)</td><td>Post-deploy smoke (health endpoints only)</td></tr>
+</tbody></table></div>
+<h3 id="14-test-toolchain">§1.4 Test Toolchain</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "devDependencies": {
+    "jest": "^29",
+    "@types/jest": "^29",
+    "ts-jest": "^29",
+    "supertest": "^6",
+    "@types/supertest": "^6",
+    "testcontainers": "^10",
+    "@playwright/test": "^1.44",
+    "k6": "N/A (binary; not npm)"
+  }
+}</code></pre></div>
+<p><strong>Jest config</strong> (<code>jest.config.ts</code>):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">export default {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  collectCoverage: true,
+  coverageThreshold: { global: { lines: 80, branches: 80 } },
+  projects: [
+    { displayName: 'unit',        testMatch: ['**/__tests__/unit/**/*.test.ts'] },
+    { displayName: 'integration', testMatch: ['**/__tests__/integration/**/*.test.ts'] },
+  ],
+};</code></pre></div>
+<hr>
+<h2 id="2-unit-tests">§2 Unit Tests</h2>
+<p>Unit tests run in isolation. All external dependencies (PostgreSQL, Redis, Colyseus) are mocked. No network calls allowed. Each module must reach ≥ 80% line and branch coverage independently. RTPEngine requires 100% coverage (EDD §2.2 mandate).</p>
+<h3 id="21-rtpengine-unit-tests">§2.1 RTPEngine Unit Tests</h3>
+<p><strong>Module</strong>: <code>src/engine/RTPEngine.ts</code> <strong>Coverage requirement</strong>: 100% (mandatory per EDD §2.2)</p>
+<hr>
+<h4 id="ut-rtp-001-100k-simulation-per-fish-type-stays-within-rtp-band">UT-RTP-001 — 100K simulation per fish type stays within RTP band</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Linked EDD Anchor</strong></td><td>TC-RTP-001</td></tr>
+<tr><td><strong>US-ID</strong></td><td>US-RTP-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Unit / Simulation</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>:</p>
+<ul>
+<li><code>fishType</code>: <code>'normal'</code>, <code>'elite'</code>, <code>'boss'</code> (three separate runs)</li>
+<li><code>betAmount</code>: 10 (constant)</li>
+<li><code>multiplier</code>: 1 (constant)</li>
+<li><code>hitRateNumerator</code> / <code>hitRateDenominator</code>: values from <code>RTP_CONFIG</code> (normal: 92000/100000; elite: 85000/100000; boss: 70000/100000)</li>
+<li>Iterations: 100,000 per fish type</li>
+</ul>
+<p><strong>Expected output</strong>:</p>
+<ul>
+<li>For each fish type: <code>|actualRtp - targetRtp| &lt; 0.01</code> (within ±1% absolute of the 0.92–0.96 band)</li>
+<li><code>engine.currentRtp</code> falls within <code>[0.92, 0.96]</code> after 100K adjudications</li>
+</ul>
+<p><strong>Test body (pseudocode)</strong>:</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">test('UT-RTP-001: 100K normal fish adjudications stay in RTP band', () =&gt; {
+  // Arrange
+  const engine = new RTPEngine(RTP_CONFIG);
+  // Act
+  for (let i = 0; i &lt; 100_000; i++) {
+    engine.adjudicate('normal', 10, 1);
+  }
+  // Assert
+  expect(engine.currentRtp).toBeGreaterThanOrEqual(0.92);
+  expect(engine.currentRtp).toBeLessThanOrEqual(0.96);
+});</code></pre></div>
+<hr>
+<h4 id="ut-rtp-002-min-sample-bets-guard-suppresses-dynamic-adjustment">UT-RTP-002 — MIN<em>SAMPLE</em>BETS guard suppresses dynamic adjustment</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Linked EDD Anchor</strong></td><td>TC-RTP-002</td></tr>
+<tr><td><strong>US-ID</strong></td><td>US-RTP-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>:</p>
+<ul>
+<li><code>totalBet = 0</code> (fresh engine; no prior adjudications)</li>
+<li>One call to <code>adjudicate('normal', 1, 1)</code> (below <code>MIN<em>SAMPLE</em>BETS * MIN<em>BET</em>AMOUNT = 200</code>)</li>
+</ul>
+<p><strong>Expected output</strong>:</p>
+<ul>
+<li><code>_dynamicAdjust</code> returns the unmodified <code>cfg.hitRateNumerator</code> (no scaling applied)</li>
+<li>Verified by spying on internal <code>_dynamicAdjust</code> or reading <code>currentRtp</code> with mocked <code>crypto.randomInt</code> returning deterministic values</li>
+</ul>
+<p><strong>Setup</strong>: Mock <code>crypto.randomInt</code> to always return 0 (always hit) to isolate adjustment logic.</p>
+<hr>
+<h4 id="ut-rtp-003-dynamic-adjustment-scales-down-when-rtp-exceeds-targetrtpmax">UT-RTP-003 — Dynamic adjustment scales down when RTP exceeds targetRtpMax</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Engine with <code><em>totalBet = 300n</code>, <code></em>totalPaid = 300n</code> (100% RTP, above targetRtpMax=0.96). <code>cfg.hitRateNumerator = 92000</code>, <code>cfg.hitRateDenominator = 100000</code>.</p>
+<p><strong>Expected output</strong>: <code>_dynamicAdjust</code> returns <code>Math.floor(92000 * (0.96 / 1.0)) = 88320</code> (scaled down).</p>
+<hr>
+<h4 id="ut-rtp-004-bigint-arithmetic-prevents-float-overflow-at-large-bet-volumes">UT-RTP-004 — BigInt arithmetic prevents float overflow at large bet volumes</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: <code>adjudicate('normal', Number.MAX<em>SAFE</em>INTEGER, 1)</code> called once with a forced hit.</p>
+<p><strong>Expected output</strong>: <code>engine.currentRtp</code> computes without <code>NaN</code> or <code>Infinity</code>; <code><em>totalBet</code> and <code></em>totalPaid</code> are valid <code>BigInt</code> values.</p>
+<hr>
+<h4 id="ut-rtp-005-addexternalpayout-includes-jackpot-in-rtp-accounting">UT-RTP-005 — addExternalPayout includes jackpot in RTP accounting</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Engine with 100 normal adjudications (all misses, forced). Call <code>addExternalPayout(50000)</code>.</p>
+<p><strong>Expected output</strong>: <code>engine.currentRtp</code> reflects the external payout in <code>_totalPaid</code>; <code>currentRtp &gt; 0</code>.</p>
+<hr>
+<h3 id="22-walletservice-unit-tests">§2.2 WalletService Unit Tests</h3>
+<p><strong>Module</strong>: <code>src/services/WalletService.ts</code> <strong>Coverage requirement</strong>: ≥ 80%</p>
+<p>All DB calls mocked with <code>jest.mock('../db')</code>.</p>
+<hr>
+<h4 id="ut-wallet-001-debitgold-succeeds-with-sufficient-balance">UT-WALLET-001 — debitGold succeeds with sufficient balance</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock DB returns <code>{ gold: 1000 }</code> on SELECT FOR UPDATE. <code>amount = 100</code>.</p>
+<p><strong>Expected output</strong>: Two DB queries called (SELECT + UPDATE + INSERT transaction); no exception thrown.</p>
+<hr>
+<h4 id="ut-wallet-002-debitgold-rejects-negative-balance">UT-WALLET-002 — debitGold rejects negative balance</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock DB returns <code>{ gold: 50 }</code>. <code>amount = 100</code>.</p>
+<p><strong>Expected output</strong>: <code>InsufficientFundsError</code> thrown; UPDATE query never called.</p>
+<hr>
+<h4 id="ut-wallet-003-creditgold-inserts-transaction-row">UT-WALLET-003 — creditGold inserts transaction row</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: <code>userId = 'uuid-1'</code>, <code>amount = 500</code>, <code>type = 'earn'</code>.</p>
+<p><strong>Expected output</strong>: UPDATE user_wallets called; INSERT into transactions called with type='earn'.</p>
+<hr>
+<h4 id="ut-wallet-004-creditdiamond-is-idempotent-on-duplicate-receipt-hash">UT-WALLET-004 — creditDiamond is idempotent on duplicate receipt_hash</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock DB returns <code>[{ id: 'existing' }]</code> on receipt_hash SELECT (already processed).</p>
+<p><strong>Expected output</strong>: Function returns without inserting duplicate; diamond UPDATE never called.</p>
+<hr>
+<h3 id="23-jackpotmanager-unit-tests">§2.3 JackpotManager Unit Tests</h3>
+<p><strong>Module</strong>: <code>src/engine/JackpotManager.ts</code> <strong>Coverage requirement</strong>: ≥ 80% Redis mocked via <code>jest.mock('ioredis')</code>.</p>
+<hr>
+<h4 id="ut-jack-001-trytrigger-returns-null-when-roll-does-not-match">UT-JACK-001 — tryTrigger returns null when roll does not match</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock <code>crypto.randomInt</code> to return 1 (not 0). <code>multiplier = 1</code> (odds = 500000).</p>
+<p><strong>Expected output</strong>: <code>tryTrigger</code> returns <code>null</code>; Redis <code>eval</code> never called.</p>
+<hr>
+<h4 id="ut-jack-002-trytrigger-claims-pool-via-lua-and-persists-to-db-on-win">UT-JACK-002 — tryTrigger claims pool via Lua and persists to DB on win</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock <code>crypto.randomInt</code> to return 0 (win). Mock Redis <code>eval</code> to return <code>'50000'</code>. Mock DB transaction.</p>
+<p><strong>Expected output</strong>: <code>tryTrigger</code> returns <code>{ winnerId: userId, amount: 50000 }</code>; DB transaction called with INSERT into jackpot<em>history and UPDATE user</em>wallets.</p>
+<hr>
+<h4 id="ut-jack-003-initpromise-race-guard-prevents-double-initialization">UT-JACK-003 — _initPromise race guard prevents double initialization</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Call <code>JackpotManager.getInstance()</code> three times concurrently (Promise.all).</p>
+<p><strong>Expected output</strong>: Only one Redis connection created; all three calls resolve to the same instance object.</p>
+<p><strong>Setup</strong>: Reset <code>JackpotManager.<em>instance</code> and <code>JackpotManager.</em>initPromise</code> to <code>null</code> before test via module re-require or direct property reset.</p>
+<hr>
+<h4 id="ut-jack-004-trytrigger-returns-null-when-pool-is-zero-after-lua-claim">UT-JACK-004 — tryTrigger returns null when pool is zero after Lua claim</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock <code>crypto.randomInt</code> to return 0. Mock Redis <code>eval</code> to return <code>'0'</code> (concurrent claim already emptied pool).</p>
+<p><strong>Expected output</strong>: Returns <code>null</code>; no DB transaction called.</p>
+<hr>
+<h3 id="24-privacyservice-unit-tests">§2.4 PrivacyService Unit Tests</h3>
+<p><strong>Module</strong>: <code>src/services/PrivacyService.ts</code> <strong>Coverage requirement</strong>: ≥ 80%</p>
+<hr>
+<h4 id="ut-priv-001-requestdeletion-inserts-deletion-request-and-sets-pending-status">UT-PRIV-001 — requestDeletion inserts deletion_request and sets pending status</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: <code>userId = 'uuid-user'</code>.</p>
+<p><strong>Expected output</strong>: Two DB queries: INSERT INTO deletion<em>requests (ON CONFLICT DO NOTHING); UPDATE users SET deletion</em>status='pending'.</p>
+<hr>
+<h4 id="ut-priv-002-canceldeletion-throws-409-when-no-cancellable-request-exists">UT-PRIV-002 — cancelDeletion throws 409 when no cancellable request exists</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock DB returns <code>{ rowCount: 0 }</code> on UPDATE deletion_requests.</p>
+<p><strong>Expected output</strong>: Error thrown with <code>statusCode: 409</code>; second UPDATE (users restore) never called.</p>
+<hr>
+<h4 id="ut-priv-003-executescheduleddeletions-anonymises-both-email-and-email-hash">UT-PRIV-003 — executeScheduledDeletions anonymises both email and email_hash</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock DB SELECT returns one user row. Mock <code>encrypt()</code> and <code>hmac()</code>. Mock DB transaction.</p>
+<p><strong>Expected output</strong>: UPDATE users called with both <code>email = encrypt(anonEmail)</code> AND <code>email_hash = hmac(anonEmail, ...)</code> in the same transaction; original email not passed to any subsequent query.</p>
+<hr>
+<h3 id="25-fishspawner-unit-tests">§2.5 FishSpawner Unit Tests</h3>
+<p><strong>Module</strong>: <code>src/engine/FishSpawner.ts</code> <strong>Coverage requirement</strong>: ≥ 80%</p>
+<hr>
+<h4 id="ut-fish-001-normal-fish-path-has-34-bezier-control-points">UT-FISH-001 — Normal fish path has 3–4 Bezier control points</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Call <code>FishSpawner._generatePath('normal', fishId)</code> (or equivalent internal method).</p>
+<p><strong>Expected output</strong>: Returned path JSON parses to an array of 3 or 4 <code>{x, y}</code> objects.</p>
+<hr>
+<h4 id="ut-fish-002-boss-spawn-sets-60s-escape-timer">UT-FISH-002 — Boss spawn sets 60s escape timer</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Mock <code>setTimeout</code>. Call <code>_spawnBoss(bossState)</code>.</p>
+<p><strong>Expected output</strong>: <code>setTimeout</code> called with delay <code>60<em>000</code>; timer stored in <code></em>bossEscapeTimers</code>.</p>
+<hr>
+<h4 id="ut-fish-003-ondispose-clears-all-boss-timers">UT-FISH-003 — onDispose clears all boss timers</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>Type</strong></td><td>Unit</td></tr>
+</tbody></table></div>
+<p><strong>Input</strong>: Spawn 2 bosses (mock setTimeout). Call <code>onDispose()</code>.</p>
+<p><strong>Expected output</strong>: <code>clearTimeout</code> called twice; <code>_bossEscapeTimers</code> map is empty.</p>
+<hr>
+<h2 id="3-integration-tests">§3 Integration Tests</h2>
+<p>Integration tests use Testcontainers to spin up real PostgreSQL 15 and Redis 7 instances. Each test file uses a <code>beforeAll</code> to apply migrations and seed data, and an <code>afterAll</code> to terminate containers. Each individual test wraps mutations in a transaction that is rolled back in <code>afterEach</code> to preserve isolation.</p>
+<h3 id="31-setup-pattern">§3.1 Setup Pattern</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// __tests__/integration/setup.ts
+import { PostgreSqlContainer, RedisContainer } from 'testcontainers';
+import { runMigrations } from '../../src/db/migrations';
+
+let pgContainer: StartedPostgreSqlContainer;
+let redisContainer: StartedRedisContainer;
+
+beforeAll(async () =&gt; {
+  pgContainer = await new PostgreSqlContainer('postgres:15').start();
+  redisContainer = await new RedisContainer('redis:7').start();
+  process.env.DATABASE_URL = pgContainer.getConnectionUri();
+  process.env.REDIS_URL = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
+  await runMigrations();
+}, 60_000);
+
+afterAll(async () =&gt; {
+  await pgContainer.stop();
+  await redisContainer.stop();
+});
+
+// Per-test isolation: wrap in transaction, rollback in afterEach
+let trx: PoolClient;
+beforeEach(async () =&gt; { trx = await db.getClient(); await trx.query('BEGIN'); });
+afterEach(async () =&gt; { await trx.query('ROLLBACK'); trx.release(); });</code></pre></div>
+<hr>
+<h3 id="32-room-tests">§3.2 Room Tests</h3>
+<h4 id="tc-room-001-4-clients-fill-room-5th-client-rejected">TC-ROOM-001 — 4 clients fill room; 5th client rejected</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-ROOM-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Colyseus test server started in-process (<code>ColyseusTestServer</code>)</li>
+<li>4 test client JWTs pre-seeded in test DB</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Clients 1–4 call <code>joinOrCreate('game_room', { token, nickname })</code></li>
+<li>Client 5 calls <code>joinOrCreate('game_room', { token, nickname })</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>Clients 1–4 successfully join; room <code>playerCount = 4</code></li>
+<li><code>roomState</code> transitions to <code>'PLAYING'</code></li>
+<li>Client 5 receives a connection error / rejection (Colyseus <code>maxClients</code> exceeded)</li>
+<li><code>game<em>sessions</code> table row has <code>player</em>count = 4</code>, <code>room_state = 'PLAYING'</code></li>
+</ul>
+<p><strong>Setup</strong>: Create 5 user rows + wallet rows; issue 5 valid JWTs. <strong>Teardown</strong>: Transaction rollback; stop test Colyseus server.</p>
+<hr>
+<h4 id="tc-room-002-reconnection-within-10s-restores-player-state">TC-ROOM-002 — Reconnection within 10s restores player state</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-ROOM-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Room with 2 connected clients</li>
+<li>Client 1 has gold = 5000</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Client 1 disconnects with WebSocket close code 1001 (unexpected)</li>
+<li>Within 10 seconds, client 1 reconnects using <code>reconnectionToken</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>player.isConnected</code> returns to <code>true</code></li>
+<li><code>player.gold</code> still equals 5000 (state preserved during reconnection window)</li>
+<li>Room <code>playerCount</code> remains at 2 during the disconnection window</li>
+</ul>
+<p><strong>Setup</strong>: 2 users + wallets seeded. Simulate disconnect by closing WebSocket at transport layer. <strong>Teardown</strong>: Rollback; stop test server.</p>
+<hr>
+<h3 id="33-fish-shoot-tests">§3.3 Fish / Shoot Tests</h3>
+<h4 id="tc-fish-001-valid-shoot-debits-gold-and-inserts-rtp-log">TC-FISH-001 — Valid shoot debits gold and inserts rtp_log</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-FISH-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Player with gold = 1000 in room; fish <code>fish-001</code> (type: normal, hp: 1, alive: true) in state</li>
+<li><code>betAmount = 100</code>, <code>cannonMultiplier = 1</code></li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Client sends <code>shoot</code> message: <code>{ bulletId: 'bullet-1', fishId: 'fish-001', betAmount: 100, cannonMultiplier: 1 }</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>shoot_result</code> message received by client (within 200ms)</li>
+<li><code>user_wallets.gold</code> decremented by 100 (debit confirmed in DB)</li>
+<li><code>rtp_logs</code> table has exactly one new row for this room + user</li>
+<li>If hit: <code>user_wallets.gold</code> incremented by payout; <code>fish-001</code> removed from <code>state.fish</code></li>
+<li>If miss: <code>fish-001</code> still in state with <code>hp = 1</code> (or 0 depending on RNG)</li>
+</ul>
+<p><strong>Setup</strong>: Seed user + wallet (gold=1000); start room and spawn fish via internal API. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h4 id="tc-fish-002-duplicate-bulletid-silently-dropped">TC-FISH-002 — Duplicate bulletId silently dropped</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-FISH-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Player with gold = 1000; fish alive in room</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Client sends <code>shoot</code> message with <code>bulletId = 'dup-bullet-1'</code> twice in rapid succession (within same event-loop tick via <code>Promise.all</code>)</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>Server processes exactly one debit (gold decremented by <code>betAmount</code> exactly once)</li>
+<li><code>rtp_logs</code> has exactly one row for this bulletId sequence</li>
+<li>No error or disconnect sent to client</li>
+</ul>
+<p><strong>Setup</strong>: Same as TC-FISH-001. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h4 id="tc-fish-003-shoot-rejected-when-gold-betamount">TC-FISH-003 — Shoot rejected when gold < betAmount</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-FISH-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Player with gold = 50; <code>betAmount = 100</code></li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Client sends <code>shoot</code> message with <code>betAmount = 100</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>No gold deducted (wallet remains at 50)</li>
+<li>No <code>rtp_logs</code> row inserted</li>
+<li>Client does not receive a <code>shoot_result</code> (message silently dropped per server-authoritative design)</li>
+</ul>
+<p><strong>Verification</strong>: Query DB to confirm gold unchanged; poll for <code>shoot_result</code> with 500ms timeout and assert it never arrives.</p>
+<hr>
+<h4 id="tc-fish-004-boss-escapes-after-60s-with-no-kill">TC-FISH-004 — Boss escapes after 60s with no kill</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-FISH-002</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Room in PLAYING state; boss fish spawned via <code>_spawnBoss()</code> internal call</li>
+<li>Jest fake timers active (<code>jest.useFakeTimers()</code>)</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>No <code>shoot</code> messages targeting boss fish sent</li>
+<li>Advance timer by 60,000ms (<code>jest.advanceTimersByTime(60_000)</code>)</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>Boss fish removed from <code>state.fish</code> (fishId no longer in MapSchema)</li>
+<li><code>boss_escaped</code> broadcast received by all room clients</li>
+<li><code>state.roomState</code> transitions back to <code>'PLAYING'</code></li>
+<li>No gold credited to any player</li>
+</ul>
+<p><strong>Setup</strong>: Spawn boss directly; use fake timers to avoid 60s real wait. <strong>Teardown</strong>: <code>jest.useRealTimers()</code>; rollback.</p>
+<hr>
+<h3 id="34-rtp-tests">§3.4 RTP Tests</h3>
+<h4 id="tc-rtp-001-100k-simulation-per-fish-type-within-9296-band">TC-RTP-001 — 100K simulation per fish type within 92%–96% band</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-RTP-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration / Simulation</td></tr>
+<tr><td><strong>CI Gate</strong></td><td>GATE-RTP (blocks merge)</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Fresh <code>RTPEngine</code> instance with production <code>RTP_CONFIG</code></li>
+<li>No prior state; <code>totalBet = 0</code></li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>100,000 <code>adjudicate(fishType, 10, 1)</code> calls executed for each of: <code>'normal'</code>, <code>'elite'</code>, <code>'boss'</code></li>
+</ul>
+<p><strong>Then</strong> (for each fish type):</p>
+<ul>
+<li><code>engine.currentRtp &gt;= 0.92</code></li>
+<li><code>engine.currentRtp &lt;= 0.96</code></li>
+<li>Zero <code>NaN</code> or <code>Infinity</code> values returned</li>
+</ul>
+<p><strong>Setup</strong>: No DB/Redis needed (pure computation). <strong>Timeout</strong>: 30,000ms (Jest timeout override required for 300K total calls).</p>
+<hr>
+<h4 id="tc-rtp-002-dynamic-adjustment-inactive-below-min-sample-bets">TC-RTP-002 — Dynamic adjustment inactive below MIN<em>SAMPLE</em>BETS</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-RTP-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Unit (promoted to integration suite for gate inclusion)</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Fresh engine; <code>_totalBet = 0n</code> (zero prior bets)</li>
+<li><code>MIN<em>SAMPLE</em>BETS = 200</code>, <code>MIN<em>BET</em>AMOUNT = 1</code></li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Single <code>adjudicate('normal', 1, 1)</code> called (totalBet after = 1, below threshold of 200)</li>
+<li><code>_dynamicAdjust</code> inspected via spy or returned numerator assertion</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>_dynamicAdjust</code> returns <code>cfg.hitRateNumerator</code> (unmodified base rate, no scaling)</li>
+</ul>
+<hr>
+<h3 id="35-jackpot-tests">§3.5 Jackpot Tests</h3>
+<h4 id="tc-jack-001-jackpot-claim-is-atomic-concurrent-winner-rejected">TC-JACK-001 — Jackpot claim is atomic; concurrent winner rejected</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-JACK-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Redis key <code>game:jackpot:pool</code> set to <code>'100000'</code> (100K gold)</li>
+<li>Two concurrent <code>JackpotManager.tryTrigger(100, userId1)</code> and <code>tryTrigger(100, userId2)</code> calls</li>
+<li>Both calls mock <code>crypto.randomInt</code> to return 0 (both would win without atomicity)</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li>Both <code>tryTrigger</code> calls executed simultaneously via <code>Promise.all</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>Exactly one call returns a non-null <code>JackpotResult</code></li>
+<li>Exactly one <code>jackpot_history</code> row inserted</li>
+<li>Redis pool reset to <code>JACKPOT<em>SEED</em>AMOUNT</code> (not zero or double-claimed)</li>
+<li><code>jackpot_won</code> broadcast observable on winning room</li>
+<li>The losing concurrent call returns <code>null</code> (pool already claimed)</li>
+</ul>
+<p><strong>Setup</strong>: Real Redis (Testcontainers); seed pool via <code>REDIS.set('game:jackpot:pool', '100000')</code>. <strong>Teardown</strong>: <code>REDIS.del('game:jackpot:pool')</code>; rollback DB.</p>
+<hr>
+<h4 id="tc-jack-002-pool-restored-from-postgresql-after-server-restart">TC-JACK-002 — Pool restored from PostgreSQL after server restart</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-JACK-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li><code>jackpot<em>pool</code> table row has <code>current</em>amount = 75000</code></li>
+<li>Redis key <code>game:jackpot:pool</code> is missing (simulating cold restart)</li>
+<li><code>JackpotManager.<em>instance = null; JackpotManager.</em>initPromise = null</code> (reset singleton)</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>JackpotManager.getInstance()</code> called (triggers <code>restorePool</code>)</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>Redis key <code>game:jackpot:pool</code> now equals <code>'75000'</code></li>
+<li>Subsequent <code>tryTrigger</code> call can access the restored pool value</li>
+</ul>
+<p><strong>Setup</strong>: Seed DB row; flush Redis key before test. <strong>Teardown</strong>: Rollback; delete Redis key.</p>
+<hr>
+<h3 id="36-currency-tests">§3.6 Currency Tests</h3>
+<h4 id="tc-curr-001-concurrent-debits-cannot-produce-negative-balance">TC-CURR-001 — Concurrent debits cannot produce negative balance</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-CURR-001</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+<tr><td><strong>CI Gate</strong></td><td>GATE-WALLET (blocks merge)</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Player wallet with gold = 100</li>
+<li>Two concurrent <code>WalletService.debitGold(userId, 100)</code> calls (total intended debit = 200, exceeds balance)</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>Promise.all([debitGold(userId, 100), debitGold(userId, 100)])</code> executed against real PostgreSQL</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>Exactly one debit succeeds (gold = 0)</li>
+<li>Exactly one debit throws <code>InsufficientFundsError</code></li>
+<li>Final <code>user_wallets.gold</code> is 0 (never negative)</li>
+<li>Exactly one transaction row inserted in <code>transactions</code> table</li>
+</ul>
+<p><strong>Setup</strong>: Real PostgreSQL (Testcontainers). Seed wallet with gold=100. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h4 id="tc-curr-002-iap-receipt-submission-is-idempotent">TC-CURR-002 — IAP receipt submission is idempotent</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-CURR-002</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Valid user + wallet (diamond = 0)</li>
+<li>Mocked Apple/Google IAP verifier returning success for <code>receiptHash = 'sha256-abc123'</code></li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>POST /api/v1/iap/verify</code> submitted with same receipt data twice</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>First submission: HTTP 200; <code>diamond</code> incremented by <code>diamondAmount</code>; <code>iap_receipts</code> row inserted</li>
+<li>Second submission: HTTP 200 (idempotent, not 4xx); <code>diamond</code> NOT incremented again</li>
+<li><code>iap<em>receipts</code> still has exactly one row for this <code>receipt</em>hash</code></li>
+</ul>
+<p><strong>Setup</strong>: Stub external IAP verifier. Seed user + wallet. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h3 id="37-privacy-pdpa-tests">§3.7 Privacy (PDPA) Tests</h3>
+<h4 id="tc-priv-001-grant-revoke-consent-updates-user-consents-correctly">TC-PRIV-001 — Grant → revoke consent updates user_consents correctly</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-PRIV-001 + US-PRIV-004</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>User with no existing consent records</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>POST /api/v1/privacy/consent/grant</code> with <code>{ consentType: 'marketing' }</code></li>
+<li><code>POST /api/v1/privacy/consent/revoke</code> with <code>{ consentType: 'marketing' }</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>user<em>consents</code> table has exactly two rows for this user + consent</em>type</li>
+<li>Second row has <code>granted = false</code> and <code>revoked_at IS NOT NULL</code></li>
+<li><code>GET /api/v1/privacy/consents</code> returns the revocation record</li>
+<li>Response indicates Firebase marketing events should be disabled (<code>marketingConsent: false</code>)</li>
+</ul>
+<p><strong>Setup</strong>: Seed user. No prior consents. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h4 id="tc-priv-002-executescheduleddeletions-anonymises-pii-after-30-days">TC-PRIV-002 — executeScheduledDeletions anonymises PII after 30 days</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-PRIV-002</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+<tr><td><strong>CI Gate</strong></td><td>GATE-PDPA (blocks merge)</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>User with real email <code>user@example.com</code> (encrypted in DB), nickname <code>阿凱</code></li>
+<li><code>deletion<em>requests</code> row with <code>scheduled</em>for = NOW() - INTERVAL '1 second'</code> (past due)</li>
+<li><code>executed<em>at IS NULL</code>, <code>cancelled</em>at IS NULL</code></li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>PrivacyService.executeScheduledDeletions()</code> called</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>users.email</code> updated to encrypted value of <code>deleted_XXXXXXXX@deleted.invalid</code></li>
+<li><code>users.email_hash</code> updated to HMAC of the new anon email (NOT original email hash)</li>
+<li><code>users.nickname</code> updated to <code>deleted_XXXXXXXX</code></li>
+<li><code>users.deletion_status = 'deleted'</code></li>
+<li><code>deletion<em>requests.executed</em>at IS NOT NULL</code></li>
+<li><code>transactions</code> rows for this user still exist (7-year retention)</li>
+<li><code>user_consents</code> rows still exist (PDPA evidence retention, ON DELETE RESTRICT)</li>
+</ul>
+<p><strong>Setup</strong>: Seed user + wallet + transactions + consents + deletion_request. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h4 id="tc-priv-003-canceldeletion-prevents-cron-execution-for-cancelled-request">TC-PRIV-003 — cancelDeletion prevents cron execution for cancelled request</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-PRIV-002</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>User with pending deletion request (<code>cancelled<em>at IS NULL</code>, <code>executed</em>at IS NULL</code>)</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>DELETE /api/v1/privacy/account/delete</code> (cancelDeletion) called</li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>deletion<em>requests.cancelled</em>at IS NOT NULL</code></li>
+<li><code>users.deletion_status = 'active'</code></li>
+<li>Subsequent call to <code>executeScheduledDeletions()</code> skips this user (cancelled row excluded by <code>WHERE cancelled_at IS NULL</code>)</li>
+<li>User email and nickname remain unchanged</li>
+</ul>
+<p><strong>Then (error path)</strong>:</p>
+<ul>
+<li>If <code>cancelDeletion</code> called again after first cancellation: HTTP 409 <code>deletion<em>not</em>cancellable</code></li>
+</ul>
+<p><strong>Setup</strong>: Seed user + deletion_request. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h4 id="tc-priv-004-email-update-atomically-updates-both-email-and-email-hash">TC-PRIV-004 — Email update atomically updates both email and email_hash</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-PRIV-003</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>User with email <code>old@example.com</code> (encrypted) and corresponding <code>email_hash</code></li>
+<li>Redis <code>email_confirm:&lt;token&gt;</code> key set with <code>userId:new@example.com</code> value (mocked token issuance)</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>PATCH /api/v1/user/profile</code> with <code>{ email: 'new@example.com' }</code> (initiates email change)</li>
+<li>Confirmation link click simulated: <code>GET /api/v1/auth/confirm-email?token=&lt;token&gt;</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li><code>users.email</code> = <code>encrypt('new@example.com')</code></li>
+<li><code>users.email<em>hash</code> = <code>hmac('new@example.com', HMAC</em>SECRET_KEY)</code></li>
+<li>Both columns updated in the same DB transaction (verified by checking old hash is gone)</li>
+<li>Redis confirmation token deleted (TTL expired or DEL called)</li>
+<li>Old email hash no longer queryable (uniqueness constraint satisfied by new hash)</li>
+</ul>
+<p><strong>Setup</strong>: Seed user. Set Redis confirmation token directly. <strong>Teardown</strong>: Rollback. Delete Redis token.</p>
+<hr>
+<h4 id="tc-priv-005-revoking-privacy-policy-consent-returns-http-409">TC-PRIV-005 — Revoking privacy_policy consent returns HTTP 409</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td><strong>EDD Anchor</strong></td><td>EDD §4.4, US-PRIV-004</td></tr>
+<tr><td><strong>Type</strong></td><td>Integration</td></tr>
+</tbody></table></div>
+<p><strong>Given</strong>:</p>
+<ul>
+<li>Authenticated user with active account</li>
+</ul>
+<p><strong>When</strong>:</p>
+<ul>
+<li><code>POST /api/v1/privacy/consent/revoke</code> with <code>{ consentType: 'privacy_policy' }</code></li>
+</ul>
+<p><strong>Then</strong>:</p>
+<ul>
+<li>HTTP 409 response</li>
+<li>Response body: <code>{ redirect: 'account_deletion' }</code> (client should route to deletion flow)</li>
+<li>No <code>user_consents</code> row inserted for this revocation attempt</li>
+</ul>
+<p><strong>Setup</strong>: Seed user. <strong>Teardown</strong>: Rollback.</p>
+<hr>
+<h2 id="4-e2e-tests-playwright">§4 E2E Tests (Playwright)</h2>
+<p>E2E tests run against a real Colyseus server + PostgreSQL + in-memory Redis (via Docker Compose in staging environment). Tests target the Cocos Creator web build served on <code>localhost:7456</code> or a staging URL.</p>
+<h3 id="41-e2e-environment-setup">§4.1 E2E Environment Setup</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">yaml</div><pre><code class="language-yaml"># docker-compose.e2e.yml
+services:
+  game-server:
+    image: fishing-game-server:${GIT_SHA}
+    environment:
+      - DATABASE_URL=postgresql://test:test@postgres:5432/fishing_e2e
+      - REDIS_URL=redis://redis:6379
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+    ports:
+      - "2567:2567"
+      - "3000:3000"
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=fishing_e2e
+      - POSTGRES_PASSWORD=test
+  redis:
+    image: redis:7</code></pre></div>
+<h3 id="42-e2e-test-scenarios">§4.2 E2E Test Scenarios</h3>
+<h4 id="e2e-001-full-game-flow-join-shoot-win-disconnect-reconnect">E2E-001 — Full game flow: join → shoot → win → disconnect → reconnect</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// __tests__/e2e/full-game-flow.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('E2E-001: full room join, shoot, jackpot win, disconnect, reconnect', async ({ browser }) =&gt; {
+  // Arrange: 4 browser contexts (4 players)
+  const contexts = await Promise.all([...Array(4)].map(() =&gt; browser.newContext()));
+  const pages = await Promise.all(contexts.map(ctx =&gt; ctx.newPage()));
+
+  // Act: all 4 players navigate and join the game
+  for (const page of pages) {
+    await page.goto('http://localhost:7456');
+    await page.locator('[data-testid="consent-agree-btn"]').click();
+    await page.locator('[data-testid="join-room-btn"]').click();
+    await expect(page.locator('[data-testid="game-canvas"]')).toBeVisible({ timeout: 10_000 });
+  }
+
+  // Verify room state shows PLAYING
+  await expect(pages[0].locator('[data-testid="room-state-indicator"]')).toHaveText('PLAYING');
+
+  // Act: Player 0 shoots a fish
+  await pages[0].locator('[data-testid="cannon-fire-btn"]').click();
+  await expect(pages[0].locator('[data-testid="shoot-result-toast"]')).toBeVisible({ timeout: 2_000 });
+
+  // Act: Simulate disconnect (close network connection)
+  await contexts[0].setOffline(true);
+  await expect(pages[0].locator('[data-testid="reconnecting-overlay"]')).toBeVisible({ timeout: 3_000 });
+
+  // Act: Reconnect within 10s window
+  await contexts[0].setOffline(false);
+  await expect(pages[0].locator('[data-testid="reconnecting-overlay"]')).toBeHidden({ timeout: 12_000 });
+  await expect(pages[0].locator('[data-testid="game-canvas"]')).toBeVisible();
+
+  // Cleanup
+  for (const ctx of contexts) await ctx.close();
+});</code></pre></div>
+<hr>
+<h4 id="e2e-002-privacy-consent-modal-blocks-game-start">E2E-002 — Privacy consent modal blocks game start</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">test('E2E-002: consent modal blocks game start until accepted', async ({ page }) =&gt; {
+  // Arrange: fresh user with no consent record
+  await page.goto('http://localhost:7456');
+
+  // Assert: modal is visible and join button is disabled/hidden
+  const modal = page.locator('[data-testid="privacy-consent-modal"]');
+  await expect(modal).toBeVisible();
+  await expect(page.locator('[data-testid="join-room-btn"]')).toBeDisabled();
+
+  // Act: user clicks "view policy" link
+  await page.locator('[data-testid="view-policy-link"]').click();
+  await expect(page.locator('[data-testid="policy-content"]')).toBeVisible();
+
+  // Act: user agrees
+  await page.locator('[data-testid="consent-agree-btn"]').click();
+  await expect(modal).toBeHidden();
+
+  // Assert: join button now enabled
+  await expect(page.locator('[data-testid="join-room-btn"]')).toBeEnabled();
+});</code></pre></div>
+<hr>
+<h4 id="e2e-003-iap-purchase-modal-flow-with-mock-receipt">E2E-003 — IAP purchase modal flow with mock receipt</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">test('E2E-003: IAP purchase modal flow', async ({ page }) =&gt; {
+  // Arrange: authenticated player on shop page; IAP verifier mocked in staging
+  await page.goto('http://localhost:7456/shop');
+  await expect(page.locator('[data-testid="diamond-balance"]')).toHaveText('0');
+
+  // Act: tap "Buy 100 Diamonds" product button
+  await page.locator('[data-testid="iap-product-100"]').click();
+
+  // Assert: IAP modal shown with correct product details
+  const modal = page.locator('[data-testid="iap-confirm-modal"]');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('[data-testid="product-name"]')).toHaveText('100 鑽石');
+
+  // Act: confirm purchase (mock receipt injected by staging server stub)
+  await page.locator('[data-testid="iap-confirm-btn"]').click();
+
+  // Assert: success toast + updated balance
+  await expect(page.locator('[data-testid="iap-success-toast"]')).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator('[data-testid="diamond-balance"]')).toHaveText('100');
+});</code></pre></div>
+<hr>
+<h4 id="e2e-004-jackpot-win-celebration-animation-visible-to-all-room-members">E2E-004 — Jackpot win celebration animation visible to all room members</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">test('E2E-004: jackpot win broadcast to all room clients', async ({ browser }) =&gt; {
+  // Arrange: 4 players in room; jackpot pool seeded to trigger threshold
+  const contexts = await Promise.all([...Array(4)].map(() =&gt; browser.newContext()));
+  const pages = await Promise.all(contexts.map(ctx =&gt; ctx.newPage()));
+  // ... join flow ...
+
+  // Act: Trigger jackpot via admin API (test helper endpoint available in staging only)
+  await fetch('http://localhost:3000/test/trigger-jackpot', { method: 'POST',
+    body: JSON.stringify({ roomId: await getRoomId(pages[0]), winnerId: 'player-1' }) });
+
+  // Assert: all 4 pages show jackpot animation
+  for (const page of pages) {
+    await expect(page.locator('[data-testid="jackpot-celebration"]')).toBeVisible({ timeout: 3_000 });
+  }
+
+  for (const ctx of contexts) await ctx.close();
+});</code></pre></div>
+<hr>
+<h4 id="e2e-005-accessibility-consent-modal-keyboard-navigation">E2E-005 — Accessibility: consent modal keyboard navigation</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">test('E2E-005: consent modal focus order is correct', async ({ page }) =&gt; {
+  await page.goto('http://localhost:7456');
+  const modal = page.locator('[data-testid="privacy-consent-modal"]');
+  await expect(modal).toBeVisible();
+
+  // Tab order: consent-checkbox → view-policy-link → agree-button → disagree-button
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-testid="consent-checkbox"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-testid="view-policy-link"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-testid="consent-agree-btn"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-testid="consent-disagree-btn"]')).toBeFocused();
+});</code></pre></div>
+<hr>
+<h3 id="43-playwright-configuration">§4.3 Playwright Configuration</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './__tests__/e2e',
+  timeout: 60_000,
+  retries: 1,
+  use: {
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:7456',
+    trace: 'on-first-retry',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'firefox',  use: { browserName: 'firefox' } },
+    { name: 'webkit',   use: { browserName: 'webkit' } },
+  ],
+});</code></pre></div>
+<hr>
+<h2 id="5-performance-tests-k6">§5 Performance Tests (k6)</h2>
+<h3 id="51-sla-gates">§5.1 SLA Gates</h3>
+<p>All SLA gates must pass before a release is promoted to production.</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Metric</th><th>SLA Target</th><th>Failure Action</th></tr></thead>
+<tbody>
+<tr><td>p99 room join latency</td><td>< 500ms</td><td>Block release</td></tr>
+<tr><td>p99 REST API response time</td><td>< 500ms</td><td>Block release</td></tr>
+<tr><td>Error rate (all requests)</td><td>< 0.1%</td><td>Block release</td></tr>
+<tr><td>WebSocket message loss rate</td><td>< 0.01%</td><td>Block release</td></tr>
+</tbody></table></div>
+<h3 id="52-load-scenarios">§5.2 Load Scenarios</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Scenario</th><th>Description</th><th>Duration</th><th>VUs</th></tr></thead>
+<tbody>
+<tr><td><strong>Steady-state</strong></td><td>Maintain 2000 players, continuous shoot + join cycle</td><td>15 minutes</td><td>2000</td></tr>
+<tr><td><strong>Spike</strong></td><td>4000 players (1000 rooms) for 1 minute</td><td>1 minute</td><td>4000</td></tr>
+<tr><td><strong>Soak</strong></td><td>500 players for 2 hours (overnight)</td><td>2 hours</td><td>500</td></tr>
+</tbody></table></div>
+<h3 id="53-k6-script-typescript">§5.3 k6 Script (TypeScript)</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// k6/fishing-load-test.ts
+import { check, sleep } from 'k6';
+import ws from 'k6/ws';
+import http from 'k6/http';
+import { Trend, Rate, Counter } from 'k6/metrics';
+
+// Custom metrics
+const shootLatency = new Trend('shoot_latency_ms', true);
+const joinLatency  = new Trend('join_latency_ms', true);
+const errorRate    = new Rate('error_rate');
+const totalShoots  = new Counter('total_shoots');
+
+export const options = {
+  scenarios: {
+    ramp_up: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '5m', target: 2000 },   // ramp up
+        { duration: '15m', target: 2000 },  // steady state
+        { duration: '1m', target: 4000 },   // spike
+        { duration: '1m', target: 0 },      // ramp down
+      ],
+    },
+  },
+  thresholds: {
+    shoot_latency_ms: ['p(99)&lt;100'],
+    join_latency_ms:  ['p(99)&lt;500'],
+    http_req_duration: ['p(99)&lt;500'],
+    error_rate: ['rate&lt;0.001'],
+  },
+};
+
+// Test fixture: pre-generated JWT tokens for load test users
+const TOKENS: string[] = JSON.parse(open('./fixtures/tokens.json'));
+
+export default function () {
+  const token = TOKENS[__VU % TOKENS.length];
+  const headers = { Authorization: `Bearer ${token}` };
+
+  // 1. Join room via Colyseus WebSocket
+  const joinStart = Date.now();
+  const url = `wss://staging.game.example.com/?token=${token}`;
+
+  ws.connect(url, {}, (socket) =&gt; {
+    joinLatency.add(Date.now() - joinStart);
+
+    socket.on('open', () =&gt; {
+      // Send join_room message
+      socket.send(JSON.stringify({ type: 'join_room', nickname: `k6_user_${__VU}` }));
+    });
+
+    socket.on('message', (data: string) =&gt; {
+      const msg = JSON.parse(data);
+
+      if (msg.type === 'state_patch' &amp;&amp; msg.state?.roomState === 'PLAYING') {
+        // 2. Send shoot messages every 200ms (5/s per player)
+        const fishIds: string[] = Object.keys(msg.state?.fish ?? {});
+        if (fishIds.length &gt; 0) {
+          const shootStart = Date.now();
+          socket.send(JSON.stringify({
+            type: 'shoot',
+            bulletId: crypto.randomUUID(),
+            fishId: fishIds[0],
+            betAmount: 10,
+            cannonMultiplier: 1,
+          }));
+          totalShoots.add(1);
+
+          // Wait for shoot_result
+          socket.once('message', (result: string) =&gt; {
+            const res = JSON.parse(result);
+            if (res.type === 'shoot_result') {
+              shootLatency.add(Date.now() - shootStart);
+              check(res, { 'shoot_result received': (r) =&gt; r.type === 'shoot_result' });
+            } else {
+              errorRate.add(1);
+            }
+          });
+        }
+        sleep(0.2); // 200ms between shots
+      }
+    });
+
+    socket.on('error', () =&gt; errorRate.add(1));
+    socket.setTimeout(() =&gt; socket.close(), 30_000); // each VU plays for 30s
+  });
+
+  // 3. REST health check interleaved
+  const healthRes = http.get('https://staging.game.example.com/health', { headers });
+  check(healthRes, { 'health 200': (r) =&gt; r.status === 200 });
+
+  sleep(1);
+}</code></pre></div>
+<h3 id="54-k6-execution-commands">§5.4 k6 Execution Commands</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">bash</div><pre><code class="language-bash"># Run standard load test against staging
+k6 run --out json=results/load-test.json k6/fishing-load-test.ts
+
+# Nightly RTP simulation (separate k6 script calling internal RTP simulation endpoint)
+k6 run --vus 1 --duration 5m k6/rtp-simulation-test.ts
+
+# Weekly soak test (2h)
+k6 run --out cloud k6/fishing-load-test.ts --env SCENARIO=soak</code></pre></div>
+<hr>
+<h2 id="6-cicd-integration">§6 CI/CD Integration</h2>
+<h3 id="61-pipeline-execution-order">§6.1 Pipeline Execution Order</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">PR Opened / Push to branch
+│
+├── Stage 1: Static Analysis (parallel, ~2min)
+│   ├── tsc --noEmit (TypeScript type check)
+│   ├── eslint src/
+│   └── prettier --check src/
+│
+├── Stage 2: Unit Tests (~3min)
+│   └── jest --testPathPattern=unit
+│       Coverage gate: lines ≥ 80%, branches ≥ 80%
+│       GATE-UNIT: blocks merge on failure
+│
+├── Stage 3: Integration Tests (~8min)
+│   └── jest --testPathPattern=integration (Testcontainers spin-up)
+│       Coverage gate: ≥ 70%
+│       Mandatory gates: GATE-RTP, GATE-WALLET, GATE-PDPA
+│
+├── Stage 4: Build (~2min)
+│   └── npm run build (production bundle)
+│       GATE-BUILD: blocks merge on TypeScript error
+│
+└── Stage 5: E2E (on main branch PR only, ~10min)
+    └── playwright test (Docker Compose staging stack)
+        Failures block merge to main only</code></pre></div>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Merge to main
+│
+└── Stage 6: Deployment (staging → canary → production)
+    ├── Deploy to staging
+    ├── Run smoke tests (E2E health + join flow)
+    └── Canary deploy (1 pod) → monitor error rate 15min → promote or rollback</code></pre></div>
+<h3 id="62-coverage-gates">§6.2 Coverage Gates</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Test Layer</th><th>Minimum Coverage</th><th>Enforcement</th></tr></thead>
+<tbody>
+<tr><td>Integration tests</td><td>70% path coverage</td><td>Separate coverage report; CI WARNING if below 70%, FAIL if below 60%</td></tr>
+<tr><td>RTPEngine specifically</td><td>100% lines + branches</td><td><code>/<em> istanbul ignore </em>/</code> comments prohibited in RTPEngine.ts</td></tr>
+<tr><td>Overall combined</td><td>75% lines</td><td>Combined report from <code>jest --coverage --merge-coverage</code></td></tr>
+</tbody></table></div>
+<h3 id="63-mandatory-merge-gates">§6.3 Mandatory Merge Gates</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Gate</th><th>What Fails It</th><th>Which PRs</th></tr></thead>
+<tbody>
+<tr><td>GATE-UNIT</td><td>Unit coverage < 80% OR any unit test failure</td><td>All PRs</td></tr>
+<tr><td>GATE-INTEG</td><td>Any integration test failure</td><td>All PRs</td></tr>
+<tr><td>GATE-RTP</td><td>TC-RTP-001 fails (RTP outside 92%–96%)</td><td>PRs touching <code>src/engine/RTPEngine.ts</code></td></tr>
+<tr><td>GATE-WALLET</td><td>TC-CURR-001 fails (negative balance possible)</td><td>PRs touching <code>src/services/WalletService.ts</code></td></tr>
+<tr><td>GATE-PDPA</td><td>TC-PRIV-002 fails (anonymisation incomplete)</td><td>PRs touching <code>src/services/PrivacyService.ts</code></td></tr>
+<tr><td>GATE-E2E</td><td>E2E-001 or E2E-002 failure</td><td>PRs targeting <code>main</code> branch</td></tr>
+</tbody></table></div>
+<h3 id="64-scheduled-tests">§6.4 Scheduled Tests</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Schedule</th><th>Tests</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><strong>Nightly</strong> (02:30 UTC)</td><td>Full E2E suite (all browsers)</td><td>Cross-browser regression catch</td></tr>
+<tr><td><strong>Weekly</strong> (Sunday 03:00 UTC)</td><td>k6 steady-state 15min + spike 1min</td><td>SLA regression detection</td></tr>
+<tr><td><strong>Weekly</strong> (Sunday 05:00 UTC)</td><td>k6 soak test (2h, 500 VUs)</td><td>Memory leak + GC pause detection</td></tr>
+<tr><td><strong>On release tag</strong></td><td>Full suite (unit + integration + E2E + k6 ramp-up)</td><td>Release gate before staging → production</td></tr>
+</tbody></table></div>
+<h3 id="65-github-actions-example">§6.5 GitHub Actions Example</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">yaml</div><pre><code class="language-yaml"># .github/workflows/ci.yml
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run test:unit -- --coverage
+      - uses: actions/upload-artifact@v4
+        with: { name: coverage-unit, path: coverage/ }
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      # Testcontainers handles DB/Redis internally; no external services needed here
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run test:integration -- --coverage
+        env:
+          CI: true
+          HMAC_SECRET_KEY: test-hmac-key-32chars-minimum-len
+          AES_KEY: test-aes-key-32chars-minimum-leng
+          JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY_TEST }}
+
+  e2e:
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: docker compose -f docker-compose.e2e.yml up -d --wait
+      - run: npx playwright test
+        env:
+          E2E_BASE_URL: http://localhost:7456
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: playwright-report/ }</code></pre></div>
+<hr>
+<h2 id="7-test-data-management">§7 Test Data Management</h2>
+<h3 id="71-seed-data-strategy">§7.1 Seed Data Strategy</h3>
+<p>Integration tests use a layered seeding strategy:</p>
+<ol>
+<li><strong>Schema migrations</strong> applied once per test suite via <code>runMigrations()</code> (Testcontainers fresh DB)</li>
+<li><strong>Static reference data</strong> seeded in <code>beforeAll</code> (privacy<em>policies table, jackpot</em>pool singleton)</li>
+<li><strong>Per-test dynamic data</strong> created using factory functions; rolled back in <code>afterEach</code></li>
+</ol>
+<p>No production data is ever used in tests. All test users have email domain <code>@test.invalid</code>.</p>
+<h3 id="72-factory-functions">§7.2 Factory Functions</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// __tests__/factories/index.ts
+
+export interface UserFactoryOptions {
+  gold?: number;
+  diamond?: number;
+  deletionStatus?: 'active' | 'pending' | 'deleted';
+  nickname?: string;
+}
+
+/**
+ * Creates a user + wallet row in the DB.
+ * Returns userId and a valid JWT for use in API/WebSocket tests.
+ */
+export async function createUser(
+  db: Pool,
+  opts: UserFactoryOptions = {}
+): Promise&lt;{ userId: string; jwt: string; nickname: string }&gt; {
+  const userId = randomUUID();
+  const nickname = opts.nickname ?? `test_user_${userId.slice(0, 6)}`;
+  const email = `${userId.slice(0, 8)}@test.invalid`;
+  const passwordHash = await bcrypt.hash('TestPass1!', 10);
+
+  await db.query(
+    `INSERT INTO users(id, email, email_hash, nickname, password_hash, deletion_status)
+     VALUES($1, $2, $3, $4, $5, $6)`,
+    [userId, encrypt(email), hmac(email, TEST_HMAC_KEY), nickname, passwordHash, opts.deletionStatus ?? 'active']
+  );
+  await db.query(
+    `INSERT INTO user_wallets(user_id, gold, diamond) VALUES($1, $2, $3)`,
+    [userId, opts.gold ?? 1000, opts.diamond ?? 0]
+  );
+
+  const jwt = signJwt({ sub: userId, role: 'player' }, TEST_JWT_PRIVATE_KEY, { expiresIn: '15m' });
+  return { userId, jwt, nickname };
+}
+
+/**
+ * Creates a Colyseus room in WAITING state.
+ * Returns roomId for use in room-level integration tests.
+ */
+export async function createRoom(
+  server: ColyseusTestServer
+): Promise&lt;{ roomId: string; room: GameRoom }&gt; {
+  const room = await server.createRoom('game_room', {});
+  return { roomId: room.roomId, room };
+}
+
+/**
+ * Seeds a wallet directly (bypass service layer for test isolation).
+ */
+export async function setWalletBalance(
+  db: Pool, userId: string, gold: number, diamond: number = 0
+): Promise&lt;void&gt; {
+  await db.query(
+    'UPDATE user_wallets SET gold=$1, diamond=$2 WHERE user_id=$3',
+    [gold, diamond, userId]
+  );
+}
+
+/**
+ * Seeds a jackpot_pool singleton row (safe to call multiple times via ON CONFLICT).
+ */
+export async function seedJackpotPool(db: Pool, amount: number = 10_000): Promise&lt;void&gt; {
+  await db.query(
+    `INSERT INTO jackpot_pool(id, current_amount) VALUES(1, $1)
+     ON CONFLICT (id) DO UPDATE SET current_amount=$1, updated_at=NOW()`,
+    [amount]
+  );
+}
+
+/**
+ * Seeds the privacy_policies reference table with a current version.
+ */
+export async function seedPrivacyPolicy(db: Pool, version: string = '1.0.0'): Promise&lt;void&gt; {
+  await db.query(
+    `INSERT INTO privacy_policies(version, content_url, effective_at)
+     VALUES($1, 'https://example.com/policy', NOW())
+     ON CONFLICT (version) DO NOTHING`,
+    [version]
+  );
+}</code></pre></div>
+<h3 id="73-cleanup-patterns">§7.3 Cleanup Patterns</h3>
+<p><strong>Transaction rollback</strong> (preferred — fastest, most isolated):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">let client: PoolClient;
+beforeEach(async () =&gt; {
+  client = await pool.connect();
+  await client.query('BEGIN');
+  // Override db module to use this transaction client within the test
+  jest.spyOn(db, 'query').mockImplementation((...args) =&gt; client.query(...args));
+});
+afterEach(async () =&gt; {
+  await client.query('ROLLBACK');
+  client.release();
+  jest.restoreAllMocks();
+});</code></pre></div>
+<p><strong>Redis cleanup</strong> (explicit DEL, no transactions):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">afterEach(async () =&gt; {
+  await redis.del('game:jackpot:pool');
+  await redis.del('email_confirm:*');  // scan + delete pattern keys
+});</code></pre></div>
+<p><strong>Testcontainer lifecycle</strong> (suite-level, not per-test):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// Containers spin up once per suite (beforeAll) and stop after all tests (afterAll).
+// Do NOT restart containers per-test — it adds 10–20s per test case.</code></pre></div>
+<h3 id="74-sensitive-data-rules-in-tests">§7.4 Sensitive Data Rules in Tests</h3>
+<ul>
+<li>All test emails use domain <code>@test.invalid</code> — never real email domains</li>
+<li>JWT signing keys for tests use distinct test keys (never production keys); stored in GitHub Actions Secrets only</li>
+<li><code>AES<em>KEY</code> and <code>HMAC</em>SECRET_KEY</code> for tests are fixed 32-character strings in CI env vars (not committed to source)</li>
+<li>Test wallets use small amounts (gold ≤ 10,000); never real-money values</li>
+<li><code>rtp<em>logs</code>, <code>jackpot</em>history</code>, <code>transactions</code> inserted during tests are rolled back; never exported</li>
+</ul>
+<hr>
+<h2 id="appendix-a-test-case-index">Appendix A — Test Case Index</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Test Case ID</th><th>Section</th><th>Type</th><th>EDD Anchor</th><th>CI Gate</th></tr></thead>
+<tbody>
+<tr><td>UT-RTP-002</td><td>§2.1</td><td>Unit</td><td>TC-RTP-002</td><td>GATE-RTP</td></tr>
+<tr><td>UT-RTP-003</td><td>§2.1</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-RTP-004</td><td>§2.1</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-RTP-005</td><td>§2.1</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-WALLET-001</td><td>§2.2</td><td>Unit</td><td>—</td><td>GATE-WALLET</td></tr>
+<tr><td>UT-WALLET-002</td><td>§2.2</td><td>Unit</td><td>—</td><td>GATE-WALLET</td></tr>
+<tr><td>UT-WALLET-003</td><td>§2.2</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-WALLET-004</td><td>§2.2</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-JACK-001</td><td>§2.3</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-JACK-002</td><td>§2.3</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-JACK-003</td><td>§2.3</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-JACK-004</td><td>§2.3</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-PRIV-001</td><td>§2.4</td><td>Unit</td><td>—</td><td>GATE-PDPA</td></tr>
+<tr><td>UT-PRIV-002</td><td>§2.4</td><td>Unit</td><td>—</td><td>GATE-PDPA</td></tr>
+<tr><td>UT-PRIV-003</td><td>§2.4</td><td>Unit</td><td>—</td><td>GATE-PDPA</td></tr>
+<tr><td>UT-FISH-001</td><td>§2.5</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-FISH-002</td><td>§2.5</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>UT-FISH-003</td><td>§2.5</td><td>Unit</td><td>—</td><td>—</td></tr>
+<tr><td>TC-ROOM-001</td><td>§3.2</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-ROOM-002</td><td>§3.2</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-FISH-001</td><td>§3.3</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-FISH-002</td><td>§3.3</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-FISH-003</td><td>§3.3</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-FISH-004</td><td>§3.3</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-RTP-001</td><td>§3.4</td><td>Simulation</td><td>EDD §4.4</td><td>GATE-RTP</td></tr>
+<tr><td>TC-RTP-002</td><td>§3.4</td><td>Unit/Integ</td><td>EDD §4.4</td><td>GATE-RTP</td></tr>
+<tr><td>TC-JACK-001</td><td>§3.5</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-JACK-002</td><td>§3.5</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-CURR-001</td><td>§3.6</td><td>Integration</td><td>EDD §4.4</td><td>GATE-WALLET</td></tr>
+<tr><td>TC-CURR-002</td><td>§3.6</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-PRIV-001</td><td>§3.7</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-PRIV-002</td><td>§3.7</td><td>Integration</td><td>EDD §4.4</td><td>GATE-PDPA</td></tr>
+<tr><td>TC-PRIV-003</td><td>§3.7</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-PRIV-004</td><td>§3.7</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>TC-PRIV-005</td><td>§3.7</td><td>Integration</td><td>EDD §4.4</td><td>GATE-INTEG</td></tr>
+<tr><td>E2E-001</td><td>§4.2</td><td>E2E</td><td>—</td><td>GATE-E2E</td></tr>
+<tr><td>E2E-002</td><td>§4.2</td><td>E2E</td><td>—</td><td>GATE-E2E</td></tr>
+<tr><td>E2E-003</td><td>§4.2</td><td>E2E</td><td>—</td><td>—</td></tr>
+<tr><td>E2E-004</td><td>§4.2</td><td>E2E</td><td>—</td><td>—</td></tr>
+<tr><td>E2E-005</td><td>§4.2</td><td>E2E</td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="appendix-b-open-test-questions">Appendix B — Open Test Questions</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>Question</th><th>Impact</th><th>Owner</th><th>Deadline</th></tr></thead>
+<tbody>
+<tr><td>TQ2</td><td>Cocos Creator 4.x web build required for E2E tests — confirm E2E target is web export or device simulator</td><td>MEDIUM — E2E setup depends on platform</td><td>Engineering</td><td>Dev Month 1</td></tr>
+<tr><td>TQ3</td><td>k6 fixture token generation (pre-seeding 2000+ JWT tokens for load test) — needs automated token factory script</td><td>LOW — load test blocked without tokens</td><td>Engineering</td><td>Dev Month 2</td></tr>
+<tr><td>TQ4</td><td>Apple/Google IAP verifier stub for E2E-003 — staging must have sandbox mode or mock endpoint</td><td>HIGH — E2E-003 cannot run without stub</td><td>Engineering + PM</td><td>Dev Month 1</td></tr>
+</tbody></table></div>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

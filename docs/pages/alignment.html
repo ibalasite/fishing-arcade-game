@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alignment Report — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item active"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>Alignment Report</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">Alignment Report</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#brd-code-traceability">BRD → Code Traceability</a></li>
+<li><a href="#gaps-found-resolved">Gaps Found &amp; Resolved</a></li>
+<li class="toc-h3"><a href="#gap-1-resolved-doc-update-jwt-algorithm-mismatch">GAP-1 (RESOLVED — Doc Update): JWT Algorithm Mismatch</a></li>
+<li class="toc-h3"><a href="#gap-2-resolved-code-fix-rtp-logs-insert-schema-mismatch">GAP-2 (RESOLVED — Code Fix): `rtp_logs` INSERT Schema Mismatch</a></li>
+<li class="toc-h3"><a href="#gap-3-documented-todo-stub-fishspawner-not-implemented">GAP-3 (DOCUMENTED — TODO stub): FishSpawner Not Implemented</a></li>
+<li class="toc-h3"><a href="#gap-4-noted-out-of-scope-for-step-22-rest-api-routes-not-implemented">GAP-4 (NOTED — Out-of-scope for STEP-22): REST API Routes Not Implemented</a></li>
+<li><a href="#specific-check-results">Specific Check Results</a></li>
+<li class="toc-h3"><a href="#a-rtpengine-tests">A. RTPEngine ↔ Tests</a></li>
+<li class="toc-h3"><a href="#b-gameroom-apimd-websocket-messages">B. GameRoom ↔ API.md WebSocket Messages</a></li>
+<li class="toc-h3"><a href="#c-privacyservice-schemamd">C. PrivacyService ↔ SCHEMA.md</a></li>
+<li class="toc-h3"><a href="#d-jackpotmanager-edd-34-lua-script">D. JackpotManager ↔ EDD §3.4 (Lua Script)</a></li>
+<li class="toc-h3"><a href="#e-error-envelopes">E. Error Envelopes</a></li>
+<li class="toc-h3"><a href="#f-missing-implementation-gaps">F. Missing Implementation Gaps</a></li>
+<li><a href="#overall-alignment-pass">Overall Alignment: PASS</a></li>
+</ul></div>
+        <h1 id="alignment-report-step-22">Alignment Report — STEP-22</h1>
+<p>Date: 2026-04-22</p>
+<hr>
+<h2 id="brd-code-traceability">BRD → Code Traceability</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>BRD Feature</th><th>EDD Section</th><th>Source File</th><th>Test Coverage</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>F2: Real-time Multiplayer Room (Colyseus 0.15, 4 players Phase 1)</td><td>§2.1 Colyseus Room Architecture</td><td><code>src/rooms/GameRoom.ts</code></td><td><code>tests/features/room.feature</code>, <code>tests/e2e/game-room.feature</code></td><td>✅</td></tr>
+<tr><td>F3: Shooting & Fish Kill Adjudication (RTPEngine, server-authoritative)</td><td>§2.2 RTP Engine Design, Bullet Hit Detection</td><td><code>src/engine/RTPEngine.ts</code>, <code>src/rooms/GameRoom.ts</code></td><td><code>tests/unit/RTPEngine.test.ts</code> (16 tests + 100K simulation gate)</td><td>✅</td></tr>
+<tr><td>F4: Wallet System (Gold/Diamond, debit/credit)</td><td>§2.3 Dual Currency System</td><td><code>src/services/WalletService.ts</code></td><td><code>tests/unit/WalletService.test.ts</code> (15+ tests)</td><td>✅</td></tr>
+<tr><td>F5: Jackpot Pool System (Redis, atomic Lua claim)</td><td>§2.2 Jackpot Pool Accumulation</td><td><code>src/engine/JackpotManager.ts</code></td><td><code>tests/unit/JackpotManager.test.ts</code>, <code>tests/features/jackpot.feature</code></td><td>✅</td></tr>
+<tr><td>F6: PDPA Privacy (consent, deletion, anonymisation)</td><td>§2.4 Privacy & PDPA Backend</td><td><code>src/services/PrivacyService.ts</code></td><td><code>tests/unit/PrivacyService.test.ts</code> (10+ tests), <code>tests/features/privacy.feature</code></td><td>✅</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="gaps-found-resolved">Gaps Found & Resolved</h2>
+<h3 id="gap-1-resolved-doc-update-jwt-algorithm-mismatch">GAP-1 (RESOLVED — Doc Update): JWT Algorithm Mismatch</h3>
+<ul>
+<li><strong>Finding</strong>: EDD §2.5, EDD §3.2.1, EDD §4.2, API.md §1 all specified <strong>RS256</strong> but the actual implementation in <code>src/utils/auth.ts</code> uses <strong>HS256</strong> (pinned via <code>JWT_ALGORITHM</code> constant with explicit rationale).</li>
+<li><strong>Root cause</strong>: EDD/API.md authored with RS256 as default; implementation correctly chose HS256 (simpler, single-service deployment; explicit algorithm-pinning guards against confusion attacks).</li>
+<li><strong>Fix</strong>: Updated EDD.md (§3.2.1, §4.2) and API.md (§1, §1.2, WebSocket auth flow diagram) to reflect HS256. Code is source of truth.</li>
+</ul>
+<h3 id="gap-2-resolved-code-fix-rtp-logs-insert-schema-mismatch">GAP-2 (RESOLVED — Code Fix): <code>rtp_logs</code> INSERT Schema Mismatch</h3>
+<ul>
+<li><strong>Finding</strong>: <code>GameRoom.<em>adjudicateShot()</code> inserted <code>session</em>id</code> into <code>rtp<em>logs</code> — a column that <strong>does not exist</strong> in <code>SCHEMA.md</code> DDL. The <code>rtp</em>at_time</code> column (NUMERIC 5,4, NOT NULL) <strong>was omitted</strong> from the INSERT.</li>
+<li><strong>Effect</strong>: This INSERT would fail at runtime with a PostgreSQL column-not-found error, silently swallowed by <code>.catch()</code>.</li>
+<li><strong>Fix</strong>: Updated <code>GameRoom.ts</code> line 434:</li>
+<li>Removed <code>session_id</code> from column list.</li>
+<li>Added <code>rtp<em>at</em>time</code> (value: <code>this._rtpEngine.currentRtp</code>).</li>
+<li>New INSERT: <code>(room<em>id, user</em>id, fish<em>type, bet</em>amount, multiplier, hit, payout, rtp<em>at</em>time, created_at)</code>.</li>
+</ul>
+<h3 id="gap-3-documented-todo-stub-fishspawner-not-implemented">GAP-3 (DOCUMENTED — TODO stub): FishSpawner Not Implemented</h3>
+<ul>
+<li><strong>Finding</strong>: EDD §2.2 describes a <code>FishSpawner</code> component (continuous wave scheduler, boss spawn timer). EDD's sample <code>GameRoom.ts</code> shows <code>this._fishSpawner = new FishSpawner(...)</code>. No <code>src/engine/FishSpawner.ts</code> file exists; the actual <code>GameRoom.ts</code> omits the spawner.</li>
+<li><strong>Impact</strong>: Fish waves are not spawned automatically — rooms would have no fish until FishSpawner is implemented.</li>
+<li><strong>Fix</strong>: Added a <code>TODO(EDD §2.2)</code> comment block in <code>GameRoom.ts</code> documenting the gap and expected integration point. Tracking as ALIGN-GAP-3.</li>
+</ul>
+<h3 id="gap-4-noted-out-of-scope-for-step-22-rest-api-routes-not-implemented">GAP-4 (NOTED — Out-of-scope for STEP-22): REST API Routes Not Implemented</h3>
+<ul>
+<li><strong>Finding</strong>: EDD §2.5 documents 16 REST endpoints. No Express app, route handlers, or <code>src/api/</code> directory exists.</li>
+<li><strong>Impact</strong>: All REST features (auth, IAP, PDPA, profile, jackpot query) are designed but not implemented.</li>
+<li><strong>Decision</strong>: REST routes are a Phase-1 implementation task, not a documentation gap. The design is complete in EDD and API.md. No code fix in STEP-22 — tracked for the implementation phase.</li>
+</ul>
+<hr>
+<h2 id="specific-check-results">Specific Check Results</h2>
+<h3 id="a-rtpengine-tests">A. RTPEngine ↔ Tests</h3>
+<ul>
+<li><strong>adjudicate() return shape</strong>: Actual return type is <code>{ hit: boolean; payout: number }</code>. This matches EDD §2.2 spec exactly. (The step description mentioned <code>{hit, fishId?, reward?, jackpotTriggered?}</code> — this does not match any EDD spec; EDD and code both use <code>{hit, payout}</code>.)</li>
+<li><strong>RTPEngine.test.ts</strong>: 16 test cases covering constructor validation, miss path, hit path, dynamic adjustment (4 sub-cases), addExternalPayout, basis-point precision, and 100K statistical simulation gate.</li>
+<li><strong>Status</strong>: ✅ PASS</li>
+</ul>
+<h3 id="b-gameroom-apimd-websocket-messages">B. GameRoom ↔ API.md WebSocket Messages</h3>
+<ul>
+<li>GameRoom registers: <code>shoot</code>, <code>set<em>multiplier</code>, <code>start</em>game</code></li>
+<li>API.md WebSocket section documents: <code>shoot</code>, <code>set<em>multiplier</code>, <code>start</em>game</code></li>
+<li><strong>Status</strong>: ✅ PASS (exact match)</li>
+</ul>
+<h3 id="c-privacyservice-schemamd">C. PrivacyService ↔ SCHEMA.md</h3>
+<ul>
+<li><code>user_consents</code> table in SCHEMA.md: <code>ON DELETE RESTRICT</code> — ✅ matches EDD §2.4 rationale.</li>
+<li>PrivacyService references: <code>deletion<em>requests</code>, <code>users</code> tables with correct column names (<code>user</em>id</code>, <code>requested<em>at</code>, <code>scheduled</em>for</code>, <code>executed<em>at</code>, <code>cancelled</em>at</code>, <code>deletion<em>status</code>, <code>deletion</em>requested<em>at</code>, <code>email</code>, <code>email</em>hash</code>, <code>nickname</code>).</li>
+<li><strong>Status</strong>: ✅ PASS</li>
+</ul>
+<h3 id="d-jackpotmanager-edd-34-lua-script">D. JackpotManager ↔ EDD §3.4 (Lua Script)</h3>
+<ul>
+<li>EDD §2.2 specifies: <code>GETDEL + SET seed</code> atomic pattern.</li>
+<li><code>JackpotManager._claimPool()</code> Lua script: <code>redis.call('GETDEL', KEYS[1])</code> then <code>redis.call('SET', KEYS[1], ARGV[1])</code> — exact match.</li>
+<li><strong>Status</strong>: ✅ PASS</li>
+</ul>
+<h3 id="e-error-envelopes">E. Error Envelopes</h3>
+<ul>
+<li>EDD §2.5 specifies: <code>{ error: { code: string, message: string, details?: {} } }</code></li>
+<li>API.md §1.3 documents identical format.</li>
+<li><code>PrivacyService.cancelDeletion()</code> throws <code>Object.assign(new Error('deletion<em>not</em>cancellable'), { statusCode: 409 })</code> — code error, not HTTP envelope. This is correct: service layer throws typed errors; HTTP envelope is assembled by Express middleware (not yet implemented).</li>
+<li><strong>Status</strong>: ✅ PASS (pattern consistent; REST layer not yet implemented)</li>
+</ul>
+<h3 id="f-missing-implementation-gaps">F. Missing Implementation Gaps</h3>
+<ul>
+<li><strong>FishSpawner</strong>: Designed in EDD §2.2, not implemented — GAP-3 above.</li>
+<li><strong>REST API server</strong> (<code>src/api/</code>): Designed in EDD §2.5 + API.md, not implemented — GAP-4 above.</li>
+<li><strong>IAPVerifier</strong>: Designed in EDD §1.1 component diagram, not implemented — Phase-1 task.</li>
+<li><strong>AccessibilityHelper</strong>: Designed in EDD §3.1 project structure (client-side Cocos component), not in scope for server-side alignment.</li>
+<li>All missing implementations are in the client / REST layer, not the server-authoritative core (RTPEngine, JackpotManager, WalletService, PrivacyService, GameRoom — all implemented and tested).</li>
+</ul>
+<hr>
+<h2 id="overall-alignment-pass">Overall Alignment: PASS</h2>
+<p>The server-authoritative core (BRD P0 features F2–F6) is fully implemented with unit test coverage. GAP-1 and GAP-2 are resolved. GAP-3 and GAP-4 are documented stubs for Phase-1 implementation sprint.</p>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRD — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item active"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>BRD</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">BRD</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#document-control">Document Control</a></li>
+<li><a href="#0-背景研究background-research">§0 背景研究（Background Research）</a></li>
+<li class="toc-h3"><a href="#01-市場研究摘要">§0.1 市場研究摘要</a></li>
+<li><a href="#1-executive-summary執行摘要">§1 Executive Summary（執行摘要）</a></li>
+<li class="toc-h3"><a href="#11-假設新聞稿pr-faq-amazon-working-backwards">§1.1 假設新聞稿（PR-FAQ — Amazon Working Backwards）</a></li>
+<li class="toc-h3"><a href="#12-faq預先回答最困難的問題">§1.2 FAQ（預先回答最困難的問題）</a></li>
+<li><a href="#2-problem-statement問題陳述">§2 Problem Statement（問題陳述）</a></li>
+<li class="toc-h3"><a href="#21-as-is-narrative現狀描述">§2.1 As-Is Narrative（現狀描述）</a></li>
+<li class="toc-h3"><a href="#22-5-whys根本原因分析">§2.2 5 Whys（根本原因分析）</a></li>
+<li class="toc-h3"><a href="#23-問題規模tamsamsom">§2.3 問題規模（TAM/SAM/SOM）</a></li>
+<li><a href="#3-business-objectives商業目標">§3 Business Objectives（商業目標）</a></li>
+<li class="toc-h3"><a href="#31-smart-目標">§3.1 SMART 目標</a></li>
+<li class="toc-h3"><a href="#32-與公司策略對應">§3.2 與公司策略對應</a></li>
+<li class="toc-h3"><a href="#33-三情境-roi-分析">§3.3 三情境 ROI 分析</a></li>
+<li class="toc-h3"><a href="#34-需求追溯矩陣rtm">§3.4 需求追溯矩陣（RTM）</a></li>
+<li class="toc-h3"><a href="#35-benefits-realization-plan效益實現計畫">§3.5 Benefits Realization Plan（效益實現計畫）</a></li>
+<li><a href="#4-stakeholders-users利害關係人">§4 Stakeholders &amp; Users（利害關係人）</a></li>
+<li class="toc-h3"><a href="#41-主要目標使用者">§4.1 主要目標使用者</a></li>
+<li class="toc-h3"><a href="#42-非目標使用者not-our-users">§4.2 非目標使用者（Not Our Users）</a></li>
+<li class="toc-h3"><a href="#43-stakeholder-map">§4.3 Stakeholder Map</a></li>
+<li class="toc-h3"><a href="#44-raci-matrix">§4.4 RACI Matrix</a></li>
+<li><a href="#5-proposed-solution提案解決方案">§5 Proposed Solution（提案解決方案）</a></li>
+<li class="toc-h3"><a href="#51-解法概述">§5.1 解法概述</a></li>
+<li class="toc-h3"><a href="#52-核心價值主張value-proposition-canvas">§5.2 核心價值主張（Value Proposition Canvas）</a></li>
+<li class="toc-h3"><a href="#53-moscow-功能清單mvp-範圍">§5.3 MoSCoW 功能清單（MVP 範圍）</a></li>
+<li><a href="#6-market-competitive-analysis市場與競品分析">§6 Market &amp; Competitive Analysis（市場與競品分析）</a></li>
+<li class="toc-h3"><a href="#61-競品比較表">§6.1 競品比較表</a></li>
+<li class="toc-h3"><a href="#62-差異化策略">§6.2 差異化策略</a></li>
+<li><a href="#7-success-metrics成功指標">§7 Success Metrics（成功指標）</a></li>
+<li class="toc-h3"><a href="#71-north-star-指標">§7.1 North Star 指標</a></li>
+<li class="toc-h3"><a href="#72-業務指標階層">§7.2 業務指標階層</a></li>
+<li><a href="#8-constraints-assumptions限制與假設">§8 Constraints &amp; Assumptions（限制與假設）</a></li>
+<li class="toc-h3"><a href="#81-硬性限制hard-constraints">§8.1 硬性限制（Hard Constraints）</a></li>
+<li class="toc-h3"><a href="#82-軟性限制soft-constraints">§8.2 軟性限制（Soft Constraints）</a></li>
+<li class="toc-h3"><a href="#83-假設驗證矩陣">§8.3 假設驗證矩陣</a></li>
+<li class="toc-h3"><a href="#84-mitigation-roadmap緩解路線圖">§8.4 Mitigation Roadmap（緩解路線圖）</a></li>
+<li><a href="#9-regulatory-compliance法規與合規">§9 Regulatory &amp; Compliance（法規與合規）</a></li>
+<li class="toc-h3"><a href="#91-法規-標準表">§9.1 法規 / 標準表</a></li>
+<li class="toc-h3"><a href="#92-data-governance資料治理">§9.2 Data Governance（資料治理）</a></li>
+<li class="toc-h3"><a href="#93-ip-licensing知識產權與授權">§9.3 IP &amp; Licensing（知識產權與授權）</a></li>
+<li><a href="#10-risk-assessment風險評估">§10 Risk Assessment（風險評估）</a></li>
+<li class="toc-h3"><a href="#101-風險矩陣">§10.1 風險矩陣</a></li>
+<li><a href="#11-business-model商業模式">§11 Business Model（商業模式）</a></li>
+<li class="toc-h3"><a href="#111-商業模式畫布要素">§11.1 商業模式畫布要素</a></li>
+<li class="toc-h3"><a href="#112-付費機制設計原則oq1-前提條件">§11.2 付費機制設計原則（OQ1 前提條件）</a></li>
+<li><a href="#12-high-level-roadmap高階路線圖">§12 High-Level Roadmap（高階路線圖）</a></li>
+<li><a href="#13-dependencies依賴項目">§13 Dependencies（依賴項目）</a></li>
+<li class="toc-h3"><a href="#130-依賴表">§13.0 依賴表</a></li>
+<li class="toc-h3"><a href="#131-vendor-risk-assessment廠商風險評估">§13.1 Vendor Risk Assessment（廠商風險評估）</a></li>
+<li><a href="#14-open-questions待解問題">§14 Open Questions（待解問題）</a></li>
+<li><a href="#15-decision-log決策記錄">§15 Decision Log（決策記錄）</a></li>
+<li><a href="#16-glossary術語表">§16 Glossary（術語表）</a></li>
+<li><a href="#17-references參考來源">§17 References（參考來源）</a></li>
+<li><a href="#18-brdprd-handoff-checklist交接清單">§18 BRD→PRD Handoff Checklist（交接清單）</a></li>
+<li><a href="#19-organizational-change-management組織變革管理">§19 Organizational Change Management（組織變革管理）</a></li>
+<li class="toc-h3"><a href="#191-變革影響評估">§19.1 變革影響評估</a></li>
+<li class="toc-h3"><a href="#192-訓練與溝通計畫">§19.2 訓練與溝通計畫</a></li>
+<li class="toc-h3"><a href="#193-抗拒緩解策略">§19.3 抗拒緩解策略</a></li>
+<li class="toc-h3"><a href="#194-內部採用成功指標">§19.4 內部採用成功指標</a></li>
+<li><a href="#20-approval-sign-off簽核表">§20 Approval Sign-off（簽核表）</a></li>
+</ul></div>
+        <h1 id="business-requirements-document-fishing-arcade-game">Business Requirements Document — Fishing Arcade Game</h1>
+<!-- Document Control -->
+<!-- DOC-ID: BRD-FISHING-ARCADE-GAME-20260421 -->
+<!-- Parent: IDEA-FISHING-ARCADE-GAME-20260421 -->
+<!-- Downstream: PRD.md, PDD.md, EDD.md -->
+<!-- Generated by: /devsop-gen-brd (Full-Auto) -->
+<hr>
+<h2 id="document-control">Document Control</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>欄位</th><th>內容</th></tr></thead>
+<tbody>
+<tr><td><strong>專案名稱</strong></td><td>fishing-arcade-game</td></tr>
+<tr><td><strong>文件版本</strong></td><td>v0.1-draft</td></tr>
+<tr><td><strong>狀態</strong></td><td>DRAFT</td></tr>
+<tr><td><strong>作者</strong></td><td>tobala（由 /devsop-gen-brd 自動生成）</td></tr>
+<tr><td><strong>建立日期</strong></td><td>2026-04-21</td></tr>
+<tr><td><strong>最後更新</strong></td><td>2026-04-21</td></tr>
+<tr><td><strong>上游文件</strong></td><td>IDEA-FISHING-ARCADE-GAME-20260421（docs/IDEA.md）</td></tr>
+<tr><td><strong>下游文件</strong></td><td>PRD.md / PDD.md / EDD.md（由本文件產生）</td></tr>
+<tr><td><strong>審核狀態</strong></td><td>待 /devsop-brd-review 審查</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="0-背景研究background-research">§0 背景研究（Background Research）</h2>
+<h3 id="01-市場研究摘要">§0.1 市場研究摘要</h3>
+<p>捕魚街機遊戲（Fish Shooting Arcade）是亞洲成熟高變現品類，台灣、中國、東南亞市場長期存在穩定需求。市場特點：低學習門檻、高付費轉化率、長生命周期。</p>
+<p><strong>市場規模估算（AI 推斷）：</strong></p>
+<ul>
+<li>全球亞洲線上休閒遊戲 TAM：約 $20 億 USD</li>
+<li>台灣 + 東南亞捕魚遊戲 SAM：約 $2 億 USD</li>
+<li>12 個月可獲取 SOM：$120,000 USD（DAU 10K × 付費率 5% × ARPPU $20 × 12 個月，同時驗證 SAM × 0.06% 市佔）</li>
+</ul>
+<p><strong>技術生態研究：</strong></p>
+<ul>
+<li>Colyseus 0.15（MIT 授權，750K+ npm 下載，6.4K GitHub Stars）：成熟即時多人遊戲框架</li>
+<li>Cocos Creator 4.x：亞洲手遊主流引擎，原生支援移動端熱更新</li>
+<li>TypeScript 全棧方案：降低前後端協作摩擦，team 熟悉度高（sam-gong-game 同棧已有實作）</li>
+</ul>
+<p><strong>競品研究摘要：</strong></p>
+<ul>
+<li>歡樂捕魚類（台灣手遊廠）：ARPPU 推估 $10-15（每位付費用戶月消費），App Store 評分 4.0-4.3，30 日留存 < 30%（業界口碑，信心水準：中）</li>
+<li>海底捕魚王 / 電玩城聯網版：DAU > 5,000（台灣電玩城社群），技術架構老舊，移動端體驗差</li>
+<li>taishan6868/Fishing-game-source-code：商業完整度高但已停服，Lua 架構無真實多人能力</li>
+</ul>
+<p><strong>技術風險研究：</strong></p>
+<ul>
+<li>主要陷阱：單服務器瓶頸（Colyseus 房間天然隔離可緩解）、DB 非同步阻塞、WebSocket 延遲需補間動畫</li>
+<li>RTP 精度：整數分母 RNG 設計是業界共識，防止浮點誤差累積</li>
+</ul>
+<hr>
+<h2 id="1-executive-summary執行摘要">§1 Executive Summary（執行摘要）</h2>
+<h3 id="11-假設新聞稿pr-faq-amazon-working-backwards">§1.1 假設新聞稿（PR-FAQ — Amazon Working Backwards）</h3>
+<hr>
+<p><strong>【假設新聞稿】Fishing Arcade Game 正式上線——讓台灣及東南亞玩家體驗真正的即時多人捕魚競技</strong></p>
+<p><em>2026 年第三季，台灣</em></p>
+<p><strong>tobala Games 推出 Fishing Arcade Game，幫助亞洲休閒遊戲玩家解決現有捕魚遊戲社交競爭弱、留存率難以維持的核心問題。</strong></p>
+<p>今日，tobala Games 宣布旗下首款多人即時捕魚街機遊戲《Fishing Arcade Game》正式上線。這款以 Cocos Creator 4.x + Colyseus 0.15 為技術核心的手遊產品，首次將真正的即時多人競技（4-6 人同場搶魚）帶入捕魚遊戲品類，徹底解決現有產品「形式多人、實質單機」的核心痛點。</p>
+<p><strong>為什麼是現在？</strong> 亞洲捕魚遊戲市場已逾 10 年未有技術架構革新。現有 Lua 架構產品因無法支撐真實即時多人同步而停服（如 taishan6868/Fishing-game-source-code），主流競品 30 日留存率低於 30%、玩家快速流失。TypeScript + Colyseus 0.15 的出現，使建立毫秒級同步多人捕魚遊戲成本大幅降低，技術窗口期僅有 12-18 個月。</p>
+<p><strong>如何運作？</strong> 玩家只需三步：（1）選擇砲台等級、加入 4-6 人房間；（2）即時射擊競搶普通魚/精英魚/Boss 魚；（3）觸發 Jackpot 獲得高額獎勵、在排行榜被看見。動態 RTP 系統（85-95%）與 Jackpot 池確保玩家感受到「努力有回報」。</p>
+<p><strong>玩家引言：</strong></p>
+<blockquote><p>「以前玩捕魚遊戲，桌上 6 個人但根本感覺不到他們存在。這個有了，搶 Boss 魚的瞬間真的很緊張！」——台北，33 歲上班族，Beta 測試玩家</p></blockquote>
+<hr>
+<h3 id="12-faq預先回答最困難的問題">§1.2 FAQ（預先回答最困難的問題）</h3>
+<p><strong>Q1：為什麼現在要做這款產品？</strong> A：Colyseus 0.15 已達商業穩定，與 Cocos Creator 4.x 的整合方案成熟。現有競品技術架構老舊（Lua / 非原生移動端），無法快速更新。技術換代窗口期約 12-18 個月，團隊有 sam-gong-game 同棧經驗，是最佳切入時機。</p>
+<p><strong>Q2：為什麼是我們而不是大廠？</strong> A：大廠捕魚遊戲（電玩城聯網版、台灣大廠手遊）均基於 2015-2020 年架構，要支援真實即時多人競技需要整個後端重寫，成本高、優先級低。我們從零設計，3-6 個月可完成大廠 2-3 年才能完成的架構升級。另外，small team 迭代速度更快，數值調整（RTP / Jackpot 池）可每週優化。</p>
+<p><strong>Q3：最大的風險是什麼？</strong> A：最大風險是「即時多人競技能否顯著提升留存率」這個核心假設（§5.3 Riskiest Assumption）尚未被市場驗證。若 30 日留存率未比競品高 20%，差異化核心失效。緩解策略：MVP 上線前進行 N ≥ 10 玩家原型測試，上線後 6 週內透過 A/B 測試（多人 vs 單人）取得數據。另一個風險是台灣法規（OQ1），目前正在法務預審（期限：2026-04-30）。</p>
+<p><strong>Q4：與競品的核心差異是什麼？</strong> A：（1）技術架構差異：Colyseus 0.15 真正即時多人 vs 競品偽多人（輪詢/假同步）；（2）策略深度：4 種武器 + 3 種技能（MVP 後）vs 競品單一武器；（3）數值精算：整數分母 RNG 確保 RTP < 0.1% 誤差 vs 競品浮點累積誤差。</p>
+<p><strong>Q5：商業模式是否可持續？</strong> A：DAU 10K × 5% 付費率 × $20 ARPPU（付費用戶平均月消費）= 月營收 $10K（注：ARPU = $10K / 10K DAU = $1/用戶，ARPPU = $10K / 500 付費用戶 = $20）。$200K 募資資金下，6 個月開發費用約 $100K，行銷 $60K，運維 $40K。若 DAU 達 10K 且付費率 5%，20 個月回收投資。悲觀情境（DAU 5K，付費率 3%）月營收 $3K，需延長回收期但不虧損。</p>
+<hr>
+<h2 id="2-problem-statement問題陳述">§2 Problem Statement（問題陳述）</h2>
+<h3 id="21-as-is-narrative現狀描述">§2.1 As-Is Narrative（現狀描述）</h3>
+<p>亞洲市場捕魚遊戲玩家的現狀：</p>
+<ol>
+<li><strong>實體街機廳衰退</strong>：疫情後街機廳客流持續下降，地理限制明顯，難以維持長期娛樂習慣</li>
+<li><strong>手機端捕魚遊戲</strong>：多為單機或弱聯網，玩家無法獲得真實競爭感，快速失去新鮮感</li>
+<li><strong>現有線上多人平台</strong>：4-6 人同場但無真實競爭機制，「形式多人、實質單機」；技能系統淺薄，策略選擇不足；動態 RTP 調整不透明，玩家感覺被系統操控；30 日留存率普遍低於 30%</li>
+</ol>
+<p><strong>玩家的 workaround 行為：</strong></p>
+<ul>
+<li>在多個平台間切換，尋找「更刺激」的體驗</li>
+<li>在社群媒體分享爆金截圖（如 Facebook 遊戲社群），作為缺失社交認同的替代出口</li>
+<li>將遊戲幣花光後即離開，無長期目標驅動</li>
+</ul>
+<p><strong>量化影響：</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>指標</th><th>現況</th><th>目標改善</th></tr></thead>
+<tbody>
+<tr><td>競品 ARPPU</td><td>$10-15 USD/月（每位付費用戶）</td><td>$20 USD/月（+33% vs 競品高端 $15；+60% vs 中位 $12.5；計算依據：$20/$15-1=33%）</td></tr>
+<tr><td>多人競技感知度</td><td>形式多人，感覺不到對手</td><td>真實搶魚張力，每秒有競爭決策</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="22-5-whys根本原因分析">§2.2 5 Whys（根本原因分析）</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">問題現象：現有線上捕魚遊戲留存率低、玩家快速流失
+  Why 1：遊戲體驗重複感強，缺乏長期目標驅動
+    Why 2：技能系統淺薄、武器種類單一，策略選擇空間不足
+      Why 3：多人競技機制流於形式，4-6 人同場卻感覺不到對手存在，搶魚張力不足
+        Why 4：玩家的每一個決策（瞄準哪條魚、何時用技能）都缺乏真實競爭後果
+          Why 5（根本原因）：玩家無法獲得「勝利感」與「被他人看見的社交認同」，
+                             於是在沒有情感連結的平台上快速流失</code></pre></div>
+<p><strong>技術根因補充</strong>：現有競品基於 2015-2020 年 Lua / 舊世代架構，無法提供真正即時多人狀態同步（p99 延遲 > 500ms），技術上無法創造真實搶魚張力。這是競品無法快速修補的結構性障礙。</p>
+<hr>
+<h3 id="23-問題規模tamsamsom">§2.3 問題規模（TAM/SAM/SOM）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>市場層次</th><th>規模估算</th><th>計算依據</th><th>信心水準</th></tr></thead>
+<tbody>
+<tr><td><strong>SAM</strong>（台灣+東南亞捕魚遊戲）</td><td>$2 億 USD</td><td>TAM × 10%（台灣+東南亞佔亞洲手遊市場估算）</td><td>低</td></tr>
+<tr><td><strong>SOM</strong>（12 個月可獲取市場）</td><td>$120,000 USD</td><td>DAU 10K × 付費率 5% × ARPPU $20 × 12 個月；同時以 SAM × 0.06% 市佔雙向驗證</td><td>中</td></tr>
+</tbody></table></div>
+<p><em>SOM 計算說明：0.06% 市佔率在亞洲中小型手遊新品首年上線屬保守估算，以台灣為起點市場，東南亞為第二階段擴張。</em></p>
+<hr>
+<h2 id="3-business-objectives商業目標">§3 Business Objectives（商業目標）</h2>
+<h3 id="31-smart-目標">§3.1 SMART 目標</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>目標</th><th>Specific</th><th>Measurable</th><th>Achievable</th><th>Relevant</th><th>Time-bound</th></tr></thead>
+<tbody>
+<tr><td>OBJ-2</td><td>付費轉化</td><td>付費率達 5%</td><td>付費人數 / DAU</td><td>業界成熟平台 3-8%，5% 屬中段；本產品達成路徑：（1）即時多人競技提升留存意願（連結假設 A1）；（2）Jackpot 機制鼓勵鑽石消費；（3）Beta 測試（N ≥ 50）作為付費率早期信號驗證點（連結假設 A6）；若 Beta 付費意願 < 2%，需重新評估 OBJ-2 目標值</td><td>驗證商業模式可持續</td><td>上線後 6 個月</td></tr>
+<tr><td>OBJ-3</td><td>月營收達標</td><td>月均 ARPPU $20（= 月收入 / 付費用戶數），月營收 $10K</td><td>月收入（金流後台）</td><td>OBJ-1 + OBJ-2 達成即自動達成；ARPPU $20 可達性詳見假設 A6；9 個月時評估中期進展（目標月收入 ≥ $5K）</td><td>驗證財務模型</td><td>上線後 12 個月（OBJ-1 DAU 達標同步）</td></tr>
+<tr><td>OBJ-4</td><td>技術 SLA</td><td>p99 延遲 < 100ms，500 並發房間穩定</td><td>Colyseus metrics + k6 壓測</td><td>sam-gong-game 同棧已驗證</td><td>確保多人競技體驗品質</td><td>上線前（預生產驗收）</td></tr>
+<tr><td>OBJ-5</td><td>留存率</td><td>30 日留存率 ≥ 40%</td><td>上線後 30 天留存追蹤</td><td>競品 < 30%，目標比競品高 33%</td><td>驗證核心假設 A1</td><td>上線後第 5 週</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="32-與公司策略對應">§3.2 與公司策略對應</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>公司策略目標</th><th>OBJ 對應</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td>建立亞洲市場休閒遊戲產品線</td><td>OBJ-1 + OBJ-3</td><td>首款產品 DAU + 月營收是後續產品線的基準線</td></tr>
+<tr><td>單個產品驗證 RTP 數值引擎商業可用性</td><td>OBJ-2 + OBJ-5</td><td>付費率 + 留存率共同驗證 RTP 數值設計</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="33-三情境-roi-分析">§3.3 三情境 ROI 分析</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>情境</th><th>DAU</th><th>付費率</th><th>ARPPU（月/付費用戶）</th><th>月營收</th><th>年收入</th><th>回收期</th></tr></thead>
+<tbody>
+<tr><td><strong>基準</strong></td><td>10,000</td><td>5%</td><td>$20</td><td>$10,000</td><td>$120K</td><td>20 個月</td></tr>
+<tr><td><strong>樂觀</strong></td><td>25,000</td><td>7%</td><td>$25</td><td>$43,750</td><td>$525K</td><td>5 個月</td></tr>
+</tbody></table></div>
+<p><em>投資基準：$200,000 USD（開發 $100K + 行銷 $60K + 運維 $40K）</em></p>
+<p><em>回收期計算基數：$200K 全部資本支出（含行銷 $60K + 運維 $40K）；若僅計開發成本 $100K，回收期分別為：悲觀 34 個月、基準 10 個月、樂觀 2.5 個月。</em></p>
+<p><em>ARPPU 說明：基準情境 ARPPU $20 僅計 MVP 道具內購收入，VIP 月訂閱（$8-12 USD）為 Phase 2 額外收入來源，MVP 期 ROI 分析不含此項；Phase 2 啟動後需重新建立財務模型。</em></p>
+<p><em>悲觀情境說明：DAU 5K 時月營收 $3K，年收入 $36K，需 66 個月回收 — 若此情境持續，應在上線第 9 個月觸發 Pivot 決策，勿盲目燒錢。</em></p>
+<p><em>Pivot 觸發條件（量化）：若上線第 3 個月 DAU < 3,000 <strong>且</strong> 付費率 < 2%（月營收 < $1,800），立即召開 Pivot 評估會議，依下列三步驟決策：（1）檢視 A/B 測試數據，若多人 vs 單人 30 日留存率差異 < 10%，則即時多人競技假設 A1 失效，轉向純 RNG 娛樂單機路線；（2）若留存率差異 ≥ 10% 但付費率不足，重新設計付費進入點（如降低基礎砲台單價、增加免費體驗局數）；（3）若 DAU < 3,000 且非行銷問題，評估市場定位重新調整或退出台灣市場轉向東南亞先行。</em></p>
+<hr>
+<h3 id="34-需求追溯矩陣rtm">§3.4 需求追溯矩陣（RTM）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>業務目標</th><th>成功指標</th><th>PRD REQ-ID（預留）</th><th>BDD Scenario（預留）</th></tr></thead>
+<tbody>
+<tr><td>OBJ-2 付費率 5%</td><td>付費轉化率監控（上線後 6 個月）</td><td>REQ-002</td><td>BDD-PAY-001</td></tr>
+<tr><td>OBJ-3 月營收 $10K</td><td>月收入後台確認（上線後 12 個月；9M 中期目標 $5K）</td><td>REQ-003</td><td>BDD-REV-001</td></tr>
+<tr><td>7 日留存率 ≥ 50%</td><td>7 日留存率追蹤（§7.2 Input 指標，Firebase Analytics，上線後第 2 週）</td><td>REQ-006</td><td>BDD-RET-002</td></tr>
+<tr><td>OBJ-4 技術 SLA</td><td>p99 < 100ms，500 並發（上線前）</td><td>REQ-004</td><td>BDD-TECH-001</td></tr>
+<tr><td>OBJ-5 留存率 40%</td><td>30 日留存追蹤（上線後第 5 週）</td><td>REQ-005</td><td>BDD-RET-001</td></tr>
+</tbody></table></div>
+<p><em>PRD REQ-ID 與 BDD Scenario ID 由 /devsop-gen-prd 與 /devsop-gen-bdd 在下游文件中填入。</em></p>
+<hr>
+<h3 id="35-benefits-realization-plan效益實現計畫">§3.5 Benefits Realization Plan（效益實現計畫）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>里程碑</th><th>時間點</th><th>效益指標</th><th>Baseline（目前競品水準）</th><th>目標值</th><th>測量方式</th></tr></thead>
+<tbody>
+<tr><td>留存驗證</td><td>上線後 3 個月（3M）</td><td>30 日留存率</td><td>< 30%（競品）</td><td>≥ 40%</td><td>Firebase Analytics</td></tr>
+<tr><td>商業模式驗證</td><td>上線後 6 個月（6M）</td><td>付費率</td><td>3%（競品 ARPPU 推算）</td><td>5%</td><td>金流後台</td></tr>
+<tr><td>規模化驗證</td><td>上線後 12 個月（12M）</td><td>月營收</td><td>$0（新品）</td><td>$10K</td><td>月財務報表</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="4-stakeholders-users利害關係人">§4 Stakeholders & Users（利害關係人）</h2>
+<h3 id="41-主要目標使用者">§4.1 主要目標使用者</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>群體</th><th>規模估算</th><th>核心需求</th><th>痛點</th></tr></thead>
+<tbody>
+<tr><td><strong>休閒一般玩家</strong>（學生、輕度玩家）</td><td>台灣 50 萬+，東南亞 500 萬+</td><td>短時娛樂（10-30 分鐘/場）、低門檻</td><td>無長期目標驅動</td></tr>
+<tr><td><strong>VIP 重度付費玩家</strong></td><td>付費玩家中 30-40%</td><td>高倍率砲台、VIP 專屬特權、社交地位顯示</td><td>缺乏 VIP 身份識別系統</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="42-非目標使用者not-our-users">§4.2 非目標使用者（Not Our Users）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>排除群體</th><th>排除原因</th><th>處理方式</th></tr></thead>
+<tbody>
+<tr><td>❌ 完全反對付費的玩家</td><td>核心商業模式依賴道具內購，免費體驗有限</td><td>系統設計時允許非付費玩家參與但收益有限</td></tr>
+<tr><td>❌ 13 歲以下未成年用戶</td><td>虛擬貨幣系統涉及未成年保護法規，MVP 階段排除</td><td><strong>MVP 採 App Store / Google Play 平台年齡分級限制</strong>（設定 17+/18+）替代應用層主動驗證；Phase 2 實作應用層年齡驗證機制（上線前法務確認最終設計）。注：「未成年保護分層 UI」列於 §5.3 Won't Have 指 Phase 2 前不實作應用層分層，平台級排除於 MVP 已生效</td></tr>
+<tr><td>❌ 中國大陸用戶（Phase 1）</td><td>需特殊 ICP / 版號申請，Phase 1 不納入</td><td>Phase 3 獨立評估</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="43-stakeholder-map">§4.3 Stakeholder Map</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>利害關係人</th><th>角色</th><th>關心點</th><th>影響程度</th></tr></thead>
+<tbody>
+<tr><td>投資人 / 募資對象</td><td>財務贊助</td><td>財務回報、市場競爭風險、ROI 時程</td><td>HIGH</td></tr>
+<tr><td>開發工程師（前後端）</td><td>執行</td><td>技術可行性、工具鏈選擇、工作量</td><td>HIGH</td></tr>
+<tr><td>遊戲美術外包</td><td>執行</td><td>資源規格清楚、付款條件明確</td><td>MEDIUM</td></tr>
+<tr><td>法務顧問（台灣）</td><td>Legal Advisory</td><td>虛擬貨幣法規合規性、博彩元素界定</td><td>HIGH</td></tr>
+<tr><td>目標玩家</td><td>End User</td><td>遊戲體驗、公平性、獎勵機制</td><td>HIGH</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="44-raci-matrix">§4.4 RACI Matrix</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>決策 / 活動</th><th>tobala</th><th>工程師</th><th>美術外包</th><th>法務</th><th>投資人</th></tr></thead>
+<tbody>
+<tr><td>技術可行性（EDD）</td><td>I</td><td><strong>A/R</strong></td><td>I</td><td>-</td><td>-</td></tr>
+<tr><td>設計審查（PDD）</td><td><strong>A</strong></td><td>C</td><td><strong>R</strong></td><td>-</td><td>-</td></tr>
+<tr><td>預算核准</td><td><strong>A/R</strong></td><td>I</td><td>I</td><td>I</td><td>C</td></tr>
+<tr><td>台灣法規審查</td><td>C</td><td>-</td><td>-</td><td><strong>A/R</strong></td><td>I</td></tr>
+<tr><td>MVP 上線決策</td><td><strong>A/R</strong></td><td>C</td><td>-</td><td>C</td><td>I</td></tr>
+<tr><td>A/B 測試分析</td><td><strong>A</strong></td><td><strong>R</strong></td><td>-</td><td>-</td><td>-</td></tr>
+</tbody></table></div>
+<p><em>R = Responsible / A = Accountable / C = Consulted / I = Informed</em></p>
+<hr>
+<h2 id="5-proposed-solution提案解決方案">§5 Proposed Solution（提案解決方案）</h2>
+<h3 id="51-解法概述">§5.1 解法概述</h3>
+<p>以 <strong>TypeScript + Node.js + Colyseus 0.15 + Cocos Creator 4.x</strong> 為技術核心，打造真正即時多人捕魚街機遊戲。從架構層解決「形式多人、實質單機」的根本問題，同時以精算 RTP（85-95%）+ Jackpot 池 + 成長養成系統建立長期留存與付費飛輪。</p>
+<p><strong>核心創新</strong>：Colyseus 房間機制實現毫秒級多人狀態同步（p99 < 100ms），每位玩家的每一顆砲彈都與對手實時競爭同一批魚，創造真實搶魚張力。</p>
+<hr>
+<h3 id="52-核心價值主張value-proposition-canvas">§5.2 核心價值主張（Value Proposition Canvas）</h3>
+<p><strong>Customer Jobs（用戶核心任務）：</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>任務類型</th><th>用戶任務描述</th></tr></thead>
+<tbody>
+<tr><td>Emotional</td><td>命中 Boss 魚、觸發 Jackpot 的強烈爽感與成就感</td></tr>
+<tr><td>Social</td><td>多人競技搶魚、排行榜展示、被他人看見的社交認同</td></tr>
+</tbody></table></div>
+<p><strong>Pain Relievers（痛點緩解）：</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>痛點</th><th>緩解方式</th></tr></thead>
+<tbody>
+<tr><td>策略性不足</td><td>4 種武器系統（基礎砲台→MVP；雷射/散射/鎖定→Phase 2）+ 3 種技能（Phase 2）</td></tr>
+<tr><td>留存動機缺失</td><td>成長養成（砲台升級/技能升級/VIP）+ 每週/節日活動 + 限時 Boss + Jackpot 累積顯示</td></tr>
+<tr><td>RTP 不透明（玩家被騙感）</td><td>RTP 85-95% 公開數值控管，整數分母 RNG 精度 < 0.1% 誤差，Jackpot 規則透明</td></tr>
+</tbody></table></div>
+<p><strong>Gain Creators（增益創造）：</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>期望收益</th><th>創造方式</th></tr></thead>
+<tbody>
+<tr><td>公平感</td><td>RTP 85-95%，整數分母 RNG，服務器端概率控制，客戶端無法作弊</td></tr>
+<tr><td>長期目標</td><td>砲台升級路線圖 + VIP 等級 + 成就系統（Phase 2）</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="53-moscow-功能清單mvp-範圍">§5.3 MoSCoW 功能清單（MVP 範圍）</h3>
+<h4 id="mvp-must-havep0">MVP Must Have（P0）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>功能</th><th>說明</th><th>驗證假設</th></tr></thead>
+<tbody>
+<tr><td>基礎砲台（單一武器）</td><td>倍率調整，整數分母 RNG</td><td>A1 多人競技核心</td></tr>
+<tr><td>3 種魚類（普通/精英/Boss）</td><td>不同倍率，Boss 魚特效</td><td>策略選擇動機</td></tr>
+<tr><td>RTP 85-95% 動態命中率系統</td><td>服務器端概率控制，客戶端無法影響</td><td>A1 付費動機</td></tr>
+<tr><td>金幣 + 鑽石貨幣系統</td><td>金幣（免費）/ 鑽石（付費）雙軌</td><td>付費轉化驗證</td></tr>
+<tr><td>基本道具內購</td><td>高倍率砲台、補充鑽石</td><td>OBJ-2 付費率</td></tr>
+<tr><td>Jackpot 池系統</td><td>累積顯示，觸發條件透明</td><td>留存動機</td></tr>
+<tr><td><strong>Jackpot 機率揭示 UI</strong>（App Store / Google Play 合規強制要求）</td><td>商店頁面揭示 Jackpot 機率，不合規可能導致下架；依 §13 App Store Jackpot 揭示確認結果（入場門票 Yes）於開發月 1 確認揭示格式後實作</td><td>§9.1 平台政策合規</td></tr>
+<tr><td><strong>隱私政策同意流程 + 帳號刪除申請入口</strong>（台灣 PDPA 最低合規）</td><td>首次啟動顯示隱私政策同意彈窗；設置帳號刪除申請入口（30 天匿名化流程，詳見 §9.2 Data Governance）</td><td>§9.1 台灣 PDPA</td></tr>
+</tbody></table></div>
+<h4 id="should-havep1phase-2">Should Have（P1，Phase 2）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>功能</th><th>說明</th><th>推遲原因</th></tr></thead>
+<tbody>
+<tr><td>技能系統（冰凍/全屏炸彈/自動鎖定）</td><td>控場技能</td><td>第二迭代優先項，MVP 先驗架構可行性</td></tr>
+<tr><td>VIP 等級系統</td><td>VIP 月訂閱 + 專屬特權</td><td>需穩定用戶基數才值得設計分層</td></tr>
+<tr><td>6 人房間</td><td>從 4 人擴展到 6 人</td><td>先驗 4 人競技，再擴展</td></tr>
+<tr><td>每週 / 節日活動系統</td><td>限時活動、節日 Boss</td><td>需先有穩定 DAU 才有活動效果</td></tr>
+</tbody></table></div>
+<h4 id="could-havep2後期">Could Have（P2，後期）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>功能</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td>好友邀請系統</td><td>口碑推廣機制</td></tr>
+<tr><td>玩家統計歷史</td><td>個人戰績</td></tr>
+</tbody></table></div>
+<h4 id="wont-have明確排除mvp-階段">Won't Have（明確排除，MVP 階段）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>功能</th><th>排除原因</th></tr></thead>
+<tbody>
+<tr><td>❌ NFT / 區塊鏈道具</td><td>法規風險高，商業模式未驗證</td></tr>
+<tr><td>❌ 未成年保護分層</td><td>MVP 階段通過年齡驗證整體排除</td></tr>
+<tr><td>❌ 中文簡體本地化（中國大陸）</td><td>Phase 1 不涵蓋</td></tr>
+</tbody></table></div>
+<h4 id="out-of-scope明確範疇外">Out of Scope（明確範疇外）</h4>
+<ul>
+<li>實體街機硬體整合</li>
+<li>第三方遊戲平台 SDK 整合（Steam / PlayStation）</li>
+<li>PC 桌面原生應用</li>
+</ul>
+<hr>
+<h2 id="6-market-competitive-analysis市場與競品分析">§6 Market & Competitive Analysis（市場與競品分析）</h2>
+<h3 id="61-競品比較表">§6.1 競品比較表</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>競品</th><th>核心定位</th><th>技術架構</th><th>30日留存</th><th>ARPPU</th><th>優勢</th><th>劣勢</th><th>我們的差異化</th></tr></thead>
+<tbody>
+<tr><td><strong>海底捕魚王 / 電玩城聯網版</strong>（電玩城聯網）</td><td>電玩城品牌，強調爆金特效</td><td>非原生移動端，PC 優先遷移</td><td>不詳（電玩城 DAU > 5,000 估算）</td><td>不詳</td><td>品牌認知度高，老玩家忠誠度</td><td>移動端體驗差，無法快速迭代，技術架構老舊</td><td>移動端原生 Cocos Creator 4.x，更流暢體驗，快速迭代能力</td></tr>
+<tr><td><strong>taishan6868 參考源碼</strong>（已停服）</td><td>商業捕魚遊戲完整功能</td><td>Lua + 舊世代 Node.js</td><td>已停服，不計</td><td>已停服</td><td>功能完整（Boss魚/換皮/鑽石抽獎）</td><td>已停服，Lua 架構，無真實即時多人能力</td><td>TypeScript 現代化重寫，全棧一致，可維護</td></tr>
+</tbody></table></div>
+<h3 id="62-差異化策略">§6.2 差異化策略</h3>
+<p>本產品的三層護城河（詳見 §5.3 Riskiest Assumption 驗證邏輯）：</p>
+<ol>
+<li><strong>技術護城河</strong>：Colyseus 0.15 真正即時多人 vs 競品偽多人，大廠重建成本高</li>
+<li><strong>數值護城河</strong>：整數分母 RNG 精度 + 動態 RTP 數值積累 → 形成數值設計資料資產</li>
+<li><strong>社群護城河</strong>：玩家基礎形成後，社交關係網絡效應讓競品難以快速搶奪</li>
+</ol>
+<hr>
+<h2 id="7-success-metrics成功指標">§7 Success Metrics（成功指標）</h2>
+<h3 id="71-north-star-指標">§7.1 North Star 指標</h3>
+<blockquote><p><strong>North Star：月活付費玩家的平均月 ARPPU（ARPPU = 月收入 / 付費用戶數）</strong></p></blockquote>
+<p>選擇依據：ARPPU 直接反映每位付費玩家的月付費深度，配合付費率（OBJ-2）與 DAU（OBJ-1）三指標共同決定月營收，是「付費用戶價值」的核心體現。目標值：$20 USD/月（換算：月營收 $10K / 付費用戶 500 人 = $20 ARPPU；對比 ARPU = 月營收 $10K / DAU 10K = $1/用戶）。</p>
+<hr>
+<h3 id="72-業務指標階層">§7.2 業務指標階層</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>層次</th><th>指標</th><th>目標值</th><th>測量頻率</th></tr></thead>
+<tbody>
+<tr><td><strong>Outcome</strong></td><td>30 日留存率</td><td>≥ 40%</td><td>週</td></tr>
+<tr><td><strong>Output（產出）</strong></td><td>DAU</td><td>10,000</td><td>日</td></tr>
+<tr><td><strong>Output</strong></td><td>付費率</td><td>5%</td><td>日</td></tr>
+<tr><td><strong>Output</strong></td><td>ARPPU（月收入/付費用戶）</td><td>$20/月</td><td>月</td></tr>
+<tr><td><strong>Input（投入）</strong></td><td>新增安裝量</td><td>500/日（上線初期）</td><td>日</td></tr>
+<tr><td><strong>Input</strong></td><td>行銷 CPI</td><td>< $3 USD</td><td>週</td></tr>
+<tr><td><strong>Input</strong></td><td>7 日留存率</td><td>≥ 50%</td><td>週</td></tr>
+<tr><td><strong>Input</strong></td><td>平均局數/人/日（核心付費）</td><td>≥ 5 局</td><td>日</td></tr>
+<tr><td><strong>Input</strong></td><td>Boss 魚射擊比例</td><td>≥ 30%</td><td>週</td></tr>
+</tbody></table></div>
+<p><em>7 日留存率目標 ≥ 50% 的依據：基於典型休閒遊戲留存衰減曲線，若 D30 留存目標 ≥ 40%，則 D7 需達 ≥ 50%（假設 D7→D30 每週留存衰減 ≤ 8%，即 50%→46%→43%→40%，4 週複合衰減係數 ≤ 20%）。具體衰減係數由上線後第一個月數據校正，D7 目標可依實際情況上調。</em></p>
+<hr>
+<h2 id="8-constraints-assumptions限制與假設">§8 Constraints & Assumptions（限制與假設）</h2>
+<h3 id="81-硬性限制hard-constraints">§8.1 硬性限制（Hard Constraints）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>限制</th><th>描述</th><th>影響</th></tr></thead>
+<tbody>
+<tr><td><strong>6 個月開發計畫</strong></td><td>1-2 月核心玩法，3-4 月系統完善，5 月測試，6 月上線（募資企劃書承諾）</td><td>功能範圍必須嚴格控制在 MVP</td></tr>
+<tr><td><strong>募資上限 $200K USD</strong></td><td>預算不可超支（開發 $100K / 行銷 $60K / 運維 $40K）</td><td>外包美術、雲端費用需在預算內</td></tr>
+<tr><td><strong>OQ1 法規門檻</strong></td><td>台灣法規意見書（OQ1）必須在 BRD 付費模型鎖定前完成（期限：2026-04-30）</td><td>BRD 付費模型目前帶條件鎖定</td></tr>
+</tbody></table></div>
+<h3 id="82-軟性限制soft-constraints">§8.2 軟性限制（Soft Constraints）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>限制</th><th>描述</th><th>可調整空間</th></tr></thead>
+<tbody>
+<tr><td><strong>行銷預算 < 月營收 20%</strong></td><td>初期依賴有機口碑（60%+），CPI < $3 USD</td><td>若留存率高（≥ 40%），可適度增加付費廣告</td></tr>
+<tr><td><strong>美術外包</strong></td><td>魚類/場景美術依賴外包，需提前 2 個月鎖定合作方</td><td>若外包延遲，可先用 placeholder 美術開發</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="83-假設驗證矩陣">§8.3 假設驗證矩陣</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>假設陳述</th><th>影響層級</th><th>不確定性</th><th>驗證方式</th><th>驗證期限</th><th>若錯誤的後果</th></tr></thead>
+<tbody>
+<tr><td><strong>A2</strong></td><td>DAU 10K 下，單台 VPS + Colyseus 能穩定支撐 500 並發房間</td><td>HIGH</td><td>MEDIUM</td><td>k6 壓力測試，模擬 500 並發房間</td><td>EDD 完成後 PoC</td><td>需提前投入 k8s 擴容，成本增加 20-30%</td></tr>
+<tr><td><strong>A4</strong></td><td>台灣市場虛擬貨幣付費機制不存在重大法規障礙</td><td>HIGH</td><td>MEDIUM</td><td>法務顧問預審出具初步意見書</td><td>2026-04-30</td><td>付費模型需根本性重設，商業模式延期</td></tr>
+<tr><td><strong>A5</strong></td><td>越南/泰國/印尼目標市場法規允許本產品付費機制</td><td>MEDIUM</td><td>HIGH</td><td>Phase 2 上市前個別市場法規評估</td><td>2026 Q3</td><td>Phase 2 特定市場延期或調整付費設計</td></tr>
+<tr><td><strong>A3</strong></td><td>TypeScript + Cocos Creator 4.x 可在 6 個月內完成 MVP</td><td>MEDIUM</td><td>MEDIUM</td><td>開發月 1 PoC 完成度評估</td><td>開發月 1 底</td><td>縮減 MVP 功能範圍，推遲 Phase 2</td></tr>
+<tr><td><strong>A6</strong></td><td>付費玩家月平均 ARPPU 可達 $20（較競品 ARPPU 高端 $15 高 +33%）</td><td>HIGH</td><td>MEDIUM</td><td>Beta 測試（N ≥ 50 玩家）付費行為觀察：統計 Beta 期間付費用戶人均消費；上線後 3 個月追蹤真實 ARPPU</td><td>Beta 測試期間（開發月 5）+ 上線後第 3 個月</td><td>商業模式再調整：若 ARPPU 僅達 $12-15，需提升付費轉化率至 7-8%（OBJ-2 上調）才能維持 $10K 月營收；或重新設計高消費道具；ROI 回收期延長至 30-40 個月。<strong>量化觸發條件：若上線後第 3 個月 ARPPU < $15 USD，立即觸發 OBJ-3 目標值重審，評估定價策略調整（與 §3.3 Pivot 評估流程一致）</strong></td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="84-mitigation-roadmap緩解路線圖">§8.4 Mitigation Roadmap（緩解路線圖）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>風險</th><th>短期行動（開發月 1-2）</th><th>中期行動（開發月 3-4）</th><th>驗收標準</th></tr></thead>
+<tbody>
+<tr><td><strong>A2 技術 SLA</strong>（R3）</td><td>PoC 4 人房間延遲 < 100ms</td><td>k6 500 並發房間壓測</td><td>p99 < 100ms @ 500 rooms</td></tr>
+<tr><td><strong>A4 台灣法規</strong>（R4）</td><td>法務顧問預審出具初步意見書（2026-04-30）</td><td>東南亞各市場法規分析（2026 Q3）</td><td>無市場帶法規禁令上線</td></tr>
+<tr><td><strong>RTP 精度</strong>（R2）</td><td>整數分母 RNG 設計完成；10,000 局單元測試</td><td>100,000 局回歸模擬，RTP 誤差 < 0.1%</td><td>上線前 0 個 RTP 偏差 Bug</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="9-regulatory-compliance法規與合規">§9 Regulatory & Compliance（法規與合規）</h2>
+<h3 id="91-法規-標準表">§9.1 法規 / 標準表</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>法規 / 標準</th><th>適用範圍</th><th>影響</th><th>負責人</th><th>狀態</th></tr></thead>
+<tbody>
+<tr><td>台灣《消費者保護法》</td><td>虛擬商品退款、未成年保護</td><td>鑽石購買後不退款條款合法性</td><td>法務顧問</td><td>🔲 預審中</td></tr>
+<tr><td>東南亞各國賭博相關法規（越南/泰國/印尼）</td><td>Phase 2 上市前適用</td><td>虛擬貨幣 + 概率道具是否需要許可</td><td>Legal/PM</td><td>🔲 Phase 2 評估</td></tr>
+<tr><td>個人資料保護法（台灣 PDPA）</td><td>玩家帳號、付費紀錄、遊戲行為</td><td>資料蒐集、儲存、刪除程序；隱私政策文件（法務起草）</td><td>Engineering + 法務顧問</td><td>🔲 EDD 設計中</td></tr>
+<tr><td>App Store / Google Play 政策</td><td>虛擬貨幣機制、隨機道具揭示率</td><td>需在商店頁面揭示 Jackpot 機率</td><td>PM</td><td>🔲 上線前確認</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="92-data-governance資料治理">§9.2 Data Governance（資料治理）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>資料類型</th><th>說明</th><th>擁有人</th><th>保留期限</th><th>存取政策</th><th>刪除程序</th></tr></thead>
+<tbody>
+<tr><td>付費紀錄（金流）</td><td>PII-adjacent — 財務交易紀錄</td><td>Finance</td><td>7 年（台灣稅法）</td><td>財務主管 + 審計</td><td>法定保留期後自動刪除</td></tr>
+<tr><td>遊戲行為日誌（局數、砲台、命中率）</td><td>匿名可分析資料</td><td>Analytics</td><td>2 年</td><td>分析師只讀</td><td>每年清理 2 年前舊日誌</td></tr>
+<tr><td>RTP 隨機種子 / Jackpot 池狀態</td><td>高敏感性系統資料</td><td>Engineering</td><td>永久保留（稽核用）</td><td>僅 RTP 系統 + 高階管理員</td><td>不刪除（合規稽核保留）</td></tr>
+<tr><td>設備 ID / 行為指紋</td><td>反作弊用途</td><td>Security</td><td>1 年</td><td>僅反作弊系統</td><td>自動過期</td></tr>
+</tbody></table></div>
+<p><em>PII 定義：依台灣個資法，玩家 Email + 帳號資料屬個人資料，需取得明確同意並提供刪除機制。</em></p>
+<hr>
+<h3 id="93-ip-licensing知識產權與授權">§9.3 IP & Licensing（知識產權與授權）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>項目</th><th>說明</th><th>授權類型</th><th>風險</th><th>對策</th></tr></thead>
+<tbody>
+<tr><td>Cocos Creator 4.x</td><td>客戶端引擎</td><td><strong>Cocos Creator 引擎 MIT License</strong> — 免版稅商業使用</td><td>低</td><td>依引擎使用條款合規</td></tr>
+<tr><td>魚類 / 場景美術（外包）</td><td>自行委外製作</td><td><strong>著作權歸屬合約</strong> — 需在外包合約中約定著作權完全移轉</td><td>中</td><td>外包合約加入「著作財產權讓與」條款</td></tr>
+<tr><td>taishan6868 參考源碼</td><td>竟品參考用途</td><td>參考研究（不複製代碼）</td><td>中</td><td>僅作架構參考，代碼從零開發</td></tr>
+<tr><td>TypeScript 生態套件</td><td>各種 npm 套件</td><td>各自 MIT / Apache 2.0</td><td>低</td><td>上線前 license 掃描</td></tr>
+<tr><td>遊戲機制（捕魚玩法）</td><td>通用遊戲機制，無法專利保護</td><td>公共領域</td><td>低</td><td>無需額外處理</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="10-risk-assessment風險評估">§10 Risk Assessment（風險評估）</h2>
+<h3 id="101-風險矩陣">§10.1 風險矩陣</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>風險描述</th><th>類型</th><th>可能性</th><th>影響</th><th>風險等級</th><th>緩解策略</th></tr></thead>
+<tbody>
+<tr><td><strong>R2</strong></td><td>RTP 精度問題導致玩家信任崩潰</td><td>技術</td><td>MEDIUM</td><td>HIGH</td><td>🔴 HIGH</td><td>整數分母 RNG 設計；100,000 局模擬測試；上線前 RTP 誤差 < 0.1% 驗收</td></tr>
+<tr><td><strong>R3</strong></td><td>Colyseus 在 DAU 10K 下出現單點瓶頸</td><td>技術</td><td>MEDIUM</td><td>HIGH</td><td>🟡 MEDIUM</td><td>分房間架構天然隔離；提前 k8s 水平擴容測試；p99 < 100ms SLA</td></tr>
+<tr><td><strong>R4</strong></td><td>台灣法規風險：虛擬貨幣 + 博彩元素不合規</td><td>法規</td><td>MEDIUM</td><td>HIGH</td><td>🔴 HIGH</td><td>BRD 前法務預審（2026-04-30）；採「娛樂幣」定位。<strong>應急替代方案（若 OQ1 判定鑽石系統不合規）：（A）純訂閱制（$8-12/月）；（B）廣告 + 免費道具模式；（C）優先非台灣市場上線，台灣法規修正後跟進；OQ1 結果出爐後 2 週內完成決策</strong></td></tr>
+<tr><td><strong>R5</strong></td><td>玩家留存不足，30 日留存 < 30%</td><td>市場</td><td>HIGH</td><td>HIGH</td><td>🔴 HIGH</td><td>A/B 測試社交競技 vs 單人；每週活動 + 任務系統持續驅動留存</td></tr>
+<tr><td><strong>R6</strong></td><td>Cocos Creator 4.x 美術人才 / 外包稀缺</td><td>執行</td><td>MEDIUM</td><td>MEDIUM</td><td>🟡 MEDIUM</td><td>提前 2 個月鎖定美術外包；使用開源/授權美術資源作 placeholder</td></tr>
+<tr><td><strong>R7</strong></td><td>行銷 CPI 過高，燒光行銷預算</td><td>市場</td><td>MEDIUM</td><td>MEDIUM</td><td>🟡 MEDIUM</td><td>優先社群口碑（60%+ 有機）；延後付費廣告至留存率驗證後；CPI 監控閾值 $3</td></tr>
+</tbody></table></div>
+<p><em>風險等級計算：HIGH × HIGH = 🔴 HIGH；MEDIUM × HIGH = 🟡 MEDIUM；HIGH × MEDIUM = 🔴 HIGH</em></p>
+<hr>
+<h2 id="11-business-model商業模式">§11 Business Model（商業模式）</h2>
+<h3 id="111-商業模式畫布要素">§11.1 商業模式畫布要素</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>要素</th><th>內容</th></tr></thead>
+<tbody>
+<tr><td><strong>目標客戶</strong></td><td>台灣 + 東南亞，22-40 歲，社會青年 / 上班族，休閒競技遊戲玩家</td></tr>
+<tr><td><strong>收入來源</strong></td><td>道具內購（高倍砲台 / 鑽石補充 / 禮包）/ VIP 月訂閱（Phase 2，$8-12 USD）/ 限時活動付費（Phase 2）</td></tr>
+<tr><td><strong>定價策略</strong></td><td>免費入門（基礎砲台 + 初始金幣）+ 虛擬貨幣（鑽石）內購；VIP 月訂閱 $8-12 USD（Phase 2，參考亞洲同類手遊 VIP 月訂閱 $8-12 業界範圍，OQ1 通過後最終定價）</td></tr>
+<tr><td><strong>主要成本</strong></td><td>雲端伺服器（Colyseus 並發房間）/ 美術外包（魚類/場景）/ 行銷獲客（CPI < $3）/ 工程薪資</td></tr>
+<tr><td><strong>核心資源</strong></td><td>Cocos Creator 4.x + Colyseus 技術架構 / RTP 數值引擎 / 魚類美術資源 / 玩家社群</td></tr>
+<tr><td><strong>獲客管道</strong></td><td>社群媒體（TikTok/抖音爆金影片）/ 口碑推薦（好友邀請）/ 台灣手遊社群；初期 60%+ 有機</td></tr>
+<tr><td><strong>關鍵合作</strong></td><td>美術外包工作室 / 法務顧問（台灣）/ 雲端服務商（GCP/AWS）/ 台灣 App Store 發行</td></tr>
+</tbody></table></div>
+<h3 id="112-付費機制設計原則oq1-前提條件">§11.2 付費機制設計原則（OQ1 前提條件）</h3>
+<blockquote><p>⚠️ <strong>注意</strong>：以下付費機制設計以 OQ1（台灣法規初步意見書）通過為前提。若法務評估認定特定機制不合規，需在 OQ1 結果確認後修正。</p></blockquote>
+<ul>
+<li><strong>鑽石系統</strong>：採「娛樂幣」定位，非真實貨幣兌換，不可提現</li>
+<li><strong>Jackpot 池</strong>：累積式獎勵池，觸發條件在 App Store 頁面公開揭示</li>
+<li><strong>RTP 範圍</strong>：85-95%，玩家說明文件中以「回報率範圍」形式揭露</li>
+<li><strong>未成年保護</strong>：年齡驗證機制，13 歲以下不開放付費功能</li>
+</ul>
+<hr>
+<h2 id="12-high-level-roadmap高階路線圖">§12 High-Level Roadmap（高階路線圖）</h2>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">timeline
+    title Fishing Arcade Game 高階里程碑
+    section Discovery / Pre-Development
+        2026-04-21 : IDEA.md 確認，BRD 起草
+        2026-04-30 : OQ1 台灣法規意見書取得
+    section Build - MVP（月 1-4）
+        2026-05 / 月1 : PoC 完成（4 人房間 + 基礎射擊 + p99 &lt; 100ms）
+        2026-05 / 月1 : 美術外包合約簽訂
+        2026-06 / 月2 : 核心玩法完成（RTP 系統 + Jackpot 池 + 金幣/鑽石）
+        2026-07 / 月3 : 3 種魚類 + Boss 魚 + 完整 4 人房間管理（6 人房間為 Phase 2，詳見 §5.3）
+        2026-08 / 月4 : 系統整合（付費流程 + 反作弊 + 後台管理）
+    section Launch（月 5-6）
+        2026-09 / 月5 : Beta 測試（N ≥ 50 玩家，7 日留存監控）
+        2026-09 / 月5 : 100,000 局 RTP 模擬驗收
+        2026-10 / 月6 : MVP 正式上線（台灣 App Store + Google Play）
+    section Scale（月 7-12）
+        2026-11 : A/B 測試分析，留存率確認 ≥ 40%
+        2027-01 : Phase 2 啟動（武器 / 技能系統 / VIP / 東南亞）</div></div>
+<hr>
+<h2 id="13-dependencies依賴項目">§13 Dependencies（依賴項目）</h2>
+<h3 id="130-依賴表">§13.0 依賴表</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>依賴</th><th>類型</th><th>影響</th><th>負責人</th><th>期限</th></tr></thead>
+<tbody>
+<tr><td>美術外包合約</td><td>外部 Vendor</td><td>魚類/場景美術資源</td><td>tobala</td><td>開發月 1</td></tr>
+<tr><td>OQ2 Colyseus + Cocos 整合方案</td><td>內部 技術 PoC</td><td>客戶端架構設計，影響 EDD</td><td>Engineering</td><td>開發月 1 底</td></tr>
+<tr><td>雲端服務商選擇（GCP/AWS）</td><td>外部 Infra</td><td>k8s 擴容成本與架構</td><td>Engineering</td><td>EDD 完成前</td></tr>
+<tr><td>App Store / Google Play 開發者帳號</td><td>外部 Platform</td><td>上線發行許可</td><td>tobala</td><td>上線前 3 個月</td></tr>
+<tr><td><strong>App Store / Google Play Jackpot 機率揭示確認</strong></td><td>外部 Platform Policy</td><td>商店政策要求隨機道具（含 Jackpot）觸發機率必須在商店頁面公開揭示，不合規可能導致下架</td><td>PM</td><td><strong>開發月 1</strong>（設計付費道具前確認揭示格式）</td></tr>
+<tr><td><strong>Beta 測試玩家招募（N ≥ 50 真實用戶）</strong></td><td>外部 User Research</td><td>A1 假設驗證（留存率 ≥ 40%）與 A6 假設驗證（ARPPU ≥ $20）所需測試樣本；樣本不足將無法驗證核心假設</td><td>PM / tobala</td><td><strong>開發月 3</strong>（Beta 測試開始前 1 個月啟動招募）</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="131-vendor-risk-assessment廠商風險評估">§13.1 Vendor Risk Assessment（廠商風險評估）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>廠商 / 依賴</th><th>Tier</th><th>替代方案</th><th>退出計畫</th><th>風險評估</th></tr></thead>
+<tbody>
+<tr><td><strong>Cocos Creator 4.x</strong>（Cocos 官方）</td><td>Tier 1（核心）</td><td>Unity + TypeScript（學習成本高，拖延 3-6 個月）</td><td>如 Cocos 停止服務，可整體遷移至 Unity（成本極高，不建議）</td><td>低：Cocos 官方支援，亞洲手遊業界主流；版本 4.x 已穩定</td></tr>
+<tr><td><strong>美術外包工作室</strong>（單一供應商）</td><td>Tier 2（重要）</td><td>替換其他外包工作室（需 2-4 週交接）</td><td>合約中明定資源格式標準，降低換供應商成本</td><td>中：外包換供應商有時程風險；建議與 2 家供應商建立關係</td></tr>
+<tr><td><strong>雲端服務商（GCP / AWS）</strong></td><td>Tier 2（重要）</td><td>對方（AWS ↔ GCP）相互替換，3-4 週遷移</td><td>Infrastructure-as-Code（Terraform）降低鎖定</td><td>中：服務商鎖定風險低（標準 k8s）；費率變動是主要風險</td></tr>
+<tr><td><strong>台灣法務顧問</strong>（單一顧問）</td><td>Tier 2（重要）</td><td>更換其他法律事務所（OQ1 重新評估需 2-4 週）</td><td>保留顧問出具之書面意見書（不依賴口頭建議）</td><td>中：法規解讀可能因顧問不同而異；建議取得 2 家意見</td></tr>
+<tr><td><strong>npm 生態套件</strong>（TypeScript / Node.js）</td><td>Tier 3（輔助）</td><td>替換同功能套件（時間成本低）</td><td>package-lock.json 固定版本，避免自動升級</td><td>低：標準 npm 生態，套件替換成本低</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="14-open-questions待解問題">§14 Open Questions（待解問題）</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>問題</th><th>影響層級</th><th>若不解決的後果</th><th>負責人</th><th>BRD 入場門票</th><th>期限</th><th>狀態</th></tr></thead>
+<tbody>
+<tr><td><strong>OQ2</strong></td><td>Cocos Creator 4.x 與 Colyseus 0.15 的最佳整合模式（WebSocket 直連 vs Colyseus SDK）？</td><td>技術範圍</td><td>影響客戶端架構設計，可能造成 EDD 返工</td><td>Engineering</td><td>No（EDD 前鎖定即可）</td><td>開發月 1 底</td><td>🔲 OPEN</td></tr>
+<tr><td><strong>OQ3</strong></td><td>東南亞市場（越南、泰國、印尼）法規差異是否需要分市場上架策略？</td><td>法規</td><td>影響 Phase 2 上市時程與合規成本</td><td>Legal/PM</td><td>No（Phase 2 上市前解決）</td><td>2026 Q3</td><td>🔲 OPEN</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="15-decision-log決策記錄">§15 Decision Log（決策記錄）</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>日期</th><th>決策</th><th>選項</th><th>選擇</th><th>原因</th><th>決策者</th></tr></thead>
+<tbody>
+<tr><td>2026-04-21</td><td>後端框架選擇</td><td>Colyseus vs Socket.io 自建</td><td>Colyseus 0.15</td><td>MIT 授權商業可用，750K+ 下載成熟方案，與 Cocos 整合文件完整</td><td>tobala</td></tr>
+<tr><td>2026-04-21</td><td>MVP 武器範圍</td><td>全武器（4 種）vs 僅基礎砲台</td><td>僅基礎砲台（MVP）</td><td>核心假設驗證優先，武器多樣性屬體驗優化，不影響留存率核心假設驗證</td><td>tobala</td></tr>
+<tr><td>2026-04-21</td><td>技能系統時程</td><td>MVP 即含技能 vs Phase 2</td><td>Phase 2</td><td>核心架構可行性先行，技能系統屬體驗優化，MVP 先驗基礎競技架構</td><td>tobala</td></tr>
+<tr><td>2026-04-21</td><td>RTP 精度設計</td><td>浮點 RNG vs 整數分母 RNG</td><td>整數分母 RNG</td><td>浮點累積誤差在 100,000 局模擬下會超過 0.1% 閾值，整數分母是業界共識</td><td>Engineering</td></tr>
+<tr><td>2026-04-21</td><td>OQ1 處理方式</td><td>鎖定付費模型 vs 帶條件 BRD</td><td>帶條件 BRD（OQ1 = BRD 入場門票）</td><td>法規意見書未取得前鎖定付費模型風險過高；BRD 帶條件前進，OQ1 通過後鎖定</td><td>tobala + 法務</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="16-glossary術語表">§16 Glossary（術語表）</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>術語</th><th>定義</th></tr></thead>
+<tbody>
+<tr><td><strong>Jackpot 池</strong></td><td>累積式大獎獎金池，由所有玩家下注金額的固定比例自動累積</td></tr>
+<tr><td><strong>Colyseus 房間</strong></td><td>Colyseus 框架中的隔離多人遊戲實例，支援多個玩家共享遊戲狀態</td></tr>
+<tr><td><strong>DAU</strong>（Daily Active Users）</td><td>日活躍用戶數，本產品目標 10,000</td></tr>
+<tr><td><strong>ARPU</strong>（Average Revenue Per User）</td><td>每位用戶（含未付費）平均月收入 = 月營收 / DAU；本產品基準：$10K / 10K 用戶 = $1 USD/月</td></tr>
+<tr><td><strong>ARPPU</strong>（Average Revenue Per Paying User）</td><td>每位付費用戶平均月收入 = 月營收 / 付費用戶數；本產品目標：$10K / 500 付費用戶 = $20 USD/月（North Star 指標）</td></tr>
+<tr><td><strong>整數分母 RNG</strong></td><td>以整數分母（而非浮點數）表示概率，避免浮點精度誤差累積</td></tr>
+<tr><td><strong>Boss 魚</strong></td><td>高倍率高難度的特殊魚類，需多人協力或高倍砲台才能捕獲</td></tr>
+<tr><td><strong>鑽石系統</strong></td><td>付費虛擬貨幣（鑽石），用於購買高倍砲台、技能道具；非真實貨幣，不可提現</td></tr>
+<tr><td><strong>金幣</strong></td><td>免費虛擬貨幣，由遊戲內捕魚行為獲得，用於基礎遊戲消費</td></tr>
+<tr><td><strong>p99 延遲</strong></td><td>99th percentile 網路延遲，即 99% 的請求延遲低於此值（目標 < 100ms）</td></tr>
+<tr><td><strong>CPI</strong>（Cost Per Install）</td><td>每次安裝成本，本產品目標 < $3 USD</td></tr>
+<tr><td><strong>Phase 1</strong></td><td>台灣市場 MVP 上線階段（月 1-6）</td></tr>
+<tr><td><strong>Phase 2</strong></td><td>武器/技能/VIP 系統 + 東南亞市場擴張（月 7-18）</td></tr>
+<tr><td><strong>OQ</strong>（Open Question）</td><td>待解問題，OQ1 為 BRD 入場門票級別問題</td></tr>
+<tr><td><strong>ECR</strong>（Engineering Change Request）</td><td>工程變更請求，範疇外需求需執行 /devsop-change</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="17-references參考來源">§17 References（參考來源）</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>來源</th><th>說明</th><th>引用章節</th></tr></thead>
+<tbody>
+<tr><td>docs/req/魚機遊戲募資企劃書.md</td><td>募資企劃書：財務預估（DAU 10K, ARPU $20, $200K 募資）、產品設計（魚群/武器/技能/RTP）</td><td>§3 目標、§11 商業模式</td></tr>
+<tr><td>docs/req/ref-README.md</td><td>taishan6868/Fishing-game-source-code 競品分析來源</td><td>§6 競品分析</td></tr>
+<tr><td>Colyseus 官方文件（colyseus.io）</td><td>Colyseus 0.15 技術特性、MIT 授權、750K+ npm 下載</td><td>§13.1 Vendor Risk</td></tr>
+<tr><td>亞洲線上休閒遊戲市場研究</td><td>TAM $20B、SAM $200M 估算基礎（建議在 BRD 審查後引用 Sensor Tower / Data.ai 正式報告強化可信度）</td><td>§2.3 問題規模</td></tr>
+<tr><td>競品 App Store 評測（歡樂捕魚類）</td><td>ARPPU 推估 $10-15（付費用戶人均月消費），App Store 評分 4.0-4.3，30 日留存 < 30%（業界口碑，信心水準：中）</td><td>§6 競品分析</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="18-brdprd-handoff-checklist交接清單">§18 BRD→PRD Handoff Checklist（交接清單）</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>項目</th><th>狀態</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td><strong>H2</strong></td><td>§3 Business Objectives 均為 SMART 格式（含量化 KPI + 時間框架）</td><td>🔲</td><td>待 /devsop-brd-review 確認</td></tr>
+<tr><td><strong>H3</strong></td><td>§5 MoSCoW 功能清單已通過 Review，P0/P1/P2/Won't Have 均明確</td><td>🔲</td><td>待 /devsop-brd-review 確認</td></tr>
+<tr><td><strong>H4</strong></td><td>OQ1（台灣法規意見書）已取得，BRD 付費模型可完全鎖定</td><td>🔲</td><td>期限 2026-04-30，目前 OPEN</td></tr>
+<tr><td><strong>H5</strong></td><td>§4.4 RACI Matrix 已通過 stakeholder 確認（至少 tobala 簽核）</td><td>🔲</td><td>待 tobala 確認</td></tr>
+<tr><td><strong>H6</strong></td><td>§13.1 Vendor Risk 已確認（Colyseus + Cocos 授權無商業障礙）</td><td>🔲</td><td>待 Engineering 確認 Colyseus 0.15 與 Cocos 4.x 整合方案</td></tr>
+</tbody></table></div>
+<p><em>全部 H1-H6 通過後，方可啟動 /devsop-gen-prd。</em></p>
+<hr>
+<h2 id="19-organizational-change-management組織變革管理">§19 Organizational Change Management（組織變革管理）</h2>
+<h3 id="191-變革影響評估">§19.1 變革影響評估</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>受影響部門 / 群體</th><th>變革程度</th><th>主要變革內容</th><th>Change Champion</th></tr></thead>
+<tbody>
+<tr><td>美術外包</td><td>MEDIUM</td><td>需依照 Cocos Creator 4.x 資源規格（sp格式/圖集）交付，格式規格新於習慣格式</td><td>tobala</td></tr>
+<tr><td>法務顧問</td><td>LOW</td><td>需理解數位娛樂虛擬貨幣產品，評估台灣法規合規路徑</td><td>tobala</td></tr>
+<tr><td>投資人 / 募資對象</td><td>LOW</td><td>需理解 RTP 數值控管模型與留存率驗證策略</td><td>tobala</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="192-訓練與溝通計畫">§19.2 訓練與溝通計畫</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>受眾</th><th>訓練內容</th><th>溝通形式</th><th>期限</th></tr></thead>
+<tbody>
+<tr><td>美術外包</td><td>Cocos Creator 4.x 資源格式規格書（sp格式/圖集/解析度）</td><td>資源規格文件 + 樣本驗收</td><td>外包合約簽訂後 1 週</td></tr>
+<tr><td>投資人候選</td><td>BRD 財務模型、留存率驗證計畫、技術風險緩解策略</td><td>BRD.md PDF + 口頭 Pitch（30 分鐘）</td><td>BRD 審查後</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="193-抗拒緩解策略">§19.3 抗拒緩解策略</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>抗拒來源</th><th>預期抗拒</th><th>緩解策略</th></tr></thead>
+<tbody>
+<tr><td>法務顧問</td><td>虛擬貨幣定性不確定，難以給出明確意見</td><td>提供 2-3 個類似案例（如手遊虛擬貨幣）作為參考，設定 2026-04-30 明確期限</td></tr>
+<tr><td>投資人</td><td>市場競爭激烈，差異化不夠顯著</td><td>以三層護城河（技術/數值/社群）框架呈現，強調競品技術更新成本高</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="194-內部採用成功指標">§19.4 內部採用成功指標</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>指標</th><th>目標值</th><th>測量方式</th><th>測量時間點</th></tr></thead>
+<tbody>
+<tr><td>法務意見書取得</td><td>OQ1 在 2026-04-30 前完成</td><td>書面意見書出具</td><td>2026-04-30</td></tr>
+<tr><td>美術資源規格驗收通過率</td><td>≥ 90%（初次驗收）</td><td>資源審查</td><td>開發月 2 中期</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="20-approval-sign-off簽核表">§20 Approval Sign-off（簽核表）</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>角色</th><th>姓名</th><th>簽核日期</th><th>備註</th></tr></thead>
+<tbody>
+<tr><td><strong>Product Lead</strong></td><td>tobala</td><td>🔲 待簽核</td><td>Product + 業務決策</td></tr>
+<tr><td><strong>Engineering Lead</strong></td><td>🔲 待指定</td><td>🔲 待簽核</td><td>技術可行性最終確認</td></tr>
+<tr><td><strong>Finance</strong></td><td>tobala</td><td>🔲 待簽核</td><td>$200K 募資預算核准</td></tr>
+<tr><td><strong>Legal</strong></td><td>法務顧問（台灣）</td><td>🔲 待簽核</td><td><strong>OQ1 意見書出具後方可簽核</strong>（期限：2026-04-30）</td></tr>
+</tbody></table></div>
+<p><em>Legal 簽核條件：OQ1 台灣法規初步意見書出具後，由法務顧問確認 BRD 付費模型合規性後方可簽核。在 OQ1 OPEN 期間，BRD 帶條件前進，Legal 一欄維持 🔲。</em></p>
+<hr>
+<p><em>此 BRD 由 /devsop-gen-brd 自動生成（Full-Auto 模式）。</em> <em>基於 IDEA-FISHING-ARCADE-GAME-20260421，依 templates/BRD.md 全 20 章節結構產出。</em> <em>OQ1（台灣法規意見書）取得後，請更新 §14 OQ1 狀態、§18 H4、§20 Legal 簽核，並執行 /devsop-brd-review 重新審查。</em></p>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Schema — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item active"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>Database Schema</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">Database Schema</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#document-control">Document Control</a></li>
+<li><a href="#1-full-ddl">§1 Full DDL</a></li>
+<li class="toc-h3"><a href="#users">`users`</a></li>
+<li class="toc-h3"><a href="#user-wallets">`user_wallets`</a></li>
+<li class="toc-h3"><a href="#transactions">`transactions`</a></li>
+<li class="toc-h3"><a href="#iap-receipts">`iap_receipts`</a></li>
+<li class="toc-h3"><a href="#jackpot-pool">`jackpot_pool`</a></li>
+<li class="toc-h3"><a href="#jackpot-history">`jackpot_history`</a></li>
+<li class="toc-h3"><a href="#game-sessions">`game_sessions`</a></li>
+<li class="toc-h3"><a href="#user-consents">`user_consents`</a></li>
+<li class="toc-h3"><a href="#deletion-requests">`deletion_requests`</a></li>
+<li class="toc-h3"><a href="#privacy-policies">`privacy_policies`</a></li>
+<li class="toc-h3"><a href="#rtp-logs">`rtp_logs`</a></li>
+<li><a href="#2-all-indexes">§2 All Indexes</a></li>
+<li><a href="#3-entity-relationship-diagram">§3 Entity-Relationship Diagram</a></li>
+<li><a href="#4-data-dictionary-key-columns">§4 Data Dictionary — Key Columns</a></li>
+<li><a href="#5-data-retention-policies">§5 Data Retention Policies</a></li>
+<li><a href="#6-pii-columns">§6 PII Columns</a></li>
+<li><a href="#7-redis-key-conventions">§7 Redis Key Conventions</a></li>
+</ul></div>
+        <h1 id="database-schema-reference-fishing-arcade-game">Database Schema Reference — Fishing Arcade Game</h1>
+<!-- DOC-ID: SCHEMA-FISHING-ARCADE-GAME-20260422 -->
+<!-- Parent: EDD-FISHING-ARCADE-GAME-20260422 (docs/EDD.md) -->
+<!-- Database: PostgreSQL 15 + Redis 7 -->
+<hr>
+<h2 id="document-control">Document Control</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Content</th></tr></thead>
+<tbody>
+<tr><td><strong>Project</strong></td><td>fishing-arcade-game</td></tr>
+<tr><td><strong>Version</strong></td><td>v1.0</td></tr>
+<tr><td><strong>Status</strong></td><td>DRAFT</td></tr>
+<tr><td><strong>Source</strong></td><td>EDD v1.5 §2.6, §2.3, §2.4 (IN_REVIEW)</td></tr>
+<tr><td><strong>Date</strong></td><td>2026-04-22</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="1-full-ddl">§1 Full DDL</h2>
+<h3 id="users"><code>users</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- email: AES-256-GCM encrypted (non-deterministic nonce); stored as BYTEA
+-- email_hash: HMAC-SHA256(plaintext_email, HMAC_SECRET_KEY); enables uniqueness lookup
+-- because AES-GCM random nonce means the same email → different ciphertext each encrypt
+CREATE TABLE users (
+    id                    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    email                 BYTEA        NOT NULL,
+    email_hash            BYTEA        NOT NULL UNIQUE,
+    nickname              VARCHAR(50)  NOT NULL,
+    password_hash         TEXT         NOT NULL,           -- bcrypt
+    device_id             VARCHAR(64),                     -- SHA-256 hash of device ID; original never stored
+    deletion_status       VARCHAR(20)  NOT NULL DEFAULT 'active'
+                              CHECK (deletion_status IN ('active', 'pending', 'deleted')),
+    deletion_requested_at TIMESTAMPTZ,
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);</code></pre></div>
+<h3 id="user-wallets"><code>user_wallets</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- 1:1 with users; CASCADE delete allowed (wallet has no independent regulatory value)
+CREATE TABLE user_wallets (
+    user_id    UUID    PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    gold       BIGINT  NOT NULL DEFAULT 0 CHECK (gold &gt;= 0),
+    diamond    INTEGER NOT NULL DEFAULT 0 CHECK (diamond &gt;= 0),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);</code></pre></div>
+<h3 id="transactions"><code>transactions</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Immutable ledger; rows are never deleted; retained 7 years (tax law)
+-- After user deletion, user_id UUID reference is retained; PII anonymised in users row only
+-- No ON DELETE clause on FK: defaults to ON DELETE RESTRICT — acceptable because the
+-- executeScheduledDeletions cron anonymises the users row but never hard-deletes it.
+CREATE TABLE transactions (
+    id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    UUID         NOT NULL REFERENCES users(id),
+    type       VARCHAR(20)  NOT NULL
+                   CHECK (type IN ('earn', 'spend', 'iap', 'jackpot', 'refund', 'daily_restore')),
+    amount     BIGINT       NOT NULL,          -- positive = credit; negative = debit
+    currency   VARCHAR(10)  NOT NULL DEFAULT 'gold'
+                   CHECK (currency IN ('gold', 'diamond')),
+    ref_id     UUID,                           -- optional FK: game_session_id or iap_receipt_id
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_transactions_user_created ON transactions(user_id, created_at DESC);</code></pre></div>
+<h3 id="iap-receipts"><code>iap_receipts</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Idempotency table: receipt_hash uniqueness prevents double diamond grant
+-- No ON DELETE clause on FK: defaults to ON DELETE RESTRICT — user row is never hard-deleted;
+-- receipts are retained 7 years (financial record).
+CREATE TABLE iap_receipts (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID         NOT NULL REFERENCES users(id),
+    receipt_hash VARCHAR(64)  NOT NULL UNIQUE,  -- SHA-256(receipt) hex string
+    platform     VARCHAR(10)  NOT NULL CHECK (platform IN ('apple', 'google')),
+    product_id   VARCHAR(100) NOT NULL,
+    diamond_amt  INTEGER      NOT NULL CHECK (diamond_amt &gt; 0),
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);</code></pre></div>
+<h3 id="jackpot-pool"><code>jackpot_pool</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Singleton state table; enforced by CHECK (id = 1)
+-- Source of truth for Redis restore on server restart
+CREATE TABLE jackpot_pool (
+    id             INTEGER  PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    current_amount BIGINT   NOT NULL DEFAULT 10000,  -- seed amount in gold coins
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Insert the singleton row on first deploy:
+INSERT INTO jackpot_pool (id, current_amount) VALUES (1, 10000) ON CONFLICT DO NOTHING;</code></pre></div>
+<h3 id="jackpot-history"><code>jackpot_history</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Audit trail of all jackpot payouts
+-- No ON DELETE clause on winner_id FK: defaults to ON DELETE RESTRICT — user row is never
+-- hard-deleted; jackpot records are retained 7 years (financial record).
+CREATE TABLE jackpot_history (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    winner_id    UUID         NOT NULL REFERENCES users(id),
+    amount       BIGINT       NOT NULL CHECK (amount &gt; 0),
+    triggered_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    room_id      VARCHAR(100)
+);
+
+CREATE INDEX idx_jackpot_history_winner ON jackpot_history(winner_id, triggered_at DESC);</code></pre></div>
+<h3 id="game-sessions"><code>game_sessions</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Analytics + admin dashboard; ip_address auto-NULLed after 90 days by ip-cleanup cron
+CREATE TABLE game_sessions (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id      VARCHAR(100) NOT NULL,
+    started_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    ended_at     TIMESTAMPTZ,
+    ip_address   INET,                           -- logged for anti-cheat; masked in logs; deleted after 90 days
+    player_ids   UUID[]       NOT NULL DEFAULT '{}',
+    player_count INTEGER      NOT NULL DEFAULT 0,
+    room_state   VARCHAR(20)  NOT NULL DEFAULT 'WAITING'
+                     CHECK (room_state IN ('WAITING', 'PLAYING', 'ENDED'))
+);
+
+CREATE INDEX idx_game_sessions_started_at ON game_sessions(started_at);
+CREATE INDEX idx_game_sessions_room_id   ON game_sessions(room_id);</code></pre></div>
+<h3 id="user-consents"><code>user_consents</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- PDPA consent records; ON DELETE RESTRICT: consent records must be retained as evidence
+-- even after account deletion/anonymisation (PDPA compliance).
+-- executeScheduledDeletions soft-anonymises users row; does NOT hard-delete it.
+-- policy_version: intentionally NOT a FK constraint — privacy_policies rows must be
+-- immutable history; a soft reference prevents accidental policy row deletion from
+-- breaking referential integrity. Application layer validates version exists on insert.
+CREATE TABLE user_consents (
+    id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    consent_type   VARCHAR(100) NOT NULL
+                       CHECK (consent_type IN ('privacy_policy', 'marketing')),
+    granted        BOOLEAN      NOT NULL,
+    granted_at     TIMESTAMPTZ,
+    revoked_at     TIMESTAMPTZ,                  -- NULL = not revoked
+    policy_version VARCHAR(20)  NOT NULL,        -- soft ref to privacy_policies.version (no FK; see above)
+    ip_address     INET,
+    user_agent     TEXT,                         -- stored for PDPA evidence; OS version and beyond masked in logs
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_consents_user_type ON user_consents(user_id, consent_type);</code></pre></div>
+<h3 id="deletion-requests"><code>deletion_requests</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Tracks 30-day soft-delete schedule; PK = user_id (one pending request per user)
+-- No ON DELETE clause on FK: defaults to ON DELETE RESTRICT — ensures user row cannot be
+-- hard-deleted while a deletion request exists; cron executes soft-anonymisation instead.
+CREATE TABLE deletion_requests (
+    user_id       UUID        PRIMARY KEY REFERENCES users(id),
+    requested_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    scheduled_for TIMESTAMPTZ NOT NULL,           -- = requested_at + 30 days
+    executed_at   TIMESTAMPTZ,                    -- set by executeScheduledDeletions cron
+    cancelled_at  TIMESTAMPTZ                     -- set by cancelDeletion API
+);</code></pre></div>
+<h3 id="privacy-policies"><code>privacy_policies</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Version registry for consent tracking; consent records reference version string
+CREATE TABLE privacy_policies (
+    version      VARCHAR(20)  PRIMARY KEY,       -- semver e.g. '1.0.0'
+    content_url  TEXT         NOT NULL,           -- URL to hosted policy text
+    effective_at TIMESTAMPTZ  NOT NULL,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);</code></pre></div>
+<h3 id="rtp-logs"><code>rtp_logs</code></h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Regulatory audit trail; PERMANENT retention (never deleted)
+-- Used by: wallet-reconcile cron; regulatory 'all bets by user' queries
+CREATE TABLE rtp_logs (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id      VARCHAR(100) NOT NULL,
+    user_id      UUID         NOT NULL,           -- no FK: user row may be anonymised; UUID retained
+    fish_type    VARCHAR(20)  NOT NULL CHECK (fish_type IN ('normal', 'elite', 'boss')),
+    bet_amount   BIGINT       NOT NULL CHECK (bet_amount &gt; 0),
+    multiplier   INTEGER      NOT NULL CHECK (multiplier &gt; 0),
+    hit          BOOLEAN      NOT NULL,
+    payout       BIGINT       NOT NULL DEFAULT 0,
+    rtp_at_time  NUMERIC(5,4) NOT NULL,           -- running RTP at adjudication time (e.g. 0.9250)
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_rtp_logs_room ON rtp_logs(room_id, created_at DESC);
+CREATE INDEX idx_rtp_logs_user ON rtp_logs(user_id, created_at DESC);  -- regulatory 'all bets by user'</code></pre></div>
+<hr>
+<h2 id="2-all-indexes">§2 All Indexes</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Index Name</th><th>Table</th><th>Columns</th><th>Type</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>users<em>email</em>hash_key</code></td><td>users</td><td><code>email_hash</code></td><td>Unique B-tree</td><td>Uniqueness lookup (AES-GCM is non-deterministic)</td></tr>
+<tr><td><code>user<em>wallets</em>pkey</code></td><td>user_wallets</td><td><code>user_id</code></td><td>PK / B-tree</td><td>Primary key; 1:1 join with users</td></tr>
+<tr><td><code>idx<em>transactions</em>user_created</code></td><td>transactions</td><td><code>(user<em>id, created</em>at DESC)</code></td><td>Composite B-tree</td><td>Wallet reconciliation; audit queries</td></tr>
+<tr><td><code>iap<em>receipts</em>receipt<em>hash</em>key</code></td><td>iap_receipts</td><td><code>receipt_hash</code></td><td>Unique B-tree</td><td>Idempotency check before diamond credit</td></tr>
+<tr><td><code>jackpot<em>pool</em>pkey</code></td><td>jackpot_pool</td><td><code>id</code></td><td>PK + CHECK</td><td>Singleton enforcement</td></tr>
+<tr><td><code>idx<em>jackpot</em>history_winner</code></td><td>jackpot_history</td><td><code>(winner<em>id, triggered</em>at DESC)</code></td><td>Composite B-tree</td><td>Player jackpot history lookup</td></tr>
+<tr><td><code>idx<em>game</em>sessions<em>started</em>at</code></td><td>game_sessions</td><td><code>started_at</code></td><td>B-tree</td><td>Analytics range queries</td></tr>
+<tr><td><code>idx<em>game</em>sessions<em>room</em>id</code></td><td>game_sessions</td><td><code>room_id</code></td><td>B-tree</td><td>Room-level session lookup</td></tr>
+<tr><td><code>idx<em>user</em>consents<em>user</em>type</code></td><td>user_consents</td><td><code>(user<em>id, consent</em>type)</code></td><td>Composite B-tree</td><td>Login policy-version check; latest consent per type</td></tr>
+<tr><td><code>deletion<em>requests</em>pkey</code></td><td>deletion_requests</td><td><code>user_id</code></td><td>PK / B-tree</td><td>One pending request per user; cron scheduled_for query</td></tr>
+<tr><td><code>privacy<em>policies</em>pkey</code></td><td>privacy_policies</td><td><code>version</code></td><td>PK / B-tree</td><td>Version lookup at consent grant/revoke</td></tr>
+<tr><td><code>idx<em>rtp</em>logs_room</code></td><td>rtp_logs</td><td><code>(room<em>id, created</em>at DESC)</code></td><td>Composite B-tree</td><td>Room-level RTP audit</td></tr>
+<tr><td><code>idx<em>rtp</em>logs_user</code></td><td>rtp_logs</td><td><code>(user<em>id, created</em>at DESC)</code></td><td>Composite B-tree</td><td>Regulatory 'all bets by user' query</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-entity-relationship-diagram">§3 Entity-Relationship Diagram</h2>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">erDiagram
+    users {
+        UUID id PK
+        BYTEA email "AES-256-GCM encrypted"
+        BYTEA email_hash UK "HMAC-SHA256 for uniqueness"
+        VARCHAR50 nickname
+        TEXT password_hash "bcrypt"
+        VARCHAR64 device_id "SHA-256 hash"
+        VARCHAR20 deletion_status "active|pending|deleted"
+        TIMESTAMPTZ deletion_requested_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    user_wallets {
+        UUID user_id PK_FK
+        BIGINT gold "CHECK &gt;= 0"
+        INTEGER diamond "CHECK &gt;= 0"
+        TIMESTAMPTZ updated_at
+    }
+
+    transactions {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR20 type "earn|spend|iap|jackpot|refund|daily_restore"
+        BIGINT amount "+credit|-debit"
+        VARCHAR10 currency "gold|diamond"
+        UUID ref_id "optional: session or receipt"
+        TIMESTAMPTZ created_at
+    }
+
+    iap_receipts {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR64 receipt_hash UK "SHA-256"
+        VARCHAR10 platform "apple|google"
+        VARCHAR100 product_id
+        INTEGER diamond_amt
+        TIMESTAMPTZ created_at
+    }
+
+    jackpot_pool {
+        INTEGER id PK "singleton, CHECK = 1"
+        BIGINT current_amount "seed = 10000"
+        TIMESTAMPTZ updated_at
+    }
+
+    jackpot_history {
+        UUID id PK
+        UUID winner_id FK
+        BIGINT amount
+        TIMESTAMPTZ triggered_at
+        VARCHAR100 room_id
+    }
+
+    game_sessions {
+        UUID id PK
+        VARCHAR100 room_id
+        TIMESTAMPTZ started_at
+        TIMESTAMPTZ ended_at
+        INET ip_address "NULLed after 90 days"
+        UUID_ARRAY player_ids
+        INTEGER player_count
+        VARCHAR20 room_state "WAITING|PLAYING|ENDED"
+    }
+
+    user_consents {
+        UUID id PK
+        UUID user_id FK "ON DELETE RESTRICT"
+        VARCHAR100 consent_type "privacy_policy|marketing"
+        BOOLEAN granted
+        TIMESTAMPTZ granted_at
+        TIMESTAMPTZ revoked_at
+        VARCHAR20 policy_version "soft ref — no DB FK; app validates"
+        INET ip_address
+        TEXT user_agent
+        TIMESTAMPTZ created_at
+    }
+
+    deletion_requests {
+        UUID user_id PK_FK
+        TIMESTAMPTZ requested_at
+        TIMESTAMPTZ scheduled_for
+        TIMESTAMPTZ executed_at
+        TIMESTAMPTZ cancelled_at
+    }
+
+    privacy_policies {
+        VARCHAR20 version PK "semver"
+        TEXT content_url
+        TIMESTAMPTZ effective_at
+        TIMESTAMPTZ created_at
+    }
+
+    rtp_logs {
+        UUID id PK
+        VARCHAR100 room_id
+        UUID user_id "no FK — survives anonymisation"
+        VARCHAR20 fish_type "normal|elite|boss"
+        BIGINT bet_amount
+        INTEGER multiplier
+        BOOLEAN hit
+        BIGINT payout
+        NUMERIC rtp_at_time "5,4 precision"
+        TIMESTAMPTZ created_at
+    }
+
+    users ||--|| user_wallets : "1:1 wallet"
+    users ||--o{ transactions : "ledger entries (RESTRICT)"
+    users ||--o{ iap_receipts : "purchase receipts (RESTRICT)"
+    users ||--o{ jackpot_history : "jackpot wins (RESTRICT)"
+    users ||--o{ user_consents : "consent records (RESTRICT)"
+    users ||--o| deletion_requests : "deletion schedule (RESTRICT)"
+    privacy_policies }o--o{ user_consents : "soft ref (no DB FK)"</div></div>
+<hr>
+<h2 id="4-data-dictionary-key-columns">§4 Data Dictionary — Key Columns</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Table</th><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>users</td><td><code>email_hash</code></td><td>BYTEA</td><td><code>HMAC-SHA256(plaintext<em>email, HMAC</em>SECRET_KEY)</code>. Used for uniqueness lookup and login. Updated atomically with <code>email</code> on any email change.</td></tr>
+<tr><td>users</td><td><code>password_hash</code></td><td>TEXT</td><td>bcrypt hash of plaintext password. Plaintext password never persisted or logged.</td></tr>
+<tr><td>users</td><td><code>device_id</code></td><td>VARCHAR(64)</td><td>SHA-256 hash of device identifier. Original device ID never stored. Used for anti-cheat pattern analysis.</td></tr>
+<tr><td>users</td><td><code>deletion_status</code></td><td>VARCHAR(20)</td><td><code>active</code>: normal account. <code>pending</code>: deletion requested, within 30-day window. <code>deleted</code>: PII anonymised by <code>executeScheduledDeletions</code> cron.</td></tr>
+<tr><td>user_wallets</td><td><code>gold</code></td><td>BIGINT</td><td>Free virtual currency. <code>CHECK (gold &gt;= 0)</code> prevents negative balance at DB level. All mutations via <code>WalletService</code> with <code>FOR UPDATE</code> row-lock.</td></tr>
+<tr><td>user_wallets</td><td><code>diamond</code></td><td>INTEGER</td><td>Paid virtual currency (IAP only). Cannot be withdrawn or exchanged for cash (US-CURR-001/AC-3).</td></tr>
+<tr><td>transactions</td><td><code>amount</code></td><td>BIGINT</td><td>Positive = credit to wallet. Negative = debit from wallet. Immutable after insert.</td></tr>
+<tr><td>transactions</td><td><code>type</code></td><td>VARCHAR(20)</td><td><code>earn</code>: fish kill reward. <code>spend</code>: bullet bet. <code>iap</code>: diamond purchase. <code>jackpot</code>: jackpot payout. <code>refund</code>: admin refund. <code>daily_restore</code>: free gold top-up.</td></tr>
+<tr><td>iap_receipts</td><td><code>receipt_hash</code></td><td>VARCHAR(64)</td><td><code>SHA-256(raw_receipt)</code> hex string. Unique index prevents double diamond grant on retry. Idempotency key.</td></tr>
+<tr><td>jackpot_pool</td><td><code>id</code></td><td>INTEGER</td><td>Always 1. <code>CHECK (id = 1)</code> enforces singleton. Redis key <code>game:jackpot:pool</code> is the hot-path store; this table is the source of truth for restores.</td></tr>
+<tr><td>jackpot_history</td><td><code>winner_id</code></td><td>UUID</td><td>Verified user UUID from <code>client.auth.userId</code> (set by <code>onAuth</code>). Never the Colyseus <code>sessionId</code>.</td></tr>
+<tr><td>game_sessions</td><td><code>ip_address</code></td><td>INET</td><td>Anti-cheat source IP. Last 2 octets masked in logs. Auto-NULLed by <code>ip-cleanup</code> CronJob after 90 days.</td></tr>
+<tr><td>game_sessions</td><td><code>player_ids</code></td><td>UUID[]</td><td>Array appended in <code>onJoin</code>. Default <code>'{}'</code> allows INSERT before any player joins.</td></tr>
+<tr><td>game_sessions</td><td><code>room_state</code></td><td>VARCHAR(20)</td><td>Mirrors <code>GameState.roomState</code> for analytics queries without joining real-time state.</td></tr>
+<tr><td>user_consents</td><td><code>policy_version</code></td><td>VARCHAR(20)</td><td>NOT NULL — always records the active policy version at consent time. Soft reference to <code>privacy_policies.version</code> — no DB-level FK constraint (intentional: prevents orphan FK errors on historical policy records; application layer validates existence on insert).</td></tr>
+<tr><td>user_consents</td><td><code>revoked_at</code></td><td>TIMESTAMPTZ</td><td>NULL = active consent. Non-NULL = revoked. A new row is inserted for each consent event (immutable audit trail).</td></tr>
+<tr><td>rtp_logs</td><td><code>user_id</code></td><td>UUID</td><td>No FK constraint (intentional). <code>rtp_logs</code> is permanent; after account deletion, the UUID is retained as an opaque reference for RTP audit.</td></tr>
+<tr><td>rtp_logs</td><td><code>rtp<em>at</em>time</code></td><td>NUMERIC(5,4)</td><td>Running RTP percentage at the moment of adjudication, e.g. <code>0.9250</code> = 92.50%. <code>NUMERIC</code> avoids floating-point representation errors for financial records.</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="5-data-retention-policies">§5 Data Retention Policies</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Table / Column</th><th>Retention Policy</th><th>Mechanism</th></tr></thead>
+<tbody>
+<tr><td><code>game<em>sessions.ip</em>address</code></td><td><strong>90 days</strong> — then NULL</td><td><code>ip-cleanup</code> CronJob: daily 04:00 UTC — <code>UPDATE game<em>sessions SET ip</em>address=NULL WHERE started<em>at &lt; NOW() - INTERVAL '90 days' AND ip</em>address IS NOT NULL</code></td></tr>
+<tr><td><code>transactions</code> (entire table)</td><td><strong>7 years</strong> — never deleted</td><td>Tax law; user deletion anonymises <code>users</code> row but leaves transaction <code>user_id</code> UUID reference intact</td></tr>
+<tr><td><code>iap_receipts</code> (entire table)</td><td><strong>7 years</strong> — financial record</td><td>No delete; <code>user_id</code> UUID reference retained after user deletion</td></tr>
+<tr><td><code>jackpot_history</code> (entire table)</td><td><strong>7 years</strong> — financial record</td><td>No delete; <code>winner_id</code> UUID reference retained after user deletion</td></tr>
+<tr><td><code>user_consents</code> (entire table)</td><td><strong>Retained after account deletion</strong></td><td><code>ON DELETE RESTRICT</code> on <code>users.id</code> FK; consent rows provide PDPA evidence; never deleted</td></tr>
+<tr><td><code>users.email</code>, <code>users.email_hash</code>, <code>users.nickname</code></td><td><strong>Anonymised 30 days after deletion request</strong></td><td><code>executeScheduledDeletions</code> cron replaces PII with <code>deleted_&lt;random8&gt;@deleted.invalid</code> placeholder</td></tr>
+<tr><td><code>deletion_requests</code></td><td>Retained indefinitely</td><td>Audit record of when deletion was requested and executed</td></tr>
+<tr><td>Active sessions (<code>game_sessions</code>)</td><td>Retained indefinitely (post-game analytics)</td><td><code>ended_at</code> set on room dispose; IP column NULLed after 90 days</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="6-pii-columns">§6 PII Columns</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Table</th><th>Column</th><th>PII Type</th><th>Protection Method</th></tr></thead>
+<tbody>
+<tr><td>users</td><td><code>email_hash</code></td><td>Pseudonymous</td><td>HMAC-SHA256; one-way with server secret; used only for uniqueness lookup</td></tr>
+<tr><td>users</td><td><code>nickname</code></td><td>Quasi-identifier</td><td>Plaintext; partial mask in logs (<code>阿凱<em>*</em></code>); max 50 chars</td></tr>
+<tr><td>users</td><td><code>password_hash</code></td><td>Credential</td><td>bcrypt; plaintext never stored or logged</td></tr>
+<tr><td>users</td><td><code>device_id</code></td><td>Device fingerprint</td><td>SHA-256 hash; original never persisted; anti-cheat use only</td></tr>
+<tr><td>game_sessions</td><td><code>ip_address</code></td><td>Network identifier</td><td>Stored; last 2 octets masked in logs; hard-deleted (NULLed) after 90 days by cron</td></tr>
+<tr><td>user_consents</td><td><code>ip_address</code></td><td>Network identifier</td><td>Stored for PDPA evidence; last 2 octets masked in logs</td></tr>
+<tr><td>user_consents</td><td><code>user_agent</code></td><td>Device/browser info</td><td>Stored for PDPA evidence; OS version and beyond masked in logs</td></tr>
+<tr><td>JWT claims</td><td><code>sub</code> (userId)</td><td>Pseudonymous identifier</td><td>UUID only; no PII beyond <code>userId</code> and <code>role</code> in token claims</td></tr>
+</tbody></table></div>
+<p><strong>Pino log redaction</strong> (configured at startup):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// pino redact config:
+redact: ['*.email', '*.password', '*.receiptData', '*.refreshToken']
+// user_id displayed as: user-****-&lt;last4 of UUID&gt;</code></pre></div>
+<hr>
+<h2 id="7-redis-key-conventions">§7 Redis Key Conventions</h2>
+<p>Redis is used for hot-path state that requires sub-millisecond access or atomic operations not available in PostgreSQL.</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Key Pattern</th><th>Type</th><th>TTL</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>session:&lt;token&gt;</code></td><td>String</td><td>15 min</td><td>Access token session (used for token invalidation on logout)</td></tr>
+<tr><td><code>refresh:&lt;token&gt;</code></td><td>String</td><td>30 days</td><td>Refresh token validity (single-use; deleted on use)</td></tr>
+<tr><td><code>ratelimit:&lt;ip&gt;:&lt;endpoint&gt;</code></td><td>Counter</td><td>1 min window</td><td>Auth endpoint rate-limit counter (express-rate-limit Redis store)</td></tr>
+<tr><td><code>ratelimit:&lt;userId&gt;:&lt;endpoint&gt;</code></td><td>Counter</td><td>1 min window</td><td>Per-user rate-limit counter (IAP, profile update)</td></tr>
+<tr><td><code>email_confirm:&lt;token&gt;</code></td><td>String</td><td>86400 s (24 h)</td><td><code>&lt;userId&gt;:&lt;newEmail&gt;</code> — email confirmation token for profile update flow</td></tr>
+</tbody></table></div>
+<p><strong>AOF persistence</strong>: Redis must be configured with <code>appendonly yes</code> to survive crashes (risk R2 mitigation). PostgreSQL <code>jackpot_pool</code> table remains the authoritative source for recovery.</p>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

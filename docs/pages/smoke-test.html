@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smoke Test — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item active"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>Smoke Test</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">Smoke Test</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#gate-results">Gate Results</a></li>
+<li><a href="#overall-gate-pass">Overall Gate: PASS</a></li>
+<li><a href="#fixes-applied-during-smoke-gate">Fixes Applied During Smoke Gate</a></li>
+<li class="toc-h3"><a href="#fix-1-bulletstate-duplicate-export-srcschemagamestatets">Fix 1: BulletState Duplicate Export (src/schema/GameState.ts)</a></li>
+<li class="toc-h3"><a href="#fix-2-onleave-parameter-type-mismatch-srcroomsgameroomts">Fix 2: `onLeave` Parameter Type Mismatch (src/rooms/GameRoom.ts)</a></li>
+<li class="toc-h3"><a href="#fix-3-missing-typesjsonwebtoken-srcutilsauthts">Fix 3: Missing `@types/jsonwebtoken` (src/utils/auth.ts)</a></li>
+<li><a href="#known-gaps-documented-not-blocking">Known Gaps (documented, not blocking)</a></li>
+</ul></div>
+        <h1 id="smoke-test-report-step-24">Smoke Test Report — STEP-24</h1>
+<p>Date: 2026-04-23</p>
+<h2 id="gate-results">Gate Results</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Check</th><th>Status</th><th>Details</th></tr></thead>
+<tbody>
+<tr><td>Unit tests (165 tests)</td><td>PASS</td><td>165/165 passing across 10 test suites</td></tr>
+<tr><td>Coverage >= 80%</td><td>PASS</td><td>Stmt: 98.11%, Branch: 94%, Fn: 99.14%, Lines: 98.59%</td></tr>
+<tr><td>No hardcoded secrets</td><td>PASS</td><td>0 violations — 4 files reference env-var key names only</td></tr>
+<tr><td>package.json scripts</td><td>PASS</td><td>All 4 required scripts present (test, build, start, dev)</td></tr>
+</tbody></table></div>
+<h2 id="overall-gate-pass">Overall Gate: PASS</h2>
+<h2 id="fixes-applied-during-smoke-gate">Fixes Applied During Smoke Gate</h2>
+<h3 id="fix-1-bulletstate-duplicate-export-srcschemagamestatets">Fix 1: BulletState Duplicate Export (src/schema/GameState.ts)</h3>
+<ul>
+<li><code>BulletState</code> was declared as a top-level <code>export class</code> at line 16 <strong>and</strong> re-exported via <code>export { ... BulletState }</code> at line 105.</li>
+<li>TS2323 "Cannot redeclare exported variable" / TS2484 "Export declaration conflicts".</li>
+<li>Resolution: Removed <code>BulletState</code> from the bottom re-export line (it was already exported by its declaration).</li>
+</ul>
+<h3 id="fix-2-onleave-parameter-type-mismatch-srcroomsgameroomts">Fix 2: <code>onLeave</code> Parameter Type Mismatch (src/rooms/GameRoom.ts)</h3>
+<ul>
+<li>Implementation declared <code>onLeave(client: Client, code: number)</code> but Colyseus 0.15 base type declares <code>onLeave(client: Client, consented?: boolean)</code>.</li>
+<li>TS2416 "Property 'onLeave' in type 'GameRoom' is not assignable to the same property in base type".</li>
+<li>Resolution: Changed signature to <code>onLeave(client: Client, consented?: boolean)</code> and updated the disconnect-intent check from <code>if (code !== 1000)</code> to <code>if (!consented)</code> — semantically equivalent (false/undefined = unexpected disconnect = allow reconnection).</li>
+</ul>
+<h3 id="fix-3-missing-typesjsonwebtoken-srcutilsauthts">Fix 3: Missing <code>@types/jsonwebtoken</code> (src/utils/auth.ts)</h3>
+<ul>
+<li><code>jsonwebtoken</code> lacked a bundled <code>.d.ts</code>; TS7016 "Could not find a declaration file for module 'jsonwebtoken'".</li>
+<li>Resolution: Installed <code>@types/jsonwebtoken</code> as a dev dependency (<code>npm install --save-dev @types/jsonwebtoken</code>).</li>
+</ul>
+<h2 id="known-gaps-documented-not-blocking">Known Gaps (documented, not blocking)</h2>
+<p>These are Phase-1 implementation tasks identified in ALIGNMENT-REPORT.md, not defects in the current codebase:</p>
+<ul>
+<li><strong>GAP-3 (ALIGN-GAP-3)</strong>: <code>FishSpawner</code> component not implemented. Fish waves are not auto-spawned. A TODO comment block documents the expected integration point in <code>GameRoom.ts</code>. Tracked for Phase-1.</li>
+<li><strong>GAP-4</strong>: REST API routes (16 endpoints per EDD §2.5) not yet implemented. Express app and <code>src/api/</code> directory are absent. Design is complete in EDD.md and API.md. Tracked for Phase-1 implementation sprint.</li>
+<li><strong>GameNetworkManager.ts branch coverage</strong>: 71.42% branch coverage on the client stub (lines 55-58). This is a client-side module tested in isolation; Colyseus WebSocket branch paths are not exercisable without a live server. Does not affect the 80% global threshold.</li>
+</ul>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

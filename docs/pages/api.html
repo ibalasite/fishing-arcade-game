@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item active"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>API Reference</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">API Reference</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#document-control">Document Control</a></li>
+<li><a href="#1-rest-api-overview">§1 REST API Overview</a></li>
+<li class="toc-h3"><a href="#11-base-url">§1.1 Base URL</a></li>
+<li class="toc-h3"><a href="#12-authentication">§1.2 Authentication</a></li>
+<li class="toc-h3"><a href="#13-standard-error-response-format">§1.3 Standard Error Response Format</a></li>
+<li><a href="#2-endpoint-reference">§2 Endpoint Reference</a></li>
+<li class="toc-h3"><a href="#21-full-endpoint-table">§2.1 Full Endpoint Table</a></li>
+<li class="toc-h3"><a href="#22-auth-endpoints">§2.2 Auth Endpoints</a></li>
+<li class="toc-h3"><a href="#23-user-endpoints">§2.3 User Endpoints</a></li>
+<li class="toc-h3"><a href="#24-iap-endpoint">§2.4 IAP Endpoint</a></li>
+<li class="toc-h3"><a href="#25-privacy-pdpa-endpoints">§2.5 Privacy / PDPA Endpoints</a></li>
+<li class="toc-h3"><a href="#26-game-endpoints">§2.6 Game Endpoints</a></li>
+<li class="toc-h3"><a href="#27-health-endpoints">§2.7 Health Endpoints</a></li>
+<li><a href="#3-rate-limiting">§3 Rate Limiting</a></li>
+<li><a href="#4-colyseus-websocket-protocol">§4 Colyseus WebSocket Protocol</a></li>
+<li class="toc-h3"><a href="#41-connection">§4.1 Connection</a></li>
+<li class="toc-h3"><a href="#42-client-server-messages">§4.2 Client → Server Messages</a></li>
+<li class="toc-h3"><a href="#43-server-client-messages">§4.3 Server → Client Messages</a></li>
+<li class="toc-h3"><a href="#44-implicit-state-sync-schema-delta">§4.4 Implicit State Sync (Schema Delta)</a></li>
+<li><a href="#5-colyseus-schema-state-sync">§5 Colyseus Schema State Sync</a></li>
+<li class="toc-h3"><a href="#51-gamestate-root">§5.1 GameState (root)</a></li>
+<li class="toc-h3"><a href="#52-playerstate">§5.2 PlayerState</a></li>
+<li class="toc-h3"><a href="#53-fishstate">§5.3 FishState</a></li>
+<li class="toc-h3"><a href="#54-bulletstate">§5.4 BulletState</a></li>
+<li><a href="#6-auth-flow-detail">§6 Auth Flow Detail</a></li>
+</ul></div>
+        <h1 id="api-reference-document-fishing-arcade-game">API Reference Document — Fishing Arcade Game</h1>
+<!-- DOC-ID: API-FISHING-ARCADE-GAME-20260422 -->
+<!-- Parent: EDD-FISHING-ARCADE-GAME-20260422 (docs/EDD.md) -->
+<!-- Stack: Express 4.x + TypeScript; Colyseus 0.15 WebSocket -->
+<hr>
+<h2 id="document-control">Document Control</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Content</th></tr></thead>
+<tbody>
+<tr><td><strong>Project</strong></td><td>fishing-arcade-game</td></tr>
+<tr><td><strong>Version</strong></td><td>v1.0</td></tr>
+<tr><td><strong>Status</strong></td><td>DRAFT</td></tr>
+<tr><td><strong>Source</strong></td><td>EDD v1.5 §2.5 (IN_REVIEW)</td></tr>
+<tr><td><strong>Base URL</strong></td><td><code>https://game.example.com</code></td></tr>
+<tr><td><strong>Date</strong></td><td>2026-04-22</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="1-rest-api-overview">§1 REST API Overview</h2>
+<p>All REST endpoints are versioned under <code>/api/v1/</code>. Authentication uses <strong>JWT HS256</strong> (Bearer token).</p>
+<h3 id="11-base-url">§1.1 Base URL</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">https://game.example.com/api/v1/</code></pre></div>
+<h3 id="12-authentication">§1.2 Authentication</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Token Type</th><th>Algorithm</th><th>TTL</th><th>Storage</th></tr></thead>
+<tbody>
+<tr><td>Refresh Token</td><td>HS256 JWT</td><td>30 days</td><td>iOS: Keychain (<code>kSecAttrAccessibleWhenUnlockedThisDeviceOnly</code>); Android: EncryptedSharedPreferences (Keystore); Web: HTTP-only cookie</td></tr>
+</tbody></table></div>
+<p><strong>Authorization header:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Authorization: Bearer &lt;accessToken&gt;</code></pre></div>
+<p><strong>Token rotation</strong>: Refresh tokens are single-use. On <code>POST /api/v1/auth/refresh</code>, the old refresh token is immediately invalidated and a new pair is issued.</p>
+<p><strong>JWT claims</strong> (never include PII beyond userId):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "sub": "&lt;userId UUID&gt;",
+  "role": "player",
+  "iat": 1745000000,
+  "exp": 1745000900
+}</code></pre></div>
+<h3 id="13-standard-error-response-format">§1.3 Standard Error Response Format</h3>
+<p>All endpoints return this envelope on error:</p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "error": {
+    "code": "string",
+    "message": "string",
+    "details": {}
+  }
+}</code></pre></div>
+<p>Standard HTTP status codes:</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>401</td><td>Unauthenticated (missing or expired token)</td></tr>
+<tr><td>403</td><td>Forbidden (insufficient role or business rule: no withdrawal)</td></tr>
+<tr><td>409</td><td>Conflict / state error (email taken, deletion not cancellable)</td></tr>
+<tr><td>422</td><td>Business rule violation</td></tr>
+<tr><td>429</td><td>Rate limit exceeded</td></tr>
+<tr><td>500</td><td>Internal server error (never exposes stack traces or SQL)</td></tr>
+</tbody></table></div>
+<p>Error messages never expose stack traces, SQL errors, or internal system details.</p>
+<hr>
+<h2 id="2-endpoint-reference">§2 Endpoint Reference</h2>
+<h3 id="21-full-endpoint-table">§2.1 Full Endpoint Table</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Description</th><th>US-ID</th></tr></thead>
+<tbody>
+<tr><td>POST</td><td><code>/api/v1/auth/login</code></td><td>None</td><td>Login; issue JWT pair</td><td>—</td></tr>
+<tr><td>POST</td><td><code>/api/v1/auth/refresh</code></td><td>Refresh JWT</td><td>Rotate token pair</td><td>—</td></tr>
+<tr><td>GET</td><td><code>/api/v1/user/profile</code></td><td>JWT</td><td>Get nickname, masked email, wallet balances</td><td>—</td></tr>
+<tr><td>PATCH</td><td><code>/api/v1/user/profile</code></td><td>JWT</td><td>Update nickname / initiate email change</td><td>US-PRIV-003</td></tr>
+<tr><td>GET</td><td><code>/api/v1/user/wallet</code></td><td>JWT</td><td>Gold + diamond balance</td><td>US-CURR-001</td></tr>
+<tr><td>POST</td><td><code>/api/v1/iap/verify</code></td><td>JWT</td><td>Verify Apple/Google receipt; credit diamond</td><td>US-CURR-002</td></tr>
+<tr><td>GET</td><td><code>/api/v1/privacy/consents</code></td><td>JWT</td><td>List user's consent records</td><td>US-PRIV-001</td></tr>
+<tr><td>POST</td><td><code>/api/v1/privacy/consent/grant</code></td><td>JWT</td><td>Grant a consent type</td><td>US-PRIV-001</td></tr>
+<tr><td>POST</td><td><code>/api/v1/privacy/consent/revoke</code></td><td>JWT</td><td>Revoke marketing consent</td><td>US-PRIV-004</td></tr>
+<tr><td>POST</td><td><code>/api/v1/privacy/account/delete</code></td><td>JWT</td><td>Submit deletion request (30-day schedule)</td><td>US-PRIV-002</td></tr>
+<tr><td>DELETE</td><td><code>/api/v1/privacy/account/delete</code></td><td>JWT</td><td>Cancel pending deletion</td><td>US-PRIV-002</td></tr>
+<tr><td>GET</td><td><code>/api/v1/game/jackpot</code></td><td>JWT</td><td>Current jackpot pool amount</td><td>US-JACK-001</td></tr>
+<tr><td>GET</td><td><code>/api/v1/game/jackpot/odds</code></td><td>None (public)</td><td>Jackpot odds table for disclosure</td><td>US-JACK-002</td></tr>
+<tr><td>GET</td><td><code>/health</code></td><td>None</td><td>Liveness probe (k8s livenessProbe)</td><td>—</td></tr>
+<tr><td>GET</td><td><code>/health/ready</code></td><td>None</td><td>Readiness probe — 200 only after DB+Redis connected</td><td>—</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="22-auth-endpoints">§2.2 Auth Endpoints</h3>
+<h4 id="post-apiv1authregister">POST <code>/api/v1/auth/register</code></h4>
+<p>Register a new player account.</p>
+<p><strong>Request body:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "MyPass1!",
+  "nickname": "阿凱"
+}</code></pre></div>
+<p><strong>Validation rules:</strong></p>
+<ul>
+<li><code>email</code>: RFC 5322 format</li>
+<li><code>password</code>: ≥ 8 characters, ≥ 1 uppercase letter, ≥ 1 digit</li>
+<li><code>nickname</code>: non-empty, ≤ 50 characters</li>
+</ul>
+<p><strong>Response 201:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "accessToken": "&lt;JWT&gt;",
+  "refreshToken": "&lt;JWT&gt;",
+  "expiresIn": 900
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>409</td><td><code>email_taken</code></td><td>Email already registered</td></tr>
+</tbody></table></div>
+<p><strong>Example 400:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "error": {
+    "code": "validation_error",
+    "message": "Validation failed",
+    "details": { "field": "email", "message": "invalid format" }
+  }
+}</code></pre></div>
+<hr>
+<h4 id="post-apiv1authlogin">POST <code>/api/v1/auth/login</code></h4>
+<p>Authenticate and issue JWT pair.</p>
+<p><strong>Request body:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "MyPass1!"
+}</code></pre></div>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "accessToken": "&lt;JWT&gt;",
+  "refreshToken": "&lt;JWT&gt;",
+  "expiresIn": 900
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>401</td><td><code>invalid_credentials</code></td><td>Email or password incorrect (generic — does not distinguish email-not-found vs wrong password)</td></tr>
+</tbody></table></div>
+<hr>
+<h4 id="post-apiv1authrefresh">POST <code>/api/v1/auth/refresh</code></h4>
+<p>Rotate the JWT pair using a valid refresh token.</p>
+<p><strong>Request body:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "refreshToken": "&lt;JWT&gt;"
+}</code></pre></div>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "accessToken": "&lt;JWT&gt;",
+  "refreshToken": "&lt;JWT&gt;",
+  "expiresIn": 900
+}</code></pre></div>
+<p>Old refresh token is immediately invalidated (single-use rotation).</p>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h3 id="23-user-endpoints">§2.3 User Endpoints</h3>
+<h4 id="get-apiv1userprofile">GET <code>/api/v1/user/profile</code></h4>
+<p>Retrieve current player's profile and wallet summary.</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "nickname": "阿凱",
+  "email": "u***@example.com",
+  "deletionStatus": "active",
+  "wallet": {
+    "gold": 50000,
+    "diamond": 10
+  }
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h4 id="patch-apiv1userprofile">PATCH <code>/api/v1/user/profile</code></h4>
+<p>Update nickname or initiate email change (US-PRIV-003).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Request body (fields optional):</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "nickname": "新暱稱",
+  "email": "newemail@example.com"
+}</code></pre></div>
+<p><strong>Validation rules:</strong></p>
+<ul>
+<li><code>nickname</code>: ≤ 50 characters, non-empty if provided</li>
+<li><code>email</code>: RFC 5322 format; must be unique</li>
+</ul>
+<p><strong>Behaviour:</strong></p>
+<ul>
+<li><code>nickname</code>: updated immediately; broadcast to Colyseus room via <code>GameRoom.broadcast</code></li>
+<li><code>email</code>: server sends confirmation email to new address; update is effective only after confirmation link clicked (24 h TTL token stored in Redis)</li>
+</ul>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "success": true,
+  "message": "Nickname updated. Email confirmation sent to new address."
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>401</td><td><code>unauthorized</code></td><td>Missing or expired access token</td></tr>
+<tr><td>409</td><td><code>email_taken</code></td><td>New email already in use</td></tr>
+</tbody></table></div>
+<hr>
+<h4 id="get-apiv1userwallet">GET <code>/api/v1/user/wallet</code></h4>
+<p>Retrieve current gold and diamond balances (US-CURR-001).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "gold": 50000,
+  "diamond": 10,
+  "updatedAt": "2026-04-22T12:00:00Z"
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h3 id="24-iap-endpoint">§2.4 IAP Endpoint</h3>
+<h4 id="post-apiv1iapverify">POST <code>/api/v1/iap/verify</code></h4>
+<p>Verify Apple or Google purchase receipt and credit diamonds (US-CURR-002).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Request body:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "platform": "apple",
+  "receipt": "&lt;base64-encoded receipt data&gt;",
+  "productId": "diamond_pack_100"
+}</code></pre></div>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Values</th></tr></thead>
+<tbody>
+<tr><td><code>receipt</code></td><td>string</td><td>Base64 receipt (Apple) or purchase token string (Google)</td></tr>
+<tr><td><code>productId</code></td><td>string</td><td>Product ID from store catalog</td></tr>
+</tbody></table></div>
+<p><strong>Response 200</strong> (idempotent — repeat submissions return same 200):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "success": true,
+  "diamondGranted": 100,
+  "wallet": {
+    "gold": 50000,
+    "diamond": 110
+  }
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>401</td><td><code>unauthorized</code></td><td>Missing or expired access token</td></tr>
+<tr><td>402</td><td><code>invalid_receipt</code></td><td>Store rejected the receipt</td></tr>
+<tr><td>429</td><td><code>rate_limited</code></td><td>Exceeds 5 req/min per user</td></tr>
+</tbody></table></div>
+<p><strong>Idempotency</strong>: Server deduplicates via <code>SHA-256(receipt)</code> stored in <code>iap<em>receipts.receipt</em>hash</code>. Duplicate submissions return 200 with current balance without double-crediting.</p>
+<p><strong>Retry guidance</strong>: Client retries up to 3 times with exponential backoff on network error. Balance update SLA: ≤ 2 seconds.</p>
+<hr>
+<h3 id="25-privacy-pdpa-endpoints">§2.5 Privacy / PDPA Endpoints</h3>
+<h4 id="get-apiv1privacyconsents">GET <code>/api/v1/privacy/consents</code></h4>
+<p>List all consent records for the authenticated user (US-PRIV-001).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "consents": [
+    {
+      "id": "uuid",
+      "consentType": "privacy_policy",
+      "granted": true,
+      "grantedAt": "2026-04-22T10:00:00Z",
+      "revokedAt": null,
+      "policyVersion": "1.0.0"
+    },
+    {
+      "id": "uuid",
+      "consentType": "marketing",
+      "granted": false,
+      "grantedAt": null,
+      "revokedAt": "2026-04-22T11:00:00Z",
+      "policyVersion": "1.0.0"
+    }
+  ]
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h4 id="post-apiv1privacyconsentgrant">POST <code>/api/v1/privacy/consent/grant</code></h4>
+<p>Grant a consent type (US-PRIV-001).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Request body:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "consentType": "privacy_policy",
+  "policyVersion": "1.0.0"
+}</code></pre></div>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Values</th></tr></thead>
+<tbody>
+<tr><td><code>policyVersion</code></td><td>semver string matching <code>privacy_policies.version</code></td></tr>
+</tbody></table></div>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{ "success": true }</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>401</td><td><code>unauthorized</code></td><td>Missing or expired access token</td></tr>
+</tbody></table></div>
+<hr>
+<h4 id="post-apiv1privacyconsentrevoke">POST <code>/api/v1/privacy/consent/revoke</code></h4>
+<p>Revoke a consent type (US-PRIV-004).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Request body:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "consentType": "marketing"
+}</code></pre></div>
+<p><strong>Behaviour:</strong></p>
+<ul>
+<li><code>marketing</code>: inserts revocation record; returns 200; client must disable Firebase <code>marketing_*</code> events</li>
+<li><code>privacy_policy</code>: server returns <strong>409</strong> with redirect to account deletion flow (PDPA mandatory — cannot revoke privacy policy without deleting account)</li>
+</ul>
+<p><strong>Response 200</strong> (marketing consent):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{ "success": true }</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>401</td><td><code>unauthorized</code></td><td>Missing or expired access token</td></tr>
+<tr><td>409</td><td><code>consent<em>not</em>revocable</code></td><td>Attempt to revoke <code>privacy<em>policy</code>; body includes <code>{ "redirect": "account</em>deletion" }</code></td></tr>
+</tbody></table></div>
+<hr>
+<h4 id="post-apiv1privacyaccountdelete">POST <code>/api/v1/privacy/account/delete</code></h4>
+<p>Submit account deletion request (30-day scheduled soft delete) (US-PRIV-002).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "success": true,
+  "scheduledFor": "2026-05-22T00:00:00Z",
+  "message": "Your account will be permanently deleted on 2026-05-22. You may cancel within 30 days."
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>409</td><td><code>deletion<em>already</em>pending</code></td><td>Deletion request already exists</td></tr>
+</tbody></table></div>
+<hr>
+<h4 id="delete-apiv1privacyaccountdelete">DELETE <code>/api/v1/privacy/account/delete</code></h4>
+<p>Cancel a pending deletion request (US-PRIV-002).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{ "success": true, "deletionStatus": "active" }</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>409</td><td><code>deletion<em>not</em>cancellable</code></td><td>Deletion already executed or no pending request</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="26-game-endpoints">§2.6 Game Endpoints</h3>
+<h4 id="get-apiv1gamejackpot">GET <code>/api/v1/game/jackpot</code></h4>
+<p>Retrieve current jackpot pool amount (US-JACK-001).</p>
+<p><strong>Auth:</strong> Bearer JWT</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "jackpotPool": 1500000,
+  "currency": "gold"
+}</code></pre></div>
+<p><strong>Error responses:</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Code</th><th>Error Code</th><th>Description</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h4 id="get-apiv1gamejackpotodds">GET <code>/api/v1/game/jackpot/odds</code></h4>
+<p>Public endpoint — jackpot odds table for regulatory disclosure (US-JACK-002).</p>
+<p><strong>Auth:</strong> None (public)</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "odds": [
+    { "multiplier": 1,   "oddsDescription": "1 : 500,000" },
+    { "multiplier": 10,  "oddsDescription": "1 : 50,000" },
+    { "multiplier": 50,  "oddsDescription": "1 : 10,000" },
+    { "multiplier": 100, "oddsDescription": "1 : 5,000" }
+  ],
+  "effectiveDate": "2026-04-22",
+  "currency": "gold",
+  "note": "Jackpot odds are for entertainment only. Odds may be updated; check this endpoint for current values."
+}</code></pre></div>
+<hr>
+<h3 id="27-health-endpoints">§2.7 Health Endpoints</h3>
+<h4 id="get-health">GET <code>/health</code></h4>
+<p>Kubernetes liveness probe. Always returns 200 if the process is running.</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{ "status": "ok" }</code></pre></div>
+<hr>
+<h4 id="get-healthready">GET <code>/health/ready</code></h4>
+<p>Kubernetes readiness probe. Returns 200 only after PostgreSQL and Redis connections are established.</p>
+<p><strong>Response 200:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{ "status": "ready", "db": "connected", "redis": "connected" }</code></pre></div>
+<p><strong>Response 503</strong> (during startup or dependency failure):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{ "status": "not_ready", "db": "disconnected", "redis": "connected" }</code></pre></div>
+<hr>
+<h2 id="3-rate-limiting">§3 Rate Limiting</h2>
+<p>Rate limiting implemented via <code>express-rate-limit</code> + Redis store.</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Endpoint Group</th><th>Limit</th><th>Window</th><th>Key</th><th>On Exceed</th></tr></thead>
+<tbody>
+<tr><td>IAP verify (<code>/iap/verify</code>)</td><td>5 req</td><td>1 min</td><td>Per user (JWT sub)</td><td>429 <code>rate_limited</code></td></tr>
+<tr><td>Profile update (<code>PATCH /user/profile</code>)</td><td>20 req</td><td>1 min</td><td>Per user</td><td>429 <code>rate_limited</code></td></tr>
+<tr><td>All other JWT endpoints</td><td>100 req</td><td>1 min</td><td>Per user</td><td>429 <code>rate_limited</code></td></tr>
+</tbody></table></div>
+<p><strong>WebSocket message rate limits</strong> (enforced in GameRoom Handler, not at HTTP layer):</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Message Type</th><th>Limit</th><th>Window</th><th>On Exceed</th></tr></thead>
+<tbody>
+<tr><td><code>set_multiplier</code></td><td>10 msg</td><td>per second per client</td><td>Silently drop + WARN log</td></tr>
+<tr><td><code>start_game</code></td><td>1 msg</td><td>per second per client</td><td>Silently drop + WARN log</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="4-colyseus-websocket-protocol">§4 Colyseus WebSocket Protocol</h2>
+<h3 id="41-connection">§4.1 Connection</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">WebSocket URL: wss://game.example.com/
+Colyseus SDK: client.joinOrCreate('game_room', { token, nickname })</code></pre></div>
+<p>The Nginx Ingress upgrades HTTP to WebSocket and maintains the connection with <code>proxy-read-timeout: 3600</code> and <code>proxy-send-timeout: 3600</code>. Sticky session cookie <code>colyseus-affinity</code> ensures the client always reconnects to the same pod.</p>
+<h3 id="42-client-server-messages">§4.2 Client → Server Messages</h3>
+<h4 id="shoot"><code>shoot</code></h4>
+<p>Fire a bullet at a fish. Rate-limited to 10 active bullets per player.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">interface ShootMessage {
+  bulletId: string;          // client-generated UUID for dedup (crypto.randomUUID())
+  fishId: string;            // target fish ID from FishState.fishId
+  betAmount: number;         // gold coins to wager (must be &lt;= player.gold)
+  cannonMultiplier: number;  // current cannon multiplier (1 | 10 | 50 | 100)
+}</code></pre></div>
+<p><strong>Server validation:</strong></p>
+<ol>
+<li><code>bulletId</code> not in player's active-bullet Set (dedup)</li>
+<li>Active-bullet Set size < 10 (rate limit)</li>
+<li><code>player.gold &gt;= betAmount</code></li>
+<li><code>fishId</code> exists and <code>alive == true</code> in <code>state.fish</code></li>
+</ol>
+<p><strong>Invalid message handling</strong>: Silently dropped with WARN log. Server never throws on invalid shoot (Colyseus throws disconnect the client on unhandled errors).</p>
+<hr>
+<h4 id="set-multiplier"><code>set_multiplier</code></h4>
+<p>Change the player's cannon multiplier. Rate-limited to 10/s per client.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">interface SetMultiplierMessage {
+  multiplier: number;  // 1 | 10 | 50 | 100
+}</code></pre></div>
+<p><strong>Server validation</strong>: <code>multiplier</code> must be one of the valid values. Invalid values silently dropped.</p>
+<hr>
+<h4 id="start-game"><code>start_game</code></h4>
+<p>Signal readiness to start (used when room is in WAITING state). Rate-limited to 1/s per client.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">interface StartGameMessage {
+  // No payload required
+}</code></pre></div>
+<hr>
+<h3 id="43-server-client-messages">§4.3 Server → Client Messages</h3>
+<h4 id="shoot-result"><code>shoot_result</code></h4>
+<p>Sent to the <strong>shooter client only</strong> after adjudication completes.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">interface ShootResultMessage {
+  bulletId: string;   // echoes client's bulletId for correlation
+  hit: boolean;       // true = fish was hit
+  payout: number;     // gold credited (0 if miss or fish not killed)
+  fishId: string;     // target fish
+}</code></pre></div>
+<hr>
+<h4 id="jackpot-won"><code>jackpot_won</code></h4>
+<p><strong>Broadcast to all room clients</strong> when a jackpot is triggered.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">interface JackpotWonMessage {
+  winnerId: string;  // verified user UUID (from client.auth — NOT sessionId)
+  amount: number;    // gold amount won from pool
+}</code></pre></div>
+<p>Client <code>NetworkManager._handleJackpotWon()</code> plays celebration animation. All room clients receive this message regardless of who won.</p>
+<hr>
+<h4 id="boss-escaped"><code>boss_escaped</code></h4>
+<p><strong>Broadcast to all room clients</strong> when boss fish escape timer expires (60 s without kill).</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">interface BossEscapedMessage {
+  fishId: string;  // the boss fish that escaped
+}</code></pre></div>
+<p>No gold refund for bets placed during boss fight. Boss is removed from <code>state.fish</code> before this broadcast.</p>
+<hr>
+<h3 id="44-implicit-state-sync-schema-delta">§4.4 Implicit State Sync (Schema Delta)</h3>
+<p>The following state changes are delivered automatically via Colyseus Schema v2 delta encoding — no separate message needed:</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>State Change</th><th>Delivery Mechanism</th></tr></thead>
+<tbody>
+<tr><td>Fish killed / removed</td><td><code>state.fish.onRemove((fish, key) =&gt; ...)</code></td></tr>
+<tr><td>Fish HP decremented</td><td>Schema delta patch (FishState.hp change)</td></tr>
+<tr><td>Player gold updated</td><td><code>player.listen('gold', cb)</code></td></tr>
+<tr><td>Player nickname changed</td><td><code>player.listen('nickname', cb)</code></td></tr>
+<tr><td>Jackpot pool amount</td><td><code>state.listen('jackpotPool', cb)</code></td></tr>
+<tr><td>Room state transition</td><td><code>state.listen('roomState', cb)</code></td></tr>
+<tr><td>Player connect/disconnect</td><td><code>player.listen('isConnected', cb)</code></td></tr>
+</tbody></table></div>
+<p><strong>Important</strong>: Colyseus Schema v2 uses <code>state.listen('fieldName', cb)</code> for primitive field listeners, <strong>not</strong> <code>state.onChange('fieldName', cb)</code>. MapSchema uses <code>.onAdd</code> + per-item <code>.listen()</code>, <strong>not</strong> <code>.onChange</code>.</p>
+<hr>
+<h2 id="5-colyseus-schema-state-sync">§5 Colyseus Schema State Sync</h2>
+<h3 id="51-gamestate-root">§5.1 GameState (root)</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>players</code></td><td><code>MapSchema&lt;PlayerState&gt;</code></td><td>Keyed by Colyseus <code>sessionId</code></td></tr>
+<tr><td><code>fish</code></td><td><code>MapSchema&lt;FishState&gt;</code></td><td>Keyed by <code>fishId</code></td></tr>
+<tr><td><code>bullets</code></td><td><code>MapSchema&lt;BulletState&gt;</code></td><td>Keyed by <code>bulletId</code></td></tr>
+<tr><td><code>jackpotPool</code></td><td><code>int64</code></td><td>Current pool in gold coins (mirrored from Redis)</td></tr>
+<tr><td><code>activeBossHp</code></td><td><code>int32</code></td><td>Current boss HP (0 when no active boss)</td></tr>
+<tr><td><code>activeBossMaxHp</code></td><td><code>int32</code></td><td>Max HP of active boss (for HP-bar rendering)</td></tr>
+<tr><td><code>roomId</code></td><td><code>string</code></td><td>Colyseus room identifier</td></tr>
+<tr><td><code>playerCount</code></td><td><code>int32</code></td><td>Current connected player count</td></tr>
+<tr><td><code>rtpNumerator</code></td><td><code>int32</code></td><td>Current effective RTP % × 100 (e.g., 92 = 92%); updated every tick</td></tr>
+</tbody></table></div>
+<h3 id="52-playerstate">§5.2 PlayerState</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>nickname</code></td><td><code>string</code></td><td>Display name (≤ 50 chars)</td></tr>
+<tr><td><code>gold</code></td><td><code>int64</code></td><td>Current gold balance</td></tr>
+<tr><td><code>multiplier</code></td><td><code>int32</code></td><td>Current cannon multiplier (1–100)</td></tr>
+<tr><td><code>isConnected</code></td><td><code>boolean</code></td><td>Live connection status; false during reconnect window</td></tr>
+<tr><td><code>slotIndex</code></td><td><code>int32</code></td><td>Seat index: 0=BL, 1=BR, 2=TL, 3=TR</td></tr>
+</tbody></table></div>
+<h3 id="53-fishstate">§5.3 FishState</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>fishType</code></td><td><code>string</code></td><td><code>'normal'</code> \</td><td><code>'elite'</code> \</td><td><code>'boss'</code></td></tr>
+<tr><td><code>hp</code></td><td><code>int32</code></td><td>Current HP (decremented on hit)</td></tr>
+<tr><td><code>maxHp</code></td><td><code>int32</code></td><td>Initial HP (1 for normal, 3–8 for elite, 50–200 for boss)</td></tr>
+<tr><td><code>posX</code></td><td><code>float32</code></td><td>Current X position (used for initial placement; client interpolates along Bezier)</td></tr>
+<tr><td><code>posY</code></td><td><code>float32</code></td><td>Current Y position</td></tr>
+<tr><td><code>rewardMultiplier</code></td><td><code>int32</code></td><td>Payout = betAmount × baseMultiplier × rewardMultiplier</td></tr>
+<tr><td><code>alive</code></td><td><code>boolean</code></td><td>False after HP reaches 0 (fish removed from state immediately after)</td></tr>
+<tr><td><code>pathData</code></td><td><code>string</code></td><td>JSON-encoded Bezier control points: <code>[{x,y},{x,y},{x,y}]</code> (3–4 points). All clients reconstruct the identical deterministic path from this server-provided data.</td></tr>
+<tr><td><code>speed</code></td><td><code>float32</code></td><td>Path traversal speed (units/s)</td></tr>
+</tbody></table></div>
+<h3 id="54-bulletstate">§5.4 BulletState</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>ownerId</code></td><td><code>string</code></td><td>Colyseus <code>sessionId</code> of shooter</td></tr>
+<tr><td><code>originX</code></td><td><code>float32</code></td><td>Cannon muzzle X</td></tr>
+<tr><td><code>originY</code></td><td><code>float32</code></td><td>Cannon muzzle Y</td></tr>
+<tr><td><code>targetX</code></td><td><code>float32</code></td><td>Aim target X</td></tr>
+<tr><td><code>targetY</code></td><td><code>float32</code></td><td>Aim target Y</td></tr>
+<tr><td><code>multiplier</code></td><td><code>int32</code></td><td>Cannon multiplier at fire time</td></tr>
+</tbody></table></div>
+<p><strong>Note</strong>: Bullet events are sent as targeted one-off messages (not tracked in state schema long-term) to avoid per-bullet schema overhead. <code>BulletState</code> is added to the map at fire time and removed after <code>shoot_result</code> is sent.</p>
+<hr>
+<h2 id="6-auth-flow-detail">§6 Auth Flow Detail</h2>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌──────────────────────────────────────────────────────────────────────┐
+│  JWT HS256 Auth Flow                                                  │
+│                                                                       │
+│  1. Client → POST /api/v1/auth/login                                 │
+│     Server → { accessToken (15 min), refreshToken (30 day) }         │
+│                                                                       │
+│  2. Client stores:                                                    │
+│     • accessToken: in-memory only                                     │
+│     • refreshToken: SecureStorage (iOS Keychain / Android Keystore)  │
+│                                                                       │
+│  3. Client → Colyseus joinOrCreate('game_room', { token: accessToken })│
+│     Server → onAuth: verifyJwt(token) — HS256 shared-secret verification│
+│     Server → returns payload { userId, role } → client.auth          │
+│                                                                       │
+│  4. On 401 (token expired during REST call):                         │
+│     Client → POST /api/v1/auth/refresh { refreshToken }              │
+│     Server → new { accessToken, refreshToken } (old refresh invalidated)│
+│     Client → retry original request with new accessToken             │
+│                                                                       │
+│  5. On WebSocket reconnect (within 10 s window):                     │
+│     Client → client.reconnect(reconnectionToken)                      │
+│     If reconnectionToken expired: re-login flow                       │
+│                                                                       │
+│  Security constraints:                                                │
+│  • JWT claims: { sub: userId, role: 'player' } — no PII             │
+│  • CORS: allowlist app bundle ID only (no wildcard)                  │
+│  • RBAC: 'player' role for game endpoints; 'admin' for ops           │
+│  • iOS: kSecAttrAccessibleWhenUnlockedThisDeviceOnly (no iCloud backup)│
+│  • Android: hardware-backed Keystore (API 23+)                       │
+└──────────────────────────────────────────────────────────────────────┘</code></pre></div>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

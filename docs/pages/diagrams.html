@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagrams — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item active"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>Diagrams</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">Diagrams</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#1-context-component">§1 Context &amp; Component</a></li>
+<li class="toc-h3"><a href="#11-system-context-c4">§1.1 System Context (C4)</a></li>
+<li class="toc-h3"><a href="#12-component-architecture-c4">§1.2 Component Architecture (C4)</a></li>
+<li><a href="#2-sequence-diagrams">§2 Sequence Diagrams</a></li>
+<li class="toc-h3"><a href="#21-player-join-matchmaking">§2.1 Player Join + Matchmaking</a></li>
+<li class="toc-h3"><a href="#22-shoot-adjudicate-wallet">§2.2 Shoot → Adjudicate → Wallet</a></li>
+<li class="toc-h3"><a href="#23-iap-purchase">§2.3 IAP Purchase</a></li>
+<li class="toc-h3"><a href="#24-pdpa-account-deletion-flow">§2.4 PDPA Account Deletion Flow</a></li>
+<li><a href="#3-state-machines">§3 State Machines</a></li>
+<li class="toc-h3"><a href="#31-gameroom-state-machine">§3.1 GameRoom State Machine</a></li>
+<li class="toc-h3"><a href="#32-networkmanager-state-machine">§3.2 NetworkManager State Machine</a></li>
+<li><a href="#4-entity-relationships">§4 Entity Relationships</a></li>
+<li class="toc-h3"><a href="#41-database-er-diagram">§4.1 Database ER Diagram</a></li>
+<li><a href="#5-class-diagrams">§5 Class Diagrams</a></li>
+<li class="toc-h3"><a href="#51-server-core-classes">§5.1 Server Core Classes</a></li>
+<li class="toc-h3"><a href="#52-colyseus-schema-classes">§5.2 Colyseus Schema Classes</a></li>
+<li><a href="#6-flowcharts">§6 Flowcharts</a></li>
+<li class="toc-h3"><a href="#61-bullet-hit-detection">§6.1 Bullet Hit Detection</a></li>
+<li class="toc-h3"><a href="#62-rtp-dynamic-adjustment">§6.2 RTP Dynamic Adjustment</a></li>
+<li><a href="#7-project-timeline">§7 Project Timeline</a></li>
+<li class="toc-h3"><a href="#71-development-phases-gantt">§7.1 Development Phases Gantt</a></li>
+</ul></div>
+        <h1 id="system-diagrams-fishing-arcade-game">System Diagrams — Fishing Arcade Game</h1>
+<!-- DOC-ID: DIAGRAMS-FISHING-ARCADE-GAME-20260422 -->
+<!-- Parent: EDD-FISHING-ARCADE-GAME-20260422 / ARCH-FISHING-ARCADE-GAME-20260422 -->
+<!-- Sources: docs/EDD.md v1.1, docs/ARCH.md v1.0, docs/API.md v1.0, docs/SCHEMA.md v1.0 -->
+<!-- Generated: 2026-04-22 (devsop-autodev STEP-13) -->
+<hr>
+<h2 id="1-context-component">§1 Context & Component</h2>
+<h3 id="11-system-context-c4">§1.1 System Context (C4)</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">C4Context
+    title Fishing Arcade Game — System Context (C4 Level 1)
+
+    Person(player, "Player", "Mobile gamer on iOS or Android who joins game rooms, shoots fish, and purchases diamonds via IAP")
+
+    System(game, "Fishing Arcade Game", "Multiplayer real-time fishing arcade. Colyseus WebSocket server + Express REST API + Cocos Creator 4.x mobile client")
+
+    System_Ext(appstore, "App Store (Apple)", "iOS IAP receipt validation endpoint")
+    System_Ext(googleplay, "Google Play", "Android IAP purchase token validation API")
+    System_Ext(firebase, "Firebase Analytics", "DAU, retention, and marketing event tracking (consent-gated)")
+
+    Rel(player, game, "Plays via Cocos Creator mobile app", "wss:// + https://")
+    Rel(game, appstore, "Validates Apple IAP receipts", "HTTPS POST verifyReceipt")
+    Rel(game, googleplay, "Validates Google Play purchase tokens", "HTTPS purchases.products.get")
+    Rel(game, firebase, "Sends analytics events", "Firebase SDK 10.x")</div></div>
+<hr>
+<h3 id="12-component-architecture-c4">§1.2 Component Architecture (C4)</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">C4Component
+    title Fishing Arcade Game — Component Architecture (C4 Level 3)
+
+    Container_Boundary(client, "Cocos Creator 4.x Client (iOS / Android)") {
+        Component(boot, "Boot Scene", "TypeScript", "Init, orientation lock, landscape lock, persistent node setup")
+        Component(netmgr, "NetworkManager", "TypeScript + Colyseus SDK", "WebSocket lifecycle, JWT refresh, reconnect strategy (max 3x exponential backoff)")
+        Component(datamgr, "DataManager", "TypeScript singleton", "Player data cache, wallet state (gold/diamond); invalidated on logout/room leave")
+        Component(gamescene, "GameRoom Scene", "TypeScript", "Fish/Bullet ObjectPools, Cannon state machine (IDLE→CHARGING→FIRING→COOLING)")
+        Component(uimgr, "UILayer / ModalStack", "TypeScript", "HUD, NumberRoller, PrivacyConsentModal, JackpotOddsModal, AccountDeletionFlow")
+        Component(a11y, "AccessibilityHelper", "TypeScript + jsb.reflection", "VoiceOver (iOS) / TalkBack (Android) bridge; WCAG AAA contrast")
+        Component(secure, "SecureStorage", "TypeScript + jsb.reflection", "Refresh token storage: iOS Keychain / Android EncryptedSharedPreferences")
+    }
+
+    Container_Boundary(server, "Node.js Backend (Docker / Kubernetes 1.29)") {
+        Component(colyseus, "Colyseus 0.15 Server", "Node.js + TypeScript", "Room lifecycle; state sync 20 Hz tick (50 ms); Schema v2 delta encoding")
+        Component(gameroom, "GameRoom Handler", "TypeScript", "onJoin/onLeave/onMessage dispatch; maxClients = 4; 10 s reconnection window")
+        Component(rtpeng, "RTP Engine", "TypeScript", "Integer-denominator CSPRNG (crypto.randomInt); dynamic hit-rate adjustment; BigInt accounting")
+        Component(spawner, "Fish Spawner", "TypeScript", "Normal/Elite/Boss wave scheduling; deterministic Bezier path generation per fish ID")
+        Component(jackpot, "Jackpot Manager", "TypeScript", "Global pool accumulation; Lua atomic GETDEL+SET; PostgreSQL persistence on dispose/restart")
+        Component(iapverify, "IAP Verifier", "TypeScript", "Apple receipt + Google purchase token validation; idempotent diamond grant via receipt_hash")
+        Component(walletdb, "Wallet Service", "TypeScript", "Atomic gold/diamond transactions; FOR UPDATE row lock; write-behind batch flush on dispose")
+        Component(privacysvc, "Privacy Service", "TypeScript", "Consent records; 30-day soft-delete schedule; cron executeScheduledDeletions; PII anonymisation")
+        Component(restapi, "REST API", "Express 4.x + TypeScript", "Auth, profile, IAP webhook, PDPA endpoints; Zod schema validation; OpenAPI via swagger-jsdoc")
+    }
+
+    Container_Boundary(data, "Data Layer") {
+        ContainerDb(pg, "PostgreSQL 15", "RDBMS", "Users, wallets, transactions, consents, sessions — ACID guarantees; JSONB; 7-year audit retention")
+        ContainerDb(redis, "Redis 7", "Cache / Atomic Counter", "Jackpot pool (INCRBYFLOAT); session tokens; rate-limit counters; email-confirm tokens (24 h TTL)")
+    }
+
+    Container_Boundary(infra, "Kubernetes Cluster (1.29)") {
+        Component(ingress, "Nginx Ingress", "Ingress Controller", "TLS 1.3 termination; WebSocket upgrade; sticky-session cookie (colyseus-affinity); proxy timeout 3600 s")
+        Component(hpa, "HPA", "autoscaling/v2", "CPU utilisation &gt; 70% trigger; min 2 / max 5 replicas")
+        Component(crons, "CronJobs", "Kubernetes CronJob", "deletion-executor (daily 02:00); jackpot-persist (*/5); wallet-reconcile (daily 03:00); ip-cleanup (daily 04:00); gold-restore (daily 06:00)")
+    }
+
+    Container_Boundary(external, "External Services") {
+        Component(applestore, "App Store IAP", "HTTPS / Apple API", "Receipt validation endpoint")
+        Component(googleplay, "Google Play IAP", "HTTPS / Google API", "purchases.products.get")
+        Component(firebase, "Firebase Analytics", "SDK 10.x", "DAU, retention, event tracking; marketing_* events toggleable per consent")
+    }
+
+    Rel(boot, netmgr, "initializes")
+    Rel(boot, secure, "stores refresh token")
+    Rel(netmgr, colyseus, "WebSocket (Colyseus SDK)", "wss://")
+    Rel(netmgr, restapi, "HTTP/REST", "https://")
+    Rel(gamescene, netmgr, "state callbacks; send shoot/set_multiplier/start_game")
+    Rel(uimgr, datamgr, "reads gold, diamond, nickname")
+    Rel(netmgr, datamgr, "updates gold/diamond on state patch")
+    Rel(colyseus, gameroom, "routes room messages")
+    Rel(gameroom, rtpeng, "hit adjudication per shoot")
+    Rel(gameroom, spawner, "fish wave control")
+    Rel(gameroom, jackpot, "pool accumulation + tryTrigger")
+    Rel(gameroom, walletdb, "debitGold / creditGold")
+    Rel(restapi, iapverify, "POST /iap/verify")
+    Rel(iapverify, applestore, "verifyReceipt HTTPS")
+    Rel(iapverify, googleplay, "purchases.products.get HTTPS")
+    Rel(iapverify, walletdb, "creditDiamond [idempotent]")
+    Rel(restapi, privacysvc, "PDPA operations")
+    Rel(walletdb, pg, "ACID transactions (FOR UPDATE)")
+    Rel(jackpot, redis, "INCRBYFLOAT game:jackpot:pool; Lua atomic claim")
+    Rel(jackpot, pg, "persist on trigger / server restart")
+    Rel(gamescene, firebase, "logEvent()")
+    Rel(ingress, colyseus, "WebSocket :2567")
+    Rel(ingress, restapi, "REST :3000")
+    Rel(hpa, gameroom, "scales pod count")</div></div>
+<hr>
+<h2 id="2-sequence-diagrams">§2 Sequence Diagrams</h2>
+<h3 id="21-player-join-matchmaking">§2.1 Player Join + Matchmaking</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">sequenceDiagram
+    participant C as Cocos Client
+    participant NG as Nginx Ingress
+    participant API as REST API (Express)
+    participant COL as Colyseus Server
+    participant GR as GameRoom Handler
+    participant WS as Wallet Service
+    participant PG as PostgreSQL
+
+    C-&gt;&gt;NG: POST /api/v1/auth/login {email, password}
+    NG-&gt;&gt;API: forward
+    API-&gt;&gt;PG: SELECT users WHERE email_hash=$1
+    PG--&gt;&gt;API: user row (bcrypt verify)
+    API--&gt;&gt;C: 200 {accessToken (15 min), refreshToken (30 day)}
+    C-&gt;&gt;C: SecureStorage.set('refresh_token', ...)
+
+    C-&gt;&gt;NG: WebSocket upgrade → wss://game.example.com/
+    NG-&gt;&gt;COL: WebSocket (sticky cookie: colyseus-affinity)
+    C-&gt;&gt;COL: joinOrCreate('game_room', {token, nickname})
+    COL-&gt;&gt;GR: onAuth(client, options, request)
+    GR-&gt;&gt;GR: verifyJwt(token) — throws if invalid/expired
+    GR--&gt;&gt;COL: payload {userId, role}
+    COL-&gt;&gt;GR: onJoin(client, options)
+    GR-&gt;&gt;WS: getGold(userId)
+    WS-&gt;&gt;PG: SELECT gold FROM user_wallets WHERE user_id=$1
+    PG--&gt;&gt;WS: gold balance
+    WS--&gt;&gt;GR: gold
+    GR-&gt;&gt;GR: assign slotIndex (0=BL, 1=BR, 2=TL, 3=TR)
+    GR-&gt;&gt;GR: state.players.set(sessionId, playerState)
+    GR-&gt;&gt;PG: INSERT game_sessions / UPDATE player_ids, player_count
+
+    alt playerCount &lt; 4 (players 1-3 joined)
+        GR--&gt;&gt;C: Schema delta patch (new player added; roomState='WAITING')
+        Note over C: Client shows WaitingOverlay "Waiting for players (N/4)"
+    else playerCount == 4 (4th player triggers start)
+        Note over GR: _transitionToPlaying() called
+        GR-&gt;&gt;GR: state.roomState = 'PLAYING'
+        GR-&gt;&gt;GR: FishSpawner.start() — begin normal wave schedule
+        GR--&gt;&gt;C: Schema delta patch (all players; roomState='PLAYING')
+        C-&gt;&gt;C: UILayer hides WaitingOverlay; game begins
+    end</div></div>
+<hr>
+<h3 id="22-shoot-adjudicate-wallet">§2.2 Shoot → Adjudicate → Wallet</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">sequenceDiagram
+    participant C as Cocos Client
+    participant GR as GameRoom Handler
+    participant RTP as RTP Engine
+    participant JP as Jackpot Manager
+    participant WS as Wallet Service
+    participant PG as PostgreSQL
+    participant RD as Redis
+
+    C-&gt;&gt;GR: send('shoot', {bulletId, fishId, betAmount, cannonMultiplier})
+
+    GR-&gt;&gt;GR: 0. Dedup check — bulletId in activeBullets Set?
+    alt duplicate bulletId OR Set.size &gt;= 10
+        GR-&gt;&gt;GR: silently drop (rate-limit / dedup)
+    else new bullet
+        GR-&gt;&gt;GR: activeBullets.add(bulletId)
+        GR-&gt;&gt;GR: 1. Validate: player.gold &gt;= betAmount
+        GR-&gt;&gt;GR: 2. Validate: fishId exists and alive in state.fish
+
+        alt validation fails
+            GR--&gt;&gt;C: send('shoot_error', {code: 'INVALID_SHOOT', reason})
+            GR-&gt;&gt;GR: activeBullets.delete(bulletId)
+        else validation passes
+            GR-&gt;&gt;WS: debitGold(userId, betAmount)
+            WS-&gt;&gt;PG: BEGIN; SELECT gold FOR UPDATE; UPDATE -betAmount; INSERT transactions; COMMIT
+            PG--&gt;&gt;WS: OK
+            WS--&gt;&gt;GR: OK
+            GR-&gt;&gt;GR: state.players.get(sessionId).gold -= betAmount
+
+            GR-&gt;&gt;RTP: adjudicate(fishType, betAmount, cannonMultiplier)
+            RTP-&gt;&gt;RTP: _dynamicAdjust(fishCfg) — scale hitRateNumerator if RTP drifts
+            RTP-&gt;&gt;RTP: roll = crypto.randomInt(denominator)
+            RTP--&gt;&gt;GR: {hit: boolean, payout: number}
+
+            alt hit == true
+                GR-&gt;&gt;GR: FishState.hp -= 1
+                alt hp == 0 (fish killed)
+                    GR-&gt;&gt;WS: creditGold(userId, payout, 'earn')
+                    WS-&gt;&gt;PG: BEGIN; UPDATE gold +payout; INSERT transactions; COMMIT
+                    GR-&gt;&gt;GR: state.players.get(sessionId).gold += payout
+                    GR-&gt;&gt;GR: state.fish.delete(fishId) — auto-broadcasts delta
+                else hp &gt; 0
+                    Note over GR,C: HP decrement auto-synced via schema delta patch
+                end
+
+                GR-&gt;&gt;JP: tryTrigger(cannonMultiplier, userId)
+                JP-&gt;&gt;JP: odds = JACKPOT_ODDS[multiplier]; roll = crypto.randomInt(odds)
+                alt jackpot triggered (roll == 0)
+                    JP-&gt;&gt;RD: EVAL Lua: GETDEL game:jackpot:pool; SET game:jackpot:pool SEED
+                    RD--&gt;&gt;JP: poolAmount string
+                    JP-&gt;&gt;PG: BEGIN; INSERT jackpot_history; UPDATE user_wallets +poolAmount; INSERT transactions('jackpot'); COMMIT
+                    JP--&gt;&gt;GR: {winnerId, amount}
+                    GR-&gt;&gt;GR: state.players.get(sessionId).gold += jackpotAmount
+                    GR-&gt;&gt;RTP: addExternalPayout(jackpotAmount)
+                    GR-&gt;&gt;GR: broadcast('jackpot_won', {winnerId, amount})
+                    GR--&gt;&gt;C: message jackpot_won → celebration animation
+                else no jackpot
+                    JP--&gt;&gt;GR: null
+                end
+            else hit == false (miss)
+                Note over GR,C: Gold already debited; no payout; no fish state change
+            end
+
+            GR-&gt;&gt;PG: INSERT rtp_logs (fire-and-forget)
+            GR--&gt;&gt;C: send('shoot_result', {hit, payout})
+            GR-&gt;&gt;GR: activeBullets.delete(bulletId)
+        end
+    end</div></div>
+<hr>
+<h3 id="23-iap-purchase">§2.3 IAP Purchase</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">sequenceDiagram
+    participant C as Cocos Client
+    participant Store as App Store / Google Play
+    participant NG as Nginx Ingress
+    participant API as REST API (Express)
+    participant IAP as IAP Verifier
+    participant WS as Wallet Service
+    participant PG as PostgreSQL
+
+    C-&gt;&gt;Store: purchaseProduct(productId)
+    Store--&gt;&gt;C: receipt / purchaseToken
+
+    C-&gt;&gt;NG: POST /api/v1/iap/verify {platform, receipt, productId}
+    Note over C,NG: Auth: Bearer accessToken (JWT RS256)
+    NG-&gt;&gt;API: forward (rate limit: 5 req/min per user)
+    API-&gt;&gt;IAP: verifyReceipt(platform, receipt, productId)
+
+    alt platform == 'apple'
+        IAP-&gt;&gt;Store: POST verifyReceipt (sandbox → production fallback)
+        Store--&gt;&gt;IAP: {status, receipt, in_app[]}
+    else platform == 'google'
+        IAP-&gt;&gt;Store: purchases.products.get(packageName, productId, purchaseToken)
+        Store--&gt;&gt;IAP: {purchaseState, consumptionState}
+    end
+
+    IAP-&gt;&gt;IAP: extract diamondAmount from product catalog
+    IAP-&gt;&gt;IAP: receiptHash = SHA-256(receipt)
+    IAP-&gt;&gt;WS: creditDiamond(userId, amount, receiptHash, platform, productId)
+
+    WS-&gt;&gt;PG: BEGIN
+    WS-&gt;&gt;PG: SELECT id FROM iap_receipts WHERE receipt_hash=$1
+    alt receipt already processed (idempotent)
+        PG--&gt;&gt;WS: existing row
+        WS-&gt;&gt;WS: skip — no double credit
+        Note over WS,API: Returns 200 with current balance
+    else new receipt
+        PG--&gt;&gt;WS: empty
+        WS-&gt;&gt;PG: INSERT iap_receipts(user_id, receipt_hash, platform, product_id, diamond_amt)
+        WS-&gt;&gt;PG: UPDATE user_wallets SET diamond = diamond + $1
+        WS-&gt;&gt;PG: INSERT transactions(user_id, 'iap', amount, 'diamond')
+        WS-&gt;&gt;PG: COMMIT
+    end
+    WS--&gt;&gt;API: current diamond balance
+    API--&gt;&gt;C: 200 {diamond: newBalance, gold: currentGold}
+
+    Note over C: Client retries up to 3x with exponential backoff on network error</div></div>
+<hr>
+<h3 id="24-pdpa-account-deletion-flow">§2.4 PDPA Account Deletion Flow</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">sequenceDiagram
+    participant C as Cocos Client
+    participant API as REST API (Express)
+    participant PS as Privacy Service
+    participant PG as PostgreSQL
+    participant CJ as CronJob (deletion-executor)
+
+    C-&gt;&gt;API: POST /api/v1/privacy/account/delete
+    Note over C,API: Auth: Bearer accessToken (JWT RS256)
+    API-&gt;&gt;PS: requestDeletion(userId)
+    PS-&gt;&gt;PG: SELECT deletion_status FROM users WHERE id=$1
+    PG--&gt;&gt;PS: deletion_status
+    alt already pending or deleted
+        PS--&gt;&gt;API: 409 Conflict
+        API--&gt;&gt;C: 409 {error: 'DELETION_ALREADY_REQUESTED'}
+    else active account
+        PS-&gt;&gt;PG: UPDATE users SET deletion_status='pending', deletion_requested_at=NOW()
+        PS-&gt;&gt;PG: INSERT deletion_requests(user_id, requested_at, scheduled_for=NOW()+30days)
+        PG--&gt;&gt;PS: OK
+        PS--&gt;&gt;API: OK
+        API--&gt;&gt;C: 200 {message: 'Deletion scheduled', scheduledFor: ISO8601}
+    end
+
+    Note over CJ: CronJob runs daily at 02:00 UTC
+
+    CJ-&gt;&gt;PS: executeScheduledDeletions()
+    PS-&gt;&gt;PG: SELECT user_id FROM deletion_requests WHERE scheduled_for &lt;= NOW() AND executed_at IS NULL AND cancelled_at IS NULL
+    PG--&gt;&gt;PS: list of user_ids due for deletion
+
+    loop for each user_id
+        PS-&gt;&gt;PG: BEGIN
+        PS-&gt;&gt;PG: UPDATE users SET email=ANONYMISED, email_hash=ANONYMISED, nickname='deleted_user', deletion_status='deleted'
+        PS-&gt;&gt;PG: UPDATE deletion_requests SET executed_at=NOW() WHERE user_id=$1
+        PS-&gt;&gt;PG: COMMIT
+        Note over PS,PG: transactions/iap_receipts/jackpot_history rows retained (7-yr financial law)
+        Note over PS,PG: user_consents rows retained (PDPA evidence)
+    end</div></div>
+<hr>
+<h2 id="3-state-machines">§3 State Machines</h2>
+<h3 id="31-gameroom-state-machine">§3.1 GameRoom State Machine</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">stateDiagram-v2
+    [*] --&gt; WAITING : onCreate()\nINSERT game_sessions\nFishSpawner paused\n20 Hz tick starts
+
+    WAITING --&gt; PLAYING : playerCount &gt;= 4\n_transitionToPlaying()\nstate.roomState = 'PLAYING'\nFishSpawner.start()
+
+    WAITING --&gt; ENDED : onDispose()\n(all players left before full)
+
+    PLAYING --&gt; BOSS_BATTLE : FishSpawner schedules Boss\n_spawnBoss(bossState)\nstate.roomState = 'BOSS_BATTLE'\n60 s escape timer starts
+
+    BOSS_BATTLE --&gt; PLAYING : Boss killed (hp == 0)\n_onBossKilled(fishId)\nclearTimeout(escapeTimer)\nstate.roomState = 'PLAYING'
+
+    BOSS_BATTLE --&gt; PLAYING : Boss escaped (timeout 60 s)\nboss removed from state.fish\nbroadcast('boss_escaped')\nstate.roomState = 'PLAYING'
+
+    PLAYING --&gt; ENDED : All players leave\nonDispose() triggered
+
+    BOSS_BATTLE --&gt; ENDED : All players leave\nonDispose() triggered
+
+    ENDED --&gt; [*] : onDispose() completes\nJackpotManager.persistPool()\nWalletService.flushBatch()\nUPDATE game_sessions SET ended_at\nclearInterval(_tickInterval)\n_disposed = true
+
+    note right of WAITING
+        players: 0-3
+        FishSpawner: paused
+        20 Hz tick: running
+        Partial leave: immediate remove
+    end note
+
+    note right of PLAYING
+        players: 1-4 (partial leave: 10 s reconnect window)
+        Normal + Elite fish active
+        Jackpot pool accumulating
+        20 Hz tick: running
+    end note
+
+    note right of BOSS_BATTLE
+        Boss fish in state.fish
+        60 s escape countdown active
+        All players can shoot boss
+        20 Hz tick: running
+    end note
+
+    note right of ENDED
+        _disposed = true
+        _tickInterval cleared
+        All boss escape timers cleared
+        jackpot_won overlay: broadcast event only (not a separate room state)
+    end note</div></div>
+<hr>
+<h3 id="32-networkmanager-state-machine">§3.2 NetworkManager State Machine</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">stateDiagram-v2
+    [*] --&gt; DISCONNECTED : app launch / logout
+
+    DISCONNECTED --&gt; CONNECTING : joinOrCreate() called\nJWT loaded from SecureStorage
+
+    CONNECTING --&gt; CONNECTED : Colyseus handshake OK\nonJoin() received\nstate patches streaming
+
+    CONNECTING --&gt; DISCONNECTED : connection refused\nor JWT invalid (401)\nmax retries exceeded
+
+    CONNECTED --&gt; RECONNECTING : unexpected WebSocket close\n(code != 1000)\nreconnect attempt 1
+
+    RECONNECTING --&gt; RECONNECTED : allowReconnection() succeeds\nwithin 10 s window\nstate re-synced
+
+    RECONNECTING --&gt; RECONNECTING : retry (exponential backoff)\nattempt 2, attempt 3
+
+    RECONNECTING --&gt; FAILED : 3 retries exhausted\nor 10 s window expired
+
+    RECONNECTED --&gt; CONNECTED : room state fully synced\nnormal gameplay resumes
+
+    FAILED --&gt; DISCONNECTED : show error toast\nclear room state\nreturn to lobby
+
+    CONNECTED --&gt; DISCONNECTED : intentional leave\n(code 1000)\nonLeave called cleanly
+
+    note right of CONNECTING
+        JWT refresh attempted if
+        accessToken near expiry
+        (&lt; 60 s remaining)
+    end note
+
+    note right of RECONNECTING
+        Colyseus server holds
+        player slot for 10 s
+        Room stays PLAYING
+        during reconnect window
+    end note</div></div>
+<hr>
+<h2 id="4-entity-relationships">§4 Entity Relationships</h2>
+<h3 id="41-database-er-diagram">§4.1 Database ER Diagram</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">erDiagram
+    users {
+        UUID id PK
+        BYTEA email "AES-256-GCM encrypted"
+        BYTEA email_hash UK "HMAC-SHA256 for uniqueness lookup"
+        VARCHAR50 nickname
+        TEXT password_hash "bcrypt"
+        VARCHAR64 device_id "SHA-256 hash; original never stored"
+        VARCHAR20 deletion_status "active|pending|deleted"
+        TIMESTAMPTZ deletion_requested_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    user_wallets {
+        UUID user_id PK_FK "1:1 with users; CASCADE DELETE"
+        BIGINT gold "CHECK &gt;= 0"
+        INTEGER diamond "CHECK &gt;= 0"
+        TIMESTAMPTZ updated_at
+    }
+
+    transactions {
+        UUID id PK
+        UUID user_id FK "no ON DELETE — user row never hard-deleted"
+        VARCHAR20 type "earn|spend|iap|jackpot|refund|daily_restore"
+        BIGINT amount "positive=credit; negative=debit"
+        VARCHAR10 currency "gold|diamond"
+        UUID ref_id "optional: session_id or receipt_id"
+        TIMESTAMPTZ created_at
+    }
+
+    iap_receipts {
+        UUID id PK
+        UUID user_id FK "no ON DELETE — receipts retained 7 yrs"
+        VARCHAR64 receipt_hash UK "SHA-256 hex; idempotency key"
+        VARCHAR10 platform "apple|google"
+        VARCHAR100 product_id
+        INTEGER diamond_amt "CHECK &gt; 0"
+        TIMESTAMPTZ created_at
+    }
+
+    jackpot_pool {
+        INTEGER id PK "singleton; CHECK id = 1"
+        BIGINT current_amount "seed = 10000 gold"
+        TIMESTAMPTZ updated_at
+    }
+
+    jackpot_history {
+        UUID id PK
+        UUID winner_id FK "no ON DELETE — retained 7 yrs"
+        BIGINT amount "CHECK &gt; 0"
+        TIMESTAMPTZ triggered_at
+        VARCHAR100 room_id
+    }
+
+    game_sessions {
+        UUID id PK
+        VARCHAR100 room_id
+        TIMESTAMPTZ started_at
+        TIMESTAMPTZ ended_at
+        INET ip_address "NULLed after 90 days by ip-cleanup cron"
+        UUID_ARRAY player_ids
+        INTEGER player_count
+        VARCHAR20 room_state "WAITING|PLAYING|ENDED"
+    }
+
+    user_consents {
+        UUID id PK
+        UUID user_id FK "ON DELETE RESTRICT — PDPA evidence"
+        VARCHAR100 consent_type "privacy_policy|marketing"
+        BOOLEAN granted
+        TIMESTAMPTZ granted_at
+        TIMESTAMPTZ revoked_at "NULL = not revoked"
+        VARCHAR20 policy_version "soft ref to privacy_policies.version"
+        INET ip_address
+        TEXT user_agent
+        TIMESTAMPTZ created_at
+    }
+
+    deletion_requests {
+        UUID user_id PK_FK "one pending request per user"
+        TIMESTAMPTZ requested_at
+        TIMESTAMPTZ scheduled_for "requested_at + 30 days"
+        TIMESTAMPTZ executed_at "set by executeScheduledDeletions cron"
+        TIMESTAMPTZ cancelled_at "set by cancelDeletion API"
+    }
+
+    privacy_policies {
+        VARCHAR20 version PK "semver e.g. 1.0.0"
+        TEXT content_url
+        TIMESTAMPTZ effective_at
+        TIMESTAMPTZ created_at
+    }
+
+    rtp_logs {
+        UUID id PK
+        VARCHAR100 room_id
+        UUID user_id "no FK — user row may be anonymised; UUID retained"
+        VARCHAR20 fish_type "normal|elite|boss"
+        BIGINT bet_amount "CHECK &gt; 0"
+        INTEGER multiplier "CHECK &gt; 0"
+        BOOLEAN hit
+        BIGINT payout "DEFAULT 0"
+        NUMERIC rtp_at_time "5,4 precision — running RTP at adjudication time"
+        TIMESTAMPTZ created_at
+    }
+
+    users ||--|| user_wallets : "owns (CASCADE)"
+    users ||--o{ transactions : "records"
+    users ||--o{ iap_receipts : "purchases"
+    users ||--o{ jackpot_history : "wins"
+    users ||--o{ user_consents : "grants (RESTRICT)"
+    users ||--o| deletion_requests : "schedules (RESTRICT)"</div></div>
+<hr>
+<h2 id="5-class-diagrams">§5 Class Diagrams</h2>
+<h3 id="51-server-core-classes">§5.1 Server Core Classes</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">classDiagram
+    class GameRoom {
+        +maxClients: number = 4
+        -_rtpEngine: RTPEngine
+        -_fishSpawner: FishSpawner
+        -_jackpotManager: JackpotManager
+        -_activeBullets: Map~string, Set~string~~
+        -_bossEscapeTimers: Map~string, NodeJS.Timeout~
+        -_tickInterval: NodeJS.Timeout
+        -_disposed: boolean
+        +onCreate(options) Promise~void~
+        +onAuth(client, options, request) Promise~AuthPayload~
+        +onJoin(client, options) Promise~void~
+        +onLeave(client, code) Promise~void~
+        +onDispose() Promise~void~
+        -_handleShoot(client, data) void
+        -_handleSetMultiplier(client, data) void
+        -_handleStartGame(client, data) void
+        -_transitionToPlaying() void
+        -_spawnBoss(bossState) void
+        -_onBossKilled(fishId) void
+        -_tick() void
+        -_assignSlot() number
+    }
+
+    class RTPEngine {
+        -_totalBet: bigint
+        -_totalPaid: bigint
+        -_config: RTPConfig
+        +currentRtp: number
+        +constructor(config: RTPConfig)
+        +adjudicate(fishType, betAmount, multiplier) HitResult
+        +addExternalPayout(amount) void
+        -_dynamicAdjust(cfg: FishConfig) number
+    }
+
+    class JackpotManager {
+        -static _instance: JackpotManager
+        -_redis: RedisClient
+        +static getInstance() Promise~JackpotManager~
+        +tryTrigger(multiplier, userId) Promise~JackpotResult | null~
+        +persistPool() Promise~void~
+        +accumulateContribution(amount) Promise~void~
+    }
+
+    class WalletService {
+        +static getGold(userId) Promise~number~
+        +static debitGold(userId, amount) Promise~void~
+        +static creditGold(userId, amount, type) Promise~void~
+        +static creditDiamond(userId, amount, receiptHash, platform, productId) Promise~number~
+        +static flushBatch() Promise~void~
+        +static restoreDailyGold() Promise~void~
+    }
+
+    class PrivacyService {
+        +requestDeletion(userId) Promise~DeletionResponse~
+        +cancelDeletion(userId) Promise~void~
+        +executeScheduledDeletions() Promise~number~
+        +recordConsent(userId, consentType, granted, policyVersion) Promise~void~
+        +getConsents(userId) Promise~ConsentRecord[]~
+    }
+
+    class FishSpawner {
+        -_state: GameState
+        -_broadcast: BroadcastFn
+        -_normalWaveTimer: NodeJS.Timeout
+        -_eliteWaveTimer: NodeJS.Timeout
+        -_bossWaveTimer: NodeJS.Timeout
+        +start() void
+        +stop() void
+        +spawnNormalWave() void
+        +spawnEliteFish() void
+        +spawnBoss() FishState
+        -_generateBezierPath(fishId) string
+    }
+
+    GameRoom --&gt; RTPEngine : uses
+    GameRoom --&gt; JackpotManager : uses
+    GameRoom --&gt; WalletService : uses
+    GameRoom --&gt; FishSpawner : owns
+    JackpotManager --&gt; WalletService : credits on jackpot</div></div>
+<hr>
+<h3 id="52-colyseus-schema-classes">§5.2 Colyseus Schema Classes</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">classDiagram
+    class Schema {
+        &lt;&lt;abstract&gt;&gt;
+        +encode() Buffer
+        +decode(buffer) void
+    }
+
+    class PlayerState {
+        +playerId: string
+        +nickname: string
+        +gold: number
+        +multiplier: number
+        +isConnected: boolean
+        +slotIndex: number
+    }
+
+    class FishState {
+        +fishId: string
+        +fishType: string
+        +hp: number
+        +maxHp: number
+        +posX: number
+        +posY: number
+        +rewardMultiplier: number
+        +alive: boolean
+        +pathData: string
+        +speed: number
+    }
+
+    class BulletState {
+        +bulletId: string
+        +ownerId: string
+        +originX: number
+        +originY: number
+        +targetX: number
+        +targetY: number
+        +multiplier: number
+    }
+
+    class GameState {
+        +roomState: string
+        +players: MapSchema~PlayerState~
+        +fish: MapSchema~FishState~
+        +bullets: MapSchema~BulletState~
+        +jackpotPool: number
+        +activeBossHp: number
+        +activeBossMaxHp: number
+        +roomId: string
+        +playerCount: number
+        +rtpNumerator: number
+    }
+
+    Schema &lt;|-- PlayerState : extends
+    Schema &lt;|-- FishState : extends
+    Schema &lt;|-- BulletState : extends
+    Schema &lt;|-- GameState : extends
+    GameState "1" --&gt; "0..4" PlayerState : players MapSchema
+    GameState "1" --&gt; "0..50" FishState : fish MapSchema
+    GameState "1" --&gt; "0..40" BulletState : bullets MapSchema
+
+    note for PlayerState "@type decorators from @colyseus/schema v2\nslotIndex: 0=BL 1=BR 2=TL 3=TR\nmultiplier: cannon power 1-100"
+    note for FishState "pathData: JSON-encoded Bezier\ncontrol points [{x,y}...]\nDeterministic path per fishId"
+    note for GameState "roomState: WAITING|PLAYING|BOSS_BATTLE|ENDED\nrtpNumerator: refreshed on every 20 Hz tick\njackpotPool: mirrored from Redis"</div></div>
+<hr>
+<h2 id="6-flowcharts">§6 Flowcharts</h2>
+<h3 id="61-bullet-hit-detection">§6.1 Bullet Hit Detection</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">flowchart TD
+    A([Client sends shoot message]) --&gt; B{bulletId already\nin activeBullets Set?}
+    B -- yes --&gt; C([Silently drop — duplicate])
+    B -- no --&gt; D{activeBullets\nSet.size &gt;= 10?}
+    D -- yes --&gt; E([Silently drop — rate limit])
+    D -- no --&gt; F[activeBullets.add bulletId]
+    F --&gt; G{player.gold\n&gt;= betAmount?}
+    G -- no --&gt; H([send shoot_error INVALID_SHOOT\nactiveBullets.delete bulletId])
+    G -- yes --&gt; I{fishId exists\nand alive?}
+    I -- no --&gt; H
+    I -- yes --&gt; J[WalletService.debitGold\natomic FOR UPDATE]
+    J --&gt; K[RTPEngine.adjudicate\nfishType, betAmount, multiplier]
+    K --&gt; L[_dynamicAdjust hitRateNumerator\nbased on running RTP]
+    L --&gt; M[roll = crypto.randomInt\ndenominator]
+    M --&gt; N{roll &lt; adjustedNumerator?}
+    N -- miss --&gt; O[No payout\nno fish state change]
+    N -- hit --&gt; P[FishState.hp -= 1]
+    P --&gt; Q{hp == 0?}
+    Q -- no --&gt; R[HP auto-synced via\nColyseus schema delta]
+    Q -- yes --&gt; S[WalletService.creditGold\npayout to player]
+    S --&gt; T[state.fish.delete fishId\nauto-broadcasts to all clients]
+    O --&gt; U[JackpotManager.tryTrigger\ncannonMultiplier, userId]
+    R --&gt; U
+    T --&gt; U
+    U --&gt; V{jackpot\ntriggered?}
+    V -- yes --&gt; W[Lua atomic GETDEL+SET\nclaim pool from Redis]
+    W --&gt; X[INSERT jackpot_history\nUPDATE user_wallets\nbroadcast jackpot_won]
+    V -- no --&gt; Y[INSERT rtp_logs\nfire-and-forget]
+    X --&gt; Y
+    Y --&gt; Z([send shoot_result hit/miss payout\nactiveBullets.delete bulletId])</div></div>
+<hr>
+<h3 id="62-rtp-dynamic-adjustment">§6.2 RTP Dynamic Adjustment</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">flowchart TD
+    A([_dynamicAdjust called\nwith FishConfig]) --&gt; B{_totalBet &lt;\nMIN_SAMPLE_BETS × MIN_BET?}
+    B -- yes --&gt; C([Return base hitRateNumerator\ninsufficient sample — no adjustment])
+    B -- no --&gt; D[Calculate currentRtp =\n_totalPaid × 10000 / _totalBet / 10000]
+    D --&gt; E{currentRtp &gt;\ntargetRtpMax 0.96?}
+    E -- yes --&gt; F[scale = targetRtpMax / currentRtp\nadjusted = floor hitRateNumerator × scale]
+    F --&gt; G([Return reduced numerator\nfewer hits — bring RTP down])
+    E -- no --&gt; H{currentRtp &lt;\ntargetRtpMin 0.92?}
+    H -- yes --&gt; I[scale = targetRtpMin / currentRtp\nadjusted = min floor × scale, denominator - 1]
+    I --&gt; J([Return increased numerator\nmore hits — bring RTP up])
+    H -- no --&gt; K([Return base hitRateNumerator\nRTP within target band 0.92-0.96])</div></div>
+<hr>
+<h2 id="7-project-timeline">§7 Project Timeline</h2>
+<h3 id="71-development-phases-gantt">§7.1 Development Phases Gantt</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">gantt
+    title Fishing Arcade Game — Development Phases
+    dateFormat YYYY-MM-DD
+    axisFormat %b %Y
+
+    section Phase 1 — Core Foundation (Month 1-2)
+    Colyseus room lifecycle + state schema    :p1a, 2026-05-01, 14d
+    RTP Engine + 100K simulation CI gate      :p1b, after p1a, 10d
+    Wallet Service + PostgreSQL ACID txns     :p1c, after p1a, 14d
+    Fish spawner + Bezier path generation     :p1d, after p1b, 10d
+    REST API auth endpoints (JWT RS256)       :p1e, 2026-05-01, 14d
+    Cocos Creator boot + NetworkManager       :p1f, 2026-05-01, 21d
+    GameRoom scene + ObjectPool               :p1g, after p1f, 14d
+    k6 WebSocket pressure test gate           :milestone, p1m, after p1d, 0d
+
+    section Phase 2 — Jackpot + IAP + PDPA (Month 3-4)
+    Jackpot Manager (Redis Lua + PG persist)  :p2a, 2026-07-01, 14d
+    IAP Verifier Apple + Google               :p2b, 2026-07-01, 14d
+    PDPA Privacy Service + deletion cron      :p2c, after p2a, 14d
+    User consent modal + AccountDeletionFlow  :p2d, after p2b, 10d
+    Boss fish + 60 s escape timer             :p2e, after p2a, 10d
+    Jackpot UI (NumberRoller + celebration)   :p2f, after p2e, 7d
+    CronJobs (deletion, reconcile, ip-clean)  :p2g, after p2c, 7d
+    IAP + PDPA integration test suite         :milestone, p2m, after p2g, 0d
+
+    section Phase 3 — Polish + k8s + Performance (Month 5-6)
+    Cocos Creator visual polish + Spine anim  :p3a, 2026-09-01, 21d
+    AccessibilityHelper VoiceOver TalkBack    :p3b, 2026-09-01, 14d
+    Kubernetes manifests HPA + PDB + NetPol   :p3c, 2026-09-01, 14d
+    Prometheus metrics + Pino structured logs :p3d, after p3c, 7d
+    End-to-end test suite (Playwright)        :p3e, after p3a, 14d
+    Performance profiling + Low-End Mode      :p3f, after p3a, 10d
+    Security audit + penetration test         :p3g, after p3d, 7d
+    Production launch readiness review        :milestone, p3m, after p3g, 0d</div></div>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

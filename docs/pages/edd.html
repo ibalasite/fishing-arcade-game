@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDD — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item active"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>EDD</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">EDD</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#document-control">Document Control</a></li>
+<li class="toc-h3"><a href="#change-log">Change Log</a></li>
+<li><a href="#1-architecture-overview">§1 Architecture Overview</a></li>
+<li class="toc-h3"><a href="#11-system-architecture">§1.1 System Architecture</a></li>
+<li class="toc-h3"><a href="#12-technology-stack-decisions">§1.2 Technology Stack Decisions</a></li>
+<li class="toc-h3"><a href="#13-non-functional-requirements-mapping">§1.3 Non-Functional Requirements Mapping</a></li>
+<li><a href="#2-backend-engineering-nodejs-colyseus-015">§2 Backend Engineering (Node.js + Colyseus 0.15)</a></li>
+<li class="toc-h3"><a href="#21-colyseus-room-architecture">§2.1 Colyseus Room Architecture</a></li>
+<li class="toc-h3"><a href="#22-game-logic-engine">§2.2 Game Logic Engine</a></li>
+<li class="toc-h3"><a href="#23-dual-currency-system-us-curr-001-us-curr-002">§2.3 Dual Currency System (US-CURR-001 / US-CURR-002)</a></li>
+<li class="toc-h3"><a href="#24-privacy-pdpa-backend-us-priv-001-through-us-priv-004">§2.4 Privacy &amp; PDPA Backend (US-PRIV-001 through US-PRIV-004)</a></li>
+<li class="toc-h3"><a href="#25-api-design-summary">§2.5 API Design Summary</a></li>
+<li class="toc-h3"><a href="#26-database-schema-postgresql-key-tables">§2.6 Database Schema (PostgreSQL, Key Tables)</a></li>
+<li class="toc-h3"><a href="#27-infrastructure-deployment">§2.7 Infrastructure &amp; Deployment</a></li>
+<li><a href="#3-client-engineering-cocos-creator-4x-typescript">§3 Client Engineering (Cocos Creator 4.x + TypeScript)</a></li>
+<li class="toc-h3"><a href="#31-project-structure">§3.1 Project Structure</a></li>
+<li class="toc-h3"><a href="#32-network-layer-websocket-colyseus-sdk">§3.2 Network Layer (WebSocket → Colyseus SDK)</a></li>
+<li class="toc-h3"><a href="#33-core-game-components">§3.3 Core Game Components</a></li>
+<li class="toc-h3"><a href="#34-safe-area-responsive-layout">§3.4 Safe Area &amp; Responsive Layout</a></li>
+<li class="toc-h3"><a href="#35-performance-budget-2gb-ram-target-prd-75">§3.5 Performance Budget (2GB RAM Target, PRD §7.5)</a></li>
+<li class="toc-h3"><a href="#36-privacy-ui-components">§3.6 Privacy UI Components</a></li>
+<li><a href="#4-security-design">§4 Security Design</a></li>
+<li class="toc-h3"><a href="#41-server-authoritative-design">§4.1 Server-Authoritative Design</a></li>
+<li class="toc-h3"><a href="#42-api-security">§4.2 API Security</a></li>
+<li class="toc-h3"><a href="#43-pii-protection">§4.3 PII Protection</a></li>
+<li class="toc-h3"><a href="#44-test-strategy-edd-level-test-anchors">§4.4 Test Strategy — EDD-Level Test Anchors</a></li>
+<li><a href="#5-requirements-traceability-req-id-edd-section-mapping">§5 Requirements Traceability (REQ-ID → EDD Section Mapping)</a></li>
+<li><a href="#6-open-questions-risks">§6 Open Questions &amp; Risks</a></li>
+<li><a href="#7-change-log">§7 Change Log</a></li>
+</ul></div>
+        <h1 id="engineering-design-document-fishing-arcade-game">Engineering Design Document — Fishing Arcade Game</h1>
+<!-- DOC-ID: EDD-FISHING-ARCADE-GAME-20260422 -->
+<!-- Parent: PRD-FISHING-ARCADE-GAME-20260422 / PDD-FISHING-ARCADE-GAME-20260422 -->
+<!-- Downstream: TEST-PLAN.md -->
+<hr>
+<h2 id="document-control">Document Control</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Field</th><th>Content</th></tr></thead>
+<tbody>
+<tr><td><strong>Project</strong></td><td>fishing-arcade-game</td></tr>
+<tr><td><strong>Version</strong></td><td>v1.1</td></tr>
+<tr><td><strong>Status</strong></td><td>IN_REVIEW</td></tr>
+<tr><td><strong>Author</strong></td><td>tobala (auto-generated by /devsop-gen-edd)</td></tr>
+<tr><td><strong>Date</strong></td><td>2026-04-22</td></tr>
+<tr><td><strong>Upstream PRD</strong></td><td>PRD-FISHING-ARCADE-GAME-20260422 (docs/PRD.md) v1.1 APPROVED</td></tr>
+<tr><td><strong>Upstream PDD</strong></td><td>PDD-FISHING-ARCADE-GAME-20260422 (docs/PDD.md) v1.5 APPROVED</td></tr>
+<tr><td><strong>Upstream BRD</strong></td><td>BRD-FISHING-ARCADE-GAME-20260421 (docs/BRD.md)</td></tr>
+<tr><td><strong>Downstream</strong></td><td>TEST-PLAN.md</td></tr>
+</tbody></table></div>
+<h3 id="change-log">Change Log</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Summary</th></tr></thead>
+<tbody>
+</tbody></table></div>
+<hr>
+<h2 id="1-architecture-overview">§1 Architecture Overview</h2>
+<h3 id="11-system-architecture">§1.1 System Architecture</h3>
+<div class="mermaid-wrapper"><div class="mermaid-label">Diagram (Mermaid)</div><div class="mermaid">C4Component
+    title Fishing Arcade Game — Component Architecture
+
+    Container_Boundary(client, "Cocos Creator 4.x Client (iOS/Android)") {
+        Component(boot, "Boot Scene", "TypeScript", "Init, orientation lock, persistent nodes")
+        Component(netmgr, "NetworkManager", "TypeScript + Colyseus SDK", "WebSocket lifecycle, reconnect strategy")
+        Component(datamgr, "DataManager", "TypeScript", "Player data cache, wallet state")
+        Component(gamescene, "GameRoom Scene", "TypeScript", "Fish/Bullet pools, Cannon components")
+        Component(uimgr, "UILayer / ModalStack", "TypeScript", "HUD, overlays, privacy modals")
+        Component(a11y, "AccessibilityHelper", "TypeScript + jsb.reflection", "VoiceOver/TalkBack bridge")
+    }
+
+    Container_Boundary(server, "Node.js Backend (Docker / k8s)") {
+        Component(colyseus, "Colyseus 0.15 Server", "Node.js + TypeScript", "Room lifecycle, state sync 20Hz tick")
+        Component(gameroom, "GameRoom Handler", "TypeScript", "onJoin/onLeave/onMessage dispatch")
+        Component(rtpeng, "RTP Engine", "TypeScript", "Integer-denominator RNG, dynamic hit-rate")
+        Component(spawner, "Fish Spawner", "TypeScript", "Normal/Elite/Boss spawn scheduling")
+        Component(jackpot, "Jackpot Manager", "TypeScript", "Global pool accumulation, trigger, persistence")
+        Component(iapverify, "IAP Verifier", "TypeScript", "Apple/Google receipt validation, idempotent grant")
+        Component(walletdb, "Wallet Service", "TypeScript", "Atomic gold/diamond transactions")
+        Component(privacysvc, "Privacy Service", "TypeScript", "Consent records, deletion queue")
+        Component(restapi, "REST API", "Express + TypeScript", "Auth, profile, IAP webhook, PDPA endpoints")
+    }
+
+    Container_Boundary(data, "Data Layer") {
+        ComponentDb(pg, "PostgreSQL 15", "RDBMS", "Users, wallets, transactions, consents")
+        ComponentDb(redis, "Redis 7", "Cache", "Jackpot pool state, session tokens, rate-limit counters")
+    }
+
+    Container_Boundary(external, "External Services") {
+        Component(applestore, "App Store IAP", "HTTPS", "Receipt validation")
+        Component(googleplay, "Google Play IAP", "HTTPS", "Purchase token validation")
+        Component(firebase, "Firebase Analytics", "SDK", "DAU, retention, event tracking")
+    }
+
+    Rel(boot, netmgr, "initializes")
+    Rel(netmgr, colyseus, "WebSocket (Colyseus SDK)", "wss://")
+    Rel(gamescene, netmgr, "state callbacks, send messages")
+    Rel(uimgr, datamgr, "reads wallet, profile")
+    Rel(colyseus, gameroom, "routes room messages")
+    Rel(gameroom, rtpeng, "hit adjudication")
+    Rel(gameroom, spawner, "fish wave control")
+    Rel(gameroom, jackpot, "pool updates, trigger")
+    Rel(gameroom, walletdb, "debit/credit gold")
+    Rel(restapi, iapverify, "POST /iap/verify")
+    Rel(iapverify, applestore, "verifyReceipt")
+    Rel(iapverify, googleplay, "purchases.products.get")
+    Rel(iapverify, walletdb, "grant diamonds")
+    Rel(restapi, privacysvc, "PDPA operations")
+    Rel(walletdb, pg, "ACID transactions")
+    Rel(jackpot, redis, "atomic INCR/SET")
+    Rel(jackpot, pg, "persist on trigger/restart")
+    Rel(gamescene, firebase, "logEvent()")</div></div>
+<h3 id="12-technology-stack-decisions">§1.2 Technology Stack Decisions</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Layer</th><th>Technology</th><th>Version</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td>Realtime Backend</td><td>Colyseus</td><td>0.15</td><td>MIT license; room-based isolation; built-in state serialisation; matches <code>sam-gong-game</code> existing stack</td></tr>
+<tr><td>Backend Language</td><td>TypeScript + Node.js</td><td>5.x / 20 LTS</td><td>Full-stack TypeScript reduces friction; team familiarity; async/non-blocking I/O</td></tr>
+<tr><td>REST Framework</td><td>Express</td><td>4.x</td><td>Minimal, well-understood; OpenAPI spec via swagger-jsdoc</td></tr>
+<tr><td>Primary Database</td><td>PostgreSQL</td><td>15</td><td>ACID guarantees for wallet atomicity; JSONB for flexible schema evolution; 7-year audit retention</td></tr>
+<tr><td>Cache / Jackpot state</td><td>Redis</td><td>7</td><td>Sub-millisecond atomic INCR for jackpot pool; session TTL; rate-limit counters</td></tr>
+<tr><td>Schema Validation</td><td>Zod</td><td>3.x</td><td>Runtime validation at all API boundaries; TypeScript type inference</td></tr>
+<tr><td>IAP Verification</td><td>apple-receipt-verifier + google-play-library</td><td>latest</td><td>Battle-tested; handles sandbox vs production switching</td></tr>
+<tr><td>Observability</td><td>Pino (structured JSON logs) + Prometheus metrics</td><td>latest</td><td>Low overhead; structured log fields match PRD §7.7.1 requirements</td></tr>
+<tr><td>Infrastructure</td><td>Docker + Kubernetes (minimal HPA)</td><td>k8s 1.29</td><td>Container isolation; CPU-based auto-scale per PRD §7.3</td></tr>
+<tr><td>Analytics</td><td>Firebase Analytics</td><td>SDK 10.x</td><td>PRD §7.8; free tier covers DAU 10K target</td></tr>
+</tbody></table></div>
+<p><strong>Key Decisions:</strong></p>
+<ul>
+<li><strong>Server-authoritative design</strong>: ALL game outcome calculations (RTP, fish spawn paths, jackpot trigger, bullet-hit adjudication) execute server-side. Client is display-only. This satisfies US-RTP-001/AC-2 and PRD §7.4 anti-cheat requirements.</li>
+<li><strong>Integer-denominator RNG</strong>: Probabilities expressed as <code>hits<em>per</em>N</code> integers to prevent floating-point drift (PRD BRD §0.1 technical risk R2, US-RTP-001/AC-3).</li>
+<li><strong>Colyseus Schema v2</strong>: <code>@type</code> decorators from <code>@colyseus/schema</code> v2, not v1 annotations. MapSchema / ArraySchema for fish and player collections.</li>
+<li><strong>Redis for jackpot pool</strong>: Hot path; atomic <code>INCRBYFLOAT game:jackpot:pool &lt;contribution&gt;</code> (plain string key) avoids PostgreSQL round-trip per shot. Jackpot claim uses a Lua script for atomic GETDEL+SET. PostgreSQL remains the source of truth, written on trigger or server restart.</li>
+</ul>
+<h3 id="13-non-functional-requirements-mapping">§1.3 Non-Functional Requirements Mapping</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>PRD NFR</th><th>Target</th><th>Engineering Approach</th></tr></thead>
+<tbody>
+<tr><td>API P99 < 500ms</td><td>PRD §7.1</td><td>Express middleware timeout 450ms; circuit breaker on DB calls; PG connection pooling (pgBouncer)</td></tr>
+<tr><td>500 concurrent rooms</td><td>PRD §7.3</td><td>k8s HPA CPU > 70% trigger; Colyseus horizontal pod autoscale; room affinity via Redis Cluster</td></tr>
+<tr><td>FPS ≥ 30 (2GB RAM)</td><td>PRD §7.5</td><td>ObjectPool pre-warm; ETC2/ASTC texture compression; Low-End Mode auto-detection (§3.5)</td></tr>
+<tr><td>RTP error < 0.1%</td><td>US-RTP-001/AC-1</td><td>Integer-denominator RNG; 100K simulation CI gate; isolated RTP module (100% unit coverage)</td></tr>
+<tr><td>TLS 1.3</td><td>PRD §7.4</td><td>Ingress controller terminates TLS; internal cluster traffic plain TCP</td></tr>
+<tr><td>99.9% availability</td><td>PRD §7.2</td><td>2+ Pod replicas; PG streaming replication; Redis Sentinel; RTO 30min</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="2-backend-engineering-nodejs-colyseus-015">§2 Backend Engineering (Node.js + Colyseus 0.15)</h2>
+<h3 id="21-colyseus-room-architecture">§2.1 Colyseus Room Architecture</h3>
+<h4 id="gameroom-schema-typescript-colyseus-schema-v2">GameRoom Schema (TypeScript, Colyseus Schema v2)</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// src/rooms/schema/GameState.ts
+import { Schema, type, MapSchema, ArraySchema } from '@colyseus/schema';
+
+export class PlayerState extends Schema {
+    @type('string')  playerId: string = '';
+    @type('string')  nickname: string = '';
+    @type('int64')   gold: number = 0;
+    @type('int32')   multiplier: number = 1;         // current cannon multiplier (1–100)
+    @type('boolean') isConnected: boolean = true;
+    @type('int32')   slotIndex: number = 0;           // 0=P1(BL), 1=P2(BR), 2=P3(TL), 3=P4(TR)
+}
+
+export class FishState extends Schema {
+    @type('string')  fishId: string = '';
+    @type('string')  fishType: string = '';           // 'normal' | 'elite' | 'boss'
+    @type('int32')   hp: number = 1;
+    @type('int32')   maxHp: number = 1;
+    @type('float32') posX: number = 0;
+    @type('float32') posY: number = 0;
+    @type('int32')   rewardMultiplier: number = 1;
+    @type('boolean') alive: boolean = true;
+    // JSON-encoded Bezier path control points: [{x,y},{x,y},{x,y}] (3-4 points)
+    // All clients reconstruct the identical deterministic path from this server-provided data
+    @type('string')  pathData: string = '';
+    @type('float32') speed: number = 1.0;
+}
+
+export class BulletState extends Schema {
+    @type('string')  bulletId: string = '';
+    @type('string')  ownerId: string = '';
+    @type('float32') originX: number = 0;
+    @type('float32') originY: number = 0;
+    @type('float32') targetX: number = 0;
+    @type('float32') targetY: number = 0;
+    @type('int32')   multiplier: number = 1;
+}
+
+export class GameState extends Schema {
+    @type('string')  roomState: string = 'WAITING';  // WAITING | PLAYING | JACKPOT | BOSS_FIGHT | ENDED
+    @type({ map: PlayerState })  players = new MapSchema&lt;PlayerState&gt;();
+    @type({ map: FishState })    fish    = new MapSchema&lt;FishState&gt;();
+    @type({ map: BulletState })  bullets = new MapSchema&lt;BulletState&gt;();
+    @type('int64')   jackpotPool: number = 0;         // gold coins, mirrored from Redis
+    @type('int32')   activeBossHp: number = 0;
+    @type('int32')   activeBossMaxHp: number = 0;
+    @type('string')  roomId: string = '';
+    @type('int32')   playerCount: number = 0;
+    @type('int32')   rtpNumerator: number = 92;       // current effective RTP %
+}</code></pre></div>
+<h4 id="room-lifecycle">Room Lifecycle</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// src/rooms/GameRoom.ts
+// NOTE: Phase 1 cap is 4 players (BRD §4 specifies 4-6; Phase 2 will raise to 6 with extra slots)
+export class GameRoom extends Room&lt;GameState&gt; {
+    maxClients = 4;
+    private _rtpEngine: RTPEngine;
+    private _fishSpawner: FishSpawner;
+    private _jackpotManager: JackpotManager;
+    private _tickInterval: ReturnType&lt;typeof setInterval&gt;;
+    private _disposed = false;  // guard: setInterval cleared but callback may fire once more in same event loop tick
+
+    // onAuth verifies JWT before onJoin (Colyseus 0.15 — called with request headers)
+    async onAuth(client: Client, options: JoinOptions, request: http.IncomingMessage) {
+        const token = options.token;
+        if (!token) throw new Error('missing_token');
+        const payload = verifyJwt(token);   // throws if invalid/expired
+        return payload;                      // returned value becomes client.auth
+    }
+
+    async onCreate(options: RoomCreateOptions) {
+        this.setState(new GameState());
+        this.state.roomId = this.roomId;
+        this._rtpEngine = new RTPEngine(RTP_CONFIG);
+        this._fishSpawner = new FishSpawner(this.state, this.broadcast.bind(this));
+        this._jackpotManager = await JackpotManager.getInstance();
+
+        // Register message handlers in onCreate — do NOT override the onMessage base method
+        this.onMessage('shoot', this._handleShoot.bind(this));
+        this.onMessage('set_multiplier', this._handleSetMultiplier.bind(this));
+        this.onMessage('start_game', this._handleStartGame.bind(this));
+
+        // 20Hz state tick (50ms)
+        this._tickInterval = setInterval(() =&gt; this._tick(), 50);
+
+        // Record room creation in game_sessions (analytics + admin dashboard)
+        await db.query(
+            `INSERT INTO game_sessions(room_id, started_at, player_count, room_state, ip_address)
+             VALUES($1, NOW(), 0, 'WAITING', NULL)`,
+            [this.roomId]
+        );
+    }
+
+    async onJoin(client: Client, options: JoinOptions) {
+        // Validate nickname from client: max 50 chars, non-empty
+        const nickname = (options.nickname ?? '').slice(0, 50).trim();
+        if (!nickname) throw new Error('invalid_nickname');
+        const player = new PlayerState();
+        player.playerId = client.sessionId;
+        // Use verified userId from client.auth (set by onAuth) — NOT unverified options
+        player.nickname = nickname;
+        player.gold = await WalletService.getGold(client.auth.userId);
+        player.slotIndex = this._assignSlot();
+        this.state.players.set(client.sessionId, player);
+        this.state.playerCount = this.state.players.size;
+        if (this.state.playerCount &gt;= 4) this._transitionToPlaying();
+
+        // Update session: append userId to player_ids array + refresh player_count and room_state
+        await db.query(
+            `UPDATE game_sessions
+             SET player_ids   = array_append(player_ids, $1::uuid),
+                 player_count = $2,
+                 room_state   = $3
+             WHERE room_id = $4`,
+            [client.auth.userId, this.state.playerCount, this.state.roomState, this.roomId]
+        );
+    }
+
+    // Colyseus 0.15: second param is a numeric WebSocket close code, NOT a boolean
+    // code === 1000 = intentional disconnect (user left); any other code = unexpected disconnect
+    async onLeave(client: Client, code: number) {
+        const player = this.state.players.get(client.sessionId);
+        if (player) { player.isConnected = false; }
+        if (code !== 1000) {
+            try {
+                // allow reconnection within 10s (PRD US-ROOM-001/AC-4)
+                // allowReconnection throws if client does not reconnect within timeout
+                await this.allowReconnection(client, 10);
+                if (player) player.isConnected = true;
+            } catch {
+                // Reconnection timed out — remove player from room state
+                this.state.players.delete(client.sessionId);
+                this.state.playerCount = this.state.players.size;
+            }
+        } else {
+            this.state.players.delete(client.sessionId);
+            this.state.playerCount = this.state.players.size;
+        }
+    }
+
+    // NOTE: Do NOT override onMessage(). Use this.onMessage(type, cb) in onCreate() only.
+
+    async onDispose() {
+        this._disposed = true;    // prevents any in-flight tick from writing state after dispose begins
+        clearInterval(this._tickInterval);
+        // Clear boss escape timers to prevent post-dispose callbacks
+        this._bossEscapeTimers.forEach(t =&gt; clearTimeout(t));
+        this._bossEscapeTimers.clear();
+        await this._jackpotManager.persistPool();
+        await WalletService.flushBatch();
+        // Mark session as ended (ended_at + final player count for analytics)
+        await db.query(
+            `UPDATE game_sessions SET ended_at = NOW(), player_count = $1, room_state = 'ENDED'
+             WHERE room_id = $2 AND ended_at IS NULL`,
+            [this.state.playerCount, this.roomId]
+        );
+    }
+}</code></pre></div>
+<h4 id="state-synchronisation-strategy">State Synchronisation Strategy</h4>
+<ul>
+<li><strong>20Hz server tick</strong>: fish position interpolation + room state broadcast via Colyseus delta-encode. Each tick also refreshes <code>this.state.rtpNumerator = Math.round(this.<em>rtpEngine.currentRtp * 100)</code> to keep the client-visible RTP indicator current. <strong>Dispose guard</strong>: <code></em>tick()</code> must check <code>if (this._disposed) return;</code> as its first line — <code>setInterval</code> can fire once more after <code>clearInterval</code> returns within the same event-loop turn.</li>
+<li><strong>Bullet events</strong>: sent as targeted one-off messages (not state schema), avoiding per-bullet schema overhead.</li>
+<li><strong>Client-side interpolation</strong>: client moves fish along server-provided Bezier path using elapsed time, correcting on each state patch. Bullet travel is purely client-predicted; server only broadcasts hit/miss outcome.</li>
+<li><strong>Jackpot pool</strong>: broadcast via GameState schema <code>jackpotPool</code> field on every state patch. NumberRoller animates the delta client-side.</li>
+</ul>
+<h3 id="22-game-logic-engine">§2.2 Game Logic Engine</h3>
+<h4 id="rtp-engine-design-us-rtp-001">RTP Engine Design (US-RTP-001)</h4>
+<p><strong>Principle</strong>: All hit adjudication is probabilistic, computed server-side using integer-denominator RNG to prevent floating-point drift.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// src/engine/RTPEngine.ts
+import crypto from 'crypto';
+import { db } from '../db';
+
+// Return types
+export interface HitResult    { hit: boolean; payout: number; }
+export interface JackpotResult { winnerId: string; amount: number; }
+
+export interface RTPConfig {
+    targetRtpMin: number;   // 0.92 — BRD §0.1 specifies 92-96% overall RTP
+    targetRtpMax: number;   // 0.96
+    fishConfigs: FishConfig[];
+}
+
+// Shared type — import in RTPEngine, FishSpawner, and schema files
+export type FishType = 'normal' | 'elite' | 'boss';
+
+export interface FishConfig {
+    fishType: FishType;
+    baseMultiplier: number;     // payout = bet * baseMultiplier
+    hitRateNumerator: number;   // integer; hit probability = numerator / denominator
+    hitRateDenominator: number; // fixed denominator (e.g. 100_000)
+}
+
+// Minimum bets before dynamic adjustment activates (prevents near-100% hits early in a room)
+const MIN_SAMPLE_BETS = 200;
+const MIN_BET_AMOUNT  = 1;    // minimum coin bet; used to gate adjustment
+
+export class RTPEngine {
+    private _totalBet = 0n;       // BigInt to avoid float overflow
+    private _totalPaid = 0n;
+    private _config: RTPConfig;
+
+    constructor(config: RTPConfig) { this._config = config; }
+
+    /** Called when jackpot is paid out — ensures jackpot payouts are included in RTP accounting */
+    addExternalPayout(amount: number): void {
+        this._totalPaid += BigInt(amount);
+    }
+
+    /**
+     * Server-authoritative hit adjudication.
+     * Returns { hit: boolean, payout: number }
+     * Uses integer-denominator RNG (no floating-point probability).
+     */
+    adjudicate(fishType: FishType, betAmount: number, multiplier: number): HitResult {
+        const fishCfg = this._config.fishConfigs.find(f =&gt; f.fishType === fishType)!;
+
+        // Dynamic hit-rate adjustment: if actual RTP &gt; targetMax, reduce hit rate temporarily
+        const adjustedNumerator = this._dynamicAdjust(fishCfg);
+
+        // CSPRNG: crypto.randomInt() for uniform distribution without floating-point bias
+        const roll = crypto.randomInt(fishCfg.hitRateDenominator);
+        const hit = roll &lt; adjustedNumerator;
+
+        this._totalBet += BigInt(betAmount);
+        if (hit) {
+            const payout = betAmount * fishCfg.baseMultiplier * multiplier;
+            this._totalPaid += BigInt(payout);
+            return { hit: true, payout };
+        }
+        return { hit: false, payout: 0 };
+    }
+
+    // Returns RTP with basis-point precision (0.01% granularity) for dynamic adjustment
+    get currentRtp(): number {
+        if (this._totalBet === 0n) return this._config.targetRtpMin;
+        return Number(this._totalPaid * 10000n / this._totalBet) / 10000;
+    }
+
+    private _dynamicAdjust(cfg: FishConfig): number {
+        // Suppress adjustment until MIN_SAMPLE_BETS accumulated — prevents extreme swings on room startup
+        if (this._totalBet &lt; BigInt(MIN_SAMPLE_BETS * MIN_BET_AMOUNT)) return cfg.hitRateNumerator;
+        const rtp = this.currentRtp;
+        if (rtp &gt; this._config.targetRtpMax) {
+            // Scale numerator down proportionally
+            const scale = this._config.targetRtpMax / rtp;
+            return Math.floor(cfg.hitRateNumerator * scale);
+        }
+        if (rtp &lt; this._config.targetRtpMin) {
+            const scale = this._config.targetRtpMin / rtp;
+            return Math.min(
+                Math.floor(cfg.hitRateNumerator * scale),
+                cfg.hitRateDenominator - 1
+            );
+        }
+        return cfg.hitRateNumerator;
+    }
+}</code></pre></div>
+<p><strong>100K Simulation CI Gate</strong> (US-RTP-001/AC-1): Jest test runs 100,000 adjudications per fish type and asserts <code>|actual<em>rtp - target</em>rtp| &lt; 0.001</code>. This test runs on every PR. RTP module must maintain 100% unit test coverage.</p>
+<h4 id="fish-spawn-algorithm">Fish Spawn Algorithm</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Fish Type</th><th>Spawn Trigger</th><th>Frequency</th><th>Max Concurrent</th><th>HP</th></tr></thead>
+<tbody>
+<tr><td>Elite (<code>ff<em>elite</em>fish_enabled</code>)</td><td>Random wave (M% chance per wave, configurable)</td><td>Medium</td><td>N / room (OQ5)</td><td>3-8</td></tr>
+<tr><td>Boss (<code>ff<em>boss</em>fish_enabled</code>)</td><td>Timer-based (interval configurable)</td><td>Low</td><td>1 / room</td><td>50-200</td></tr>
+</tbody></table></div>
+<p>Fish spawn includes a <strong>server-computed Bezier path</strong> (3-4 control points) so all clients see identical paths from the same state broadcast. Paths are generated with deterministic seeding per fish ID.</p>
+<h4 id="bullet-hit-detection-server-authoritative">Bullet Hit Detection (Server-Authoritative)</h4>
+<p><strong>Bullet deduplication</strong> (per-player in-memory Set):</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// In GameRoom: per-player in-flight bullet set; capped at 10 (matches rate-limit)
+private _activeBullets = new Map&lt;string, Set&lt;string&gt;&gt;();  // sessionId → Set&lt;bulletId&gt;
+
+_handleShoot(client: Client, data: ShootMessage): void {
+    const bullets = this._activeBullets.get(client.sessionId) ?? new Set&lt;string&gt;();
+    if (bullets.has(data.bulletId)) return;  // duplicate — silently drop
+    if (bullets.size &gt;= 10) return;          // rate-limit: max 10 active bullets
+    bullets.add(data.bulletId);
+    this._activeBullets.set(client.sessionId, bullets);
+    // ... adjudication ...
+    bullets.delete(data.bulletId);           // release after result sent
+}
+// onLeave cleanup:
+this._activeBullets.delete(client.sessionId);</code></pre></div>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Client sends: { bulletId, fishId, cannonMultiplier, betAmount }
+Server:
+  0. Validate bulletId not in player's active-bullet Set (dedup); reject if duplicate or Set size &gt;= 10
+  1. Validate: player has sufficient gold (betAmount &lt;= player.gold — checked against PlayerState.gold)
+  2. Validate: fishId exists and is alive
+  3. Deduct betAmount from player wallet (atomic, via WalletService.debitGold)
+     → Update player.gold in schema: this.state.players.get(sessionId)!.gold -= betAmount
+  4. Call RTPEngine.adjudicate(fishType, betAmount, cannonMultiplier)
+  5. If hit:
+     a. Decrement fish HP by 1 (server tracks HP via FishState.hp in schema)
+     b. If HP == 0: call WalletService.creditGold(userId, payout, 'earn');
+        → Update player.gold in schema: this.state.players.get(sessionId)!.gold += payout
+        Broadcast fish_killed; remove fish from state (triggers automatic schema delta to all clients)
+     c. Else: HP decrement auto-synced via schema delta patch (no separate fish_damaged message needed)
+  6. Check jackpot trigger (JackpotManager.tryTrigger with verified userId)
+     → If jackpot won:
+       a. update player.gold in schema += jackpotAmount
+       b. Call this._rtpEngine.addExternalPayout(jackpotAmount) to include in RTP accounting
+       c. this.broadcast('jackpot_won', { winnerId: client.auth.userId, amount: jackpotAmount })
+          — all room clients receive this; client §3.2 NetworkManager._handleJackpotWon() plays celebration animation
+  7. Fire-and-forget INSERT INTO rtp_logs (async; does NOT block shoot_result response):
+     `db.query('INSERT INTO rtp_logs ...', [...]).catch(err =&gt; logger.error('rtp_log_write_failed', err))`
+     Queue is drained in onDispose (await all pending rtp log writes before room closes).
+     Regulatory audit trail — permanent retention. Out-of-band write cannot lose data on normal shutdown.
+  8. Send shoot_result to shooter client (hit/miss, payout amount)
+  9. Remove bulletId from player's active-bullet Set</code></pre></div>
+<p><strong>Anti-double-spend</strong>: Wallet deduction is a database transaction with <code>FOR UPDATE</code> row lock. Bullet deduplication via in-memory Set prevents concurrent duplicates within the same session.</p>
+<p><strong>Non-shoot message rate limiting</strong>: <code>set<em>multiplier</code> and <code>start</em>game</code> messages have separate per-client throttles enforced at message handler entry:</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// In GameRoom private state:
+private _msgRateLimits = new Map&lt;string, { count: number; windowStart: number }&gt;();
+
+_checkRateLimit(sessionId: string, type: string, maxPerSec: number): boolean {
+    const key = `${sessionId}:${type}`;
+    const now = Date.now();
+    const entry = this._msgRateLimits.get(key) ?? { count: 0, windowStart: now };
+    if (now - entry.windowStart &gt; 1000) { entry.count = 0; entry.windowStart = now; }
+    entry.count++;
+    this._msgRateLimits.set(key, entry);
+    return entry.count &lt;= maxPerSec;
+}
+
+_handleSetMultiplier(client: Client, data: unknown): void {
+    if (!this._checkRateLimit(client.sessionId, 'set_multiplier', 10)) {
+        console.warn(`rate_limit set_multiplier ${client.sessionId}`); return;
+    }
+    // ... multiplier logic ...
+}
+
+_handleStartGame(client: Client, data: unknown): void {
+    if (!this._checkRateLimit(client.sessionId, 'start_game', 1)) {  // 1/s max
+        console.warn(`rate_limit start_game ${client.sessionId}`); return;
+    }
+    // ... game start logic ...
+}</code></pre></div>
+<p>Rate limits: <code>set<em>multiplier</code> max 10/s per client; <code>start</em>game</code> max 1/s per client. Exceeding limit: silently drop + WARN log (do not throw — Colyseus throws disconnect the client on unhandled errors).</p>
+<h4 id="boss-fish-escape-timeout-us-fish-002">Boss Fish Escape Timeout (US-FISH-002)</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// Boss fish has a 60-second escape timer; if no player kills it, it escapes (no payout)
+private _bossEscapeTimers = new Map&lt;string, NodeJS.Timeout&gt;();  // fishId → timer
+
+_spawnBoss(bossState: FishState): void {
+    this.state.fish.set(bossState.fishId, bossState);
+    const timer = setTimeout(() =&gt; {
+        if (this.state.fish.has(bossState.fishId)) {
+            this.state.fish.delete(bossState.fishId);   // auto-remove from schema
+            this.broadcast('boss_escaped', { fishId: bossState.fishId });
+            this.state.roomState = 'PLAYING';
+        }
+        this._bossEscapeTimers.delete(bossState.fishId);
+    }, 60_000);
+    this._bossEscapeTimers.set(bossState.fishId, timer);
+}
+
+// When boss is killed (hp == 0 in _handleShoot), cancel the timer:
+_onBossKilled(fishId: string): void {
+    const timer = this._bossEscapeTimers.get(fishId);
+    if (timer) { clearTimeout(timer); this._bossEscapeTimers.delete(fishId); }
+}
+
+// In onDispose — prevent timer leaks after room is disposed:
+this._bossEscapeTimers.forEach(t =&gt; clearTimeout(t));
+this._bossEscapeTimers.clear();</code></pre></div>
+<p>No gold refund for bets spent during a boss that escapes (bets deducted at fire time per normal flow).</p>
+<h4 id="jackpot-pool-accumulation-and-trigger-logic-us-jack-001us-jack-002">Jackpot Pool Accumulation and Trigger Logic (US-JACK-001/US-JACK-002)</h4>
+<p><strong>Pool Accumulation</strong>: Each valid bet contributes <code>betAmount × jackpotContribRate</code> (Y%, configurable). Pool stored as a plain Redis string key <code>game:jackpot:pool</code>; incremented atomically with <code>INCRBYFLOAT game:jackpot:pool &lt;contribution&gt;</code>. Contribution rate is read from environment config — not hardcoded.</p>
+<p><strong>Trigger Probabilities</strong> (from PDD §3.5 / PRD US-JACK-002):</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Cannon Multiplier</th><th>Jackpot Trigger Probability</th></tr></thead>
+<tbody>
+<tr><td>10x</td><td>1 : 50,000</td></tr>
+<tr><td>50x</td><td>1 : 10,000</td></tr>
+<tr><td>100x</td><td>1 : 5,000</td></tr>
+</tbody></table></div>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// src/engine/JackpotManager.ts
+export class JackpotManager {
+    private static _instance: JackpotManager;
+    private static _initPromise: Promise&lt;JackpotManager&gt; | null = null;  // race-condition guard
+    private _redis: Redis;
+
+    // Concurrent callers await the same promise — prevents double initialization under HPA multi-pod startup
+    public static getInstance(): Promise&lt;JackpotManager&gt; {
+        if (!JackpotManager._initPromise) {
+            JackpotManager._initPromise = (async () =&gt; {
+                if (!JackpotManager._instance) {
+                    const mgr = new JackpotManager();
+                    mgr._redis = new Redis(process.env.REDIS_URL!);
+                    await mgr.restorePool();
+                    JackpotManager._instance = mgr;
+                }
+                return JackpotManager._instance;
+            })();
+        }
+        return JackpotManager._initPromise;
+    }
+
+    // userId: verified user UUID (from client.auth set by onAuth) — NOT Colyseus sessionId
+    async tryTrigger(multiplier: number, userId: string): Promise&lt;JackpotResult | null&gt; {
+        const odds = JACKPOT_ODDS[multiplier] ?? JACKPOT_ODDS[1];   // denominator from table above
+        // CSPRNG: crypto.randomInt() for financial outcomes
+        const roll = crypto.randomInt(odds);
+        if (roll !== 0) return null;
+
+        // Atomic claim via Lua script: GETDEL + SET is not atomic in a pipeline.
+        // The Lua script runs atomically on the Redis server — prevents multiple concurrent winners.
+        const LUA_ATOMIC_CLAIM = `
+            local v = redis.call('GETDEL', KEYS[1])
+            if not v then return nil end
+            redis.call('SET', KEYS[1], ARGV[1])
+            return v
+        `;
+        const poolStr = await this._redis.eval(
+            LUA_ATOMIC_CLAIM, 1, 'game:jackpot:pool', String(JACKPOT_SEED_AMOUNT)
+        ) as string | null;
+        // INCRBYFLOAT stores a float string; Math.round avoids truncation of fractional contributions
+        const poolAmount = Math.round(parseFloat(poolStr ?? '0'));
+        if (poolAmount &lt;= 0) return null;   // another instance claimed it concurrently
+
+        // Credit winner's wallet and record history in a single DB transaction
+        await db.transaction(async (trx) =&gt; {
+            await trx.query(
+                'INSERT INTO jackpot_history (winner_id, amount, triggered_at) VALUES ($1,$2,NOW())',
+                [userId, poolAmount]
+            );
+            await trx.query(
+                'UPDATE user_wallets SET gold = gold + $1 WHERE user_id = $2',
+                [poolAmount, userId]
+            );
+            await trx.query(
+                "INSERT INTO transactions(user_id,type,amount,currency,created_at) VALUES($1,'jackpot',$2,'gold',NOW())",
+                [userId, poolAmount]
+            );
+        });
+        return { winnerId: userId, amount: poolAmount };
+    }
+
+    // Called by GameRoom._handleShoot after tryTrigger resolves — must be called from room context
+    // to have access to _rtpEngine:
+    // if (jackpotResult) { this._rtpEngine.addExternalPayout(jackpotResult.amount); }
+
+    async persistPool() {
+        const pool = await this._redis.get('game:jackpot:pool');
+        await db.query('UPDATE jackpot_pool SET current_amount=$1, updated_at=NOW() WHERE id=1', [pool]);
+    }
+
+    /** Called at server startup to restore pool from PostgreSQL */
+    async restorePool() {
+        const row = await db.query('SELECT current_amount FROM jackpot_pool WHERE id=1');
+        await this._redis.set('game:jackpot:pool', row.rows[0].current_amount);
+    }
+}</code></pre></div>
+<p><strong>Persistence guarantee</strong> (US-JACK-001/AC-3): <code>onDispose</code> persists Redis → PostgreSQL. Startup restores PostgreSQL → Redis. This ensures pool survives server restart.</p>
+<h3 id="23-dual-currency-system-us-curr-001-us-curr-002">§2.3 Dual Currency System (US-CURR-001 / US-CURR-002)</h3>
+<h4 id="data-model">Data Model</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">user_wallets:
+  - user_id (FK users.id)
+  - gold    BIGINT  (free virtual currency; minimum unit 1)
+  - diamond INTEGER (paid virtual currency; IAP only)
+  - updated_at TIMESTAMPTZ</code></pre></div>
+<h4 id="atomic-transaction-design-prevent-double-spend">Atomic Transaction Design (Prevent Double-Spend)</h4>
+<p>All wallet mutations go through <code>WalletService</code> which wraps PostgreSQL transactions:</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// src/services/WalletService.ts
+export async function debitGold(userId: string, amount: number): Promise&lt;void&gt; {
+    await db.transaction(async (trx) =&gt; {
+        const row = await trx.query(
+            'SELECT gold FROM user_wallets WHERE user_id=$1 FOR UPDATE',
+            [userId]
+        );
+        if (row.rows[0].gold &lt; amount) throw new InsufficientFundsError();
+        await trx.query(
+            'UPDATE user_wallets SET gold = gold - $1 WHERE user_id = $2',
+            [amount, userId]
+        );
+        await trx.query(
+            "INSERT INTO transactions(user_id,type,amount,currency,created_at) VALUES($1,'spend',$2,'gold',NOW())",
+            [userId, -amount]
+        );
+    });
+}
+
+export async function creditGold(userId: string, amount: number, type: string = 'earn'): Promise&lt;void&gt; {
+    await db.transaction(async (trx) =&gt; {
+        await trx.query(
+            'UPDATE user_wallets SET gold = gold + $1 WHERE user_id = $2',
+            [amount, userId]
+        );
+        await trx.query(
+            "INSERT INTO transactions(user_id,type,amount,currency,created_at) VALUES($1,$2,$3,'gold',NOW())",
+            [userId, type, amount]
+        );
+    });
+}
+
+/** Returns current gold balance for a player (used in onJoin to populate PlayerState) */
+export async function getGold(userId: string): Promise&lt;number&gt; {
+    const row = await db.query('SELECT gold FROM user_wallets WHERE user_id=$1', [userId]);
+    return row.rows[0]?.gold ?? 0;
+}
+
+/** Batch-flush any pending async wallet writes (called in onDispose) — placeholder for write-behind cache */
+export async function flushBatch(): Promise&lt;void&gt; {
+    // No-op in MVP (all mutations are synchronous transactions). Add write-behind cache here if needed.
+}
+
+/** Restore daily gold for active users below the free-gold threshold (blocked by OQ5) */
+export async function restoreDailyGold(): Promise&lt;void&gt; {
+    const DAILY_GOLD_THRESHOLD = parseInt(process.env.DAILY_GOLD_THRESHOLD ?? '0', 10);
+    const DAILY_GOLD_AMOUNT    = parseInt(process.env.DAILY_GOLD_AMOUNT    ?? '0', 10);
+    if (!DAILY_GOLD_THRESHOLD || !DAILY_GOLD_AMOUNT) return;  // OQ5: values TBD
+    // Must INSERT transactions rows so wallet-reconcile cron can cross-check; UPDATE alone leaves no audit trail
+    await db.transaction(async (trx) =&gt; {
+        const eligible = await trx.query(
+            `SELECT uw.user_id FROM user_wallets uw
+             JOIN users u ON u.id = uw.user_id
+             WHERE uw.gold &lt; $1 AND u.deletion_status = 'active'`,
+            [DAILY_GOLD_THRESHOLD]
+        );
+        if (eligible.rowCount === 0) return;
+        const ids = eligible.rows.map((r: { user_id: string }) =&gt; r.user_id);
+        await trx.query(
+            `UPDATE user_wallets SET gold = gold + $1 WHERE user_id = ANY($2::uuid[])`,
+            [DAILY_GOLD_AMOUNT, ids]
+        );
+        // Insert one transaction row per user so wallet-reconcile cron matches balance
+        await trx.query(
+            `INSERT INTO transactions(user_id, type, amount, currency, created_at)
+             SELECT unnest($1::uuid[]), 'daily_restore', $2, 'gold', NOW()`,
+            [ids, DAILY_GOLD_AMOUNT]
+        );
+    });
+}
+
+// iapVerificationResult contains: platform, productId, diamondAmount from the store receipt
+export async function creditDiamond(
+    userId: string, amount: number, receiptHash: string,
+    platform: 'apple' | 'google', productId: string
+): Promise&lt;void&gt; {
+    // Idempotency: check receipt_hash uniqueness before credit
+    await db.transaction(async (trx) =&gt; {
+        const existing = await trx.query(
+            'SELECT id FROM iap_receipts WHERE receipt_hash=$1', [receiptHash]
+        );
+        if (existing.rows.length &gt; 0) return;  // already processed, idempotent
+        await trx.query(
+            'INSERT INTO iap_receipts(user_id, receipt_hash, platform, product_id, diamond_amt, created_at) VALUES($1,$2,$3,$4,$5,NOW())',
+            [userId, receiptHash, platform, productId, amount]
+        );
+        await trx.query(
+            'UPDATE user_wallets SET diamond = diamond + $1 WHERE user_id=$2',
+            [amount, userId]
+        );
+        await trx.query(
+            "INSERT INTO transactions(user_id,type,amount,currency,created_at) VALUES($1,'iap',$2,'diamond',NOW())",
+            [userId, amount]
+        );
+    });
+}</code></pre></div>
+<p><strong>No withdrawal</strong>: API rejects any withdrawal or cash-out request with HTTP 403 and message "鑽石為娛樂虛擬幣，不可提現或折換現金" (US-CURR-001/AC-3).</p>
+<h4 id="iap-flow">IAP Flow</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Client (Cocos)            App Store / Google Play          Backend
+    |                              |                           |
+    |--- purchaseProduct() -------&gt;|                           |
+    |&lt;-- receipt/purchaseToken ----|                           |
+    |--- POST /api/v1/iap/verify --|--------------------------&gt;|
+    |                              |                           |--- validateReceipt(receipt)
+    |                              |&lt;--------------------------|
+    |                              |--- OK / INVALID ----------&gt;|
+    |                              |                           |--- creditDiamond() [idempotent]
+    |&lt;--------------------------------------------- 200 + balance|</code></pre></div>
+<p><strong>Retry / failure handling</strong>: Client retries verification up to 3 times with exponential backoff. Server deduplicates via <code>receipt_hash</code> (SHA-256). Duplicate submission returns 200 with current balance (idempotent per US-CURR-002/AC-4).</p>
+<h3 id="24-privacy-pdpa-backend-us-priv-001-through-us-priv-004">§2.4 Privacy & PDPA Backend (US-PRIV-001 through US-PRIV-004)</h3>
+<h4 id="consent-record-schema">Consent Record Schema</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Matches PRD §17.4 definition
+-- ON DELETE RESTRICT (not CASCADE): PDPA requires consent records to be retained as evidence
+-- even after account deletion/anonymisation. executeScheduledDeletions soft-anonymises the users row;
+-- it does NOT hard-delete it, so CASCADE would not trigger in the normal flow.
+-- However, RESTRICT prevents accidental consent record loss from any future admin hard-delete.
+CREATE TABLE user_consents (
+    id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    consent_type   VARCHAR(100) NOT NULL,   -- 'privacy_policy' | 'marketing'
+    granted        BOOLEAN      NOT NULL,
+    granted_at     TIMESTAMPTZ,
+    revoked_at     TIMESTAMPTZ,             -- NULL = not revoked
+    policy_version VARCHAR(20)  NOT NULL,
+    ip_address     INET,
+    user_agent     TEXT,                    -- stored; masked in logs
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_user_consents_user_type ON user_consents(user_id, consent_type);</code></pre></div>
+<p><strong>Version tracking</strong>: <code>policy<em>version</code> references a <code>privacy</em>policies</code> table keyed by semver. On login, server compares user's latest <code>granted_at</code> policy version against current policy version. If stale, client is forced to re-consent (US-PRIV-001/AC-4).</p>
+<h4 id="account-deletion-soft-delete-30-day-hard-delete-job-us-priv-002">Account Deletion — Soft Delete + 30-Day Hard Delete Job (US-PRIV-002)</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// src/services/PrivacyService.ts
+
+async requestDeletion(userId: string): Promise&lt;void&gt; {
+    await db.query(
+        `INSERT INTO deletion_requests(user_id, requested_at, scheduled_for)
+         VALUES($1, NOW(), NOW() + INTERVAL '30 days')
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId]
+    );
+    // Immediately set account as pending deletion
+    await db.query(
+        "UPDATE users SET deletion_status='pending', deletion_requested_at=NOW() WHERE id=$1",
+        [userId]
+    );
+}
+
+async cancelDeletion(userId: string): Promise&lt;void&gt; {
+    const result = await db.query(
+        `UPDATE deletion_requests
+         SET cancelled_at = NOW()
+         WHERE user_id = $1 AND executed_at IS NULL AND cancelled_at IS NULL
+         RETURNING user_id`,
+        [userId]
+    );
+    if (result.rowCount === 0) {
+        // Deletion already executed or no pending request
+        throw Object.assign(new Error('deletion_not_cancellable'), { statusCode: 409 });
+    }
+    await db.query(
+        "UPDATE users SET deletion_status='active', deletion_requested_at=NULL WHERE id=$1",
+        [userId]
+    );
+}
+
+// Cron job runs daily (see §2.7): processes deletion_requests WHERE scheduled_for &lt;= NOW()
+async executeScheduledDeletions(): Promise&lt;void&gt; {
+    const rows = await db.query(
+        "SELECT user_id FROM deletion_requests WHERE scheduled_for &lt;= NOW() AND executed_at IS NULL AND cancelled_at IS NULL"
+    );
+    for (const row of rows.rows) {
+        await db.transaction(async (trx) =&gt; {
+            // Anonymise PII (PDPA hard delete of identifiable data)
+            const anon = `deleted_${randomUUID().slice(0, 8)}`;
+            const anonEmail = `${anon}@deleted.invalid`;
+            // CRITICAL: must update BOTH email (encrypted) AND email_hash (HMAC).
+            // Leaving email_hash as HMAC of the original real email would retain a reversible
+            // fingerprint of the deleted user's address — a direct PDPA compliance failure.
+            await trx.query(
+                `UPDATE users
+                 SET email = $1, email_hash = $2, nickname = $3, deletion_status = 'deleted'
+                 WHERE id = $4`,
+                [encrypt(anonEmail), hmac(anonEmail, process.env.HMAC_SECRET_KEY!), anon, row.user_id]
+            );
+            // Retain transactions for 7 years (tax law) — user_id stays as UUID reference only
+            await trx.query(
+                "UPDATE deletion_requests SET executed_at=NOW() WHERE user_id=$1",
+                [row.user_id]
+            );
+        });
+    }
+}</code></pre></div>
+<h4 id="data-correction-api-us-priv-003">Data Correction API (US-PRIV-003)</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">PATCH /api/v1/user/profile
+Body: { nickname?: string, email?: string }
+
+- nickname: validate ≤50 chars; update immediately; broadcast to Colyseus room via GameRoom.broadcast
+- email: validate RFC 5322 format + uniqueness; send confirmation email to NEW address; 
+         update effective only after confirmation link clicked (24h TTL token)</code></pre></div>
+<p>Email confirmation token stored in Redis with 24-hour TTL: <code>SET email_confirm:&lt;token&gt; &lt;userId:newEmail&gt; EX 86400</code>. On confirmation link click, the server atomically updates <strong>both</strong> columns:</p>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">UPDATE users
+SET email = $encryptedNewEmail, email_hash = $hmacNewEmail
+WHERE id = $userId AND deletion_status = 'active'</code></pre></div>
+<p>Both <code>email</code> and <code>email<em>hash</code> must be updated together — updating only <code>email</code> without <code>email</em>hash</code> would break future uniqueness lookups.</p>
+<h4 id="consent-revocation-flow-us-priv-004">Consent Revocation Flow (US-PRIV-004)</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">POST /api/v1/privacy/consent/revoke
+Body: { consentType: 'marketing' }
+
+1. INSERT INTO user_consents(user_id, consent_type, granted, revoked_at, policy_version, created_at)
+   VALUES($userId, 'marketing', false, NOW(), $currentPolicyVersion, NOW())
+   -- policy_version is NOT NULL; pass the current active version from privacy_policies table
+2. Return 200 { success: true }
+Client then:
+3. Disables all Firebase Analytics marketing_* event logging (client SDK toggle)
+4. Updates marketing consent toggle UI to OFF</code></pre></div>
+<p>Revoking <code>privacy<em>policy</code> consent: server returns HTTP 409 with <code>{ redirect: 'account</em>deletion' }</code>, instructing client to route user to the account deletion flow (US-PRIV-004/AC-3).</p>
+<h3 id="25-api-design-summary">§2.5 API Design Summary</h3>
+<p>All endpoints versioned under <code>/api/v1/</code>. Auth via JWT Bearer token (15min access + 30-day refresh).</p>
+<h4 id="error-response-format">Error Response Format</h4>
+<p>All endpoints return a consistent envelope on error:</p>
+<div class="code-block-wrapper"><div class="code-lang-label">json</div><pre><code class="language-json">{
+  "error": {
+    "code": "string",       // machine-readable: "invalid_credentials" | "rate_limited" | "not_found" | etc.
+    "message": "string",    // human-readable, safe to display
+    "details": {}           // optional: validation errors, field-level errors
+  }
+}</code></pre></div>
+<p>Standard HTTP status codes: 400 (validation), 401 (unauthenticated), 403 (forbidden), 409 (conflict/state error), 422 (business rule violation), 429 (rate limit), 500 (server error). Error messages never expose stack traces, SQL errors, or internal system details.</p>
+<h4 id="endpoint-table">Endpoint Table</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th><th>US-ID</th></tr></thead>
+<tbody>
+<tr><td>POST</td><td><code>/api/v1/auth/login</code></td><td>None</td><td>Login; issue JWT pair</td><td>—</td></tr>
+<tr><td>POST</td><td><code>/api/v1/auth/refresh</code></td><td>Refresh JWT</td><td>Rotate token pair</td><td>—</td></tr>
+<tr><td>GET</td><td><code>/api/v1/user/profile</code></td><td>JWT</td><td>Get nickname, email (masked), wallet</td><td>—</td></tr>
+<tr><td>PATCH</td><td><code>/api/v1/user/profile</code></td><td>JWT</td><td>Update nickname / initiate email change</td><td>US-PRIV-003</td></tr>
+<tr><td>GET</td><td><code>/api/v1/user/wallet</code></td><td>JWT</td><td>Gold + diamond balance</td><td>US-CURR-001</td></tr>
+<tr><td>POST</td><td><code>/api/v1/iap/verify</code></td><td>JWT</td><td>Verify Apple/Google receipt; credit diamond</td><td>US-CURR-002</td></tr>
+<tr><td>GET</td><td><code>/api/v1/privacy/consents</code></td><td>JWT</td><td>List user's consent records</td><td>US-PRIV-001</td></tr>
+<tr><td>POST</td><td><code>/api/v1/privacy/consent/grant</code></td><td>JWT</td><td>Grant a consent type</td><td>US-PRIV-001</td></tr>
+<tr><td>POST</td><td><code>/api/v1/privacy/consent/revoke</code></td><td>JWT</td><td>Revoke marketing consent</td><td>US-PRIV-004</td></tr>
+<tr><td>POST</td><td><code>/api/v1/privacy/account/delete</code></td><td>JWT</td><td>Submit deletion request</td><td>US-PRIV-002</td></tr>
+<tr><td>DELETE</td><td><code>/api/v1/privacy/account/delete</code></td><td>JWT</td><td>Cancel pending deletion</td><td>US-PRIV-002</td></tr>
+<tr><td>GET</td><td><code>/api/v1/game/jackpot</code></td><td>JWT</td><td>Current jackpot pool amount</td><td>US-JACK-001</td></tr>
+<tr><td>GET</td><td><code>/api/v1/game/jackpot/odds</code></td><td>None (public)</td><td>Jackpot odds table for disclosure</td><td>US-JACK-002</td></tr>
+<tr><td>GET</td><td><code>/health</code></td><td>None</td><td>Liveness probe (k8s livenessProbe)</td><td>—</td></tr>
+<tr><td>GET</td><td><code>/health/ready</code></td><td>None</td><td>Readiness probe — 200 only after DB+Redis connected (k8s readinessProbe)</td><td>—</td></tr>
+</tbody></table></div>
+<h4 id="auth-endpoint-schemas">Auth Endpoint Schemas</h4>
+<p><strong>POST <code>/api/v1/auth/register</code></strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Request:  { email: string, password: string, nickname: string }
+          email: RFC 5322; password: ≥8 chars, ≥1 uppercase, ≥1 digit; nickname: ≤50 chars non-empty
+Response 201: { accessToken: string, refreshToken: string, expiresIn: 900 }
+Error 400: { error: { code: "validation_error", details: { field: "email", message: "invalid format" } } }
+Error 409: { error: { code: "email_taken", message: "Email already registered" } }</code></pre></div>
+<p><strong>POST <code>/api/v1/auth/login</code></strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Request:  { email: string, password: string }
+Response 200: { accessToken: string, refreshToken: string, expiresIn: 900 }
+Error 401: { error: { code: "invalid_credentials", message: "Email or password incorrect" } }
+           (generic message intentional — do not distinguish 'email not found' vs 'wrong password')</code></pre></div>
+<p><strong>POST <code>/api/v1/auth/refresh</code></strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">Request:  { refreshToken: string }
+Response 200: { accessToken: string, refreshToken: string, expiresIn: 900 }
+             (refresh token is rotated — old token invalidated immediately)
+Error 401: { error: { code: "invalid_refresh_token" } }</code></pre></div>
+<p><strong>Rate Limiting</strong>: All auth endpoints: 10 req/min per IP. IAP verify: 5 req/min per user. Profile update: 20 req/min per user. Implemented via <code>express-rate-limit</code> + Redis store.</p>
+<h3 id="26-database-schema-postgresql-key-tables">§2.6 Database Schema (PostgreSQL, Key Tables)</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">sql</div><pre><code class="language-sql">-- Users
+-- email: AES-256-GCM encrypted (non-deterministic); email_hash: HMAC-SHA256(email, server_secret)
+-- for uniqueness enforcement (AES-GCM random nonce means same email → different ciphertext each time)
+CREATE TABLE users (
+    id                    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    email                 BYTEA        NOT NULL,          -- AES-256-GCM encrypted; retrieved by app only
+    email_hash            BYTEA        NOT NULL UNIQUE,   -- HMAC-SHA256(plaintext_email, SECRET_HMAC_KEY)
+    nickname              VARCHAR(50)  NOT NULL,
+    password_hash         TEXT         NOT NULL,           -- bcrypt
+    device_id             VARCHAR(64),                     -- SHA-256 hash, anti-cheat
+    deletion_status       VARCHAR(20)  NOT NULL DEFAULT 'active', -- active|pending|deleted
+    deletion_requested_at TIMESTAMPTZ,
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Wallets (1:1 with users)
+CREATE TABLE user_wallets (
+    user_id    UUID    PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    gold       BIGINT  NOT NULL DEFAULT 0 CHECK (gold &gt;= 0),
+    diamond    INTEGER NOT NULL DEFAULT 0 CHECK (diamond &gt;= 0),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Transactions (immutable ledger)
+CREATE TABLE transactions (
+    id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    UUID         NOT NULL REFERENCES users(id),
+    type       VARCHAR(20)  NOT NULL,    -- earn|spend|iap|jackpot|refund
+    amount     BIGINT       NOT NULL,    -- positive=credit, negative=debit
+    currency   VARCHAR(10)  NOT NULL DEFAULT 'gold',  -- gold|diamond
+    ref_id     UUID,                     -- e.g. game_session_id or iap_receipt_id
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_transactions_user_created ON transactions(user_id, created_at DESC);
+
+-- IAP Receipts (idempotency table)
+CREATE TABLE iap_receipts (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID        NOT NULL REFERENCES users(id),
+    receipt_hash VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256(receipt)
+    platform     VARCHAR(10) NOT NULL,          -- apple|google
+    product_id   VARCHAR(100) NOT NULL,
+    diamond_amt  INTEGER     NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Jackpot Pool (single-row state table)
+CREATE TABLE jackpot_pool (
+    id             INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- singleton
+    current_amount BIGINT  NOT NULL DEFAULT 10000,  -- seed amount
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Jackpot History (audit trail)
+CREATE TABLE jackpot_history (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    winner_id    UUID        NOT NULL REFERENCES users(id),
+    amount       BIGINT      NOT NULL,
+    triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    room_id      VARCHAR(100)
+);
+
+-- Game Sessions (audit / analytics)
+CREATE TABLE game_sessions (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id      VARCHAR(100) NOT NULL,
+    started_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    ended_at     TIMESTAMPTZ,
+    ip_address   INET,                                    -- logged for anti-cheat; masked in logs; deleted after 90 days
+    player_ids   UUID[]       NOT NULL DEFAULT '{}',     -- appended in onJoin; default empty array allows INSERT before any player joins
+    player_count INTEGER      NOT NULL DEFAULT 0,        -- maintained by onCreate/onJoin/onDispose for quick analytics queries
+    room_state   VARCHAR(20)  NOT NULL DEFAULT 'WAITING' -- WAITING|PLAYING|ENDED; mirrors GameState.roomState
+);
+
+-- User Consents (PDPA) — ON DELETE RESTRICT: consent records must be retained for PDPA evidence
+CREATE TABLE user_consents (
+    id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    consent_type   VARCHAR(100) NOT NULL,
+    granted        BOOLEAN      NOT NULL,
+    granted_at     TIMESTAMPTZ,
+    revoked_at     TIMESTAMPTZ,
+    policy_version VARCHAR(20)  NOT NULL,
+    ip_address     INET,
+    user_agent     TEXT,
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Deletion Requests
+CREATE TABLE deletion_requests (
+    user_id      UUID        PRIMARY KEY REFERENCES users(id),
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    scheduled_for TIMESTAMPTZ NOT NULL,
+    executed_at  TIMESTAMPTZ,
+    cancelled_at TIMESTAMPTZ
+);
+
+-- Privacy Policies (version registry for consent tracking)
+CREATE TABLE privacy_policies (
+    version      VARCHAR(20)  PRIMARY KEY,    -- semver e.g. '1.0.0'
+    content_url  TEXT         NOT NULL,        -- URL to hosted policy text
+    effective_at TIMESTAMPTZ  NOT NULL,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- RTP Audit Logs (permanent retention)
+CREATE TABLE rtp_logs (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id     VARCHAR(100) NOT NULL,
+    user_id     UUID        NOT NULL,
+    fish_type   VARCHAR(20) NOT NULL,
+    bet_amount  BIGINT      NOT NULL,
+    multiplier  INTEGER     NOT NULL,
+    hit         BOOLEAN     NOT NULL,
+    payout      BIGINT      NOT NULL DEFAULT 0,
+    rtp_at_time NUMERIC(5,4) NOT NULL,   -- running RTP at time of adjudication
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_rtp_logs_room ON rtp_logs(room_id, created_at DESC);
+CREATE INDEX idx_rtp_logs_user ON rtp_logs(user_id, created_at DESC);  -- regulatory 'all bets by user' query
+CREATE INDEX idx_jackpot_history_winner ON jackpot_history(winner_id, triggered_at DESC);  -- player jackpot history query
+CREATE INDEX idx_game_sessions_started_at ON game_sessions(started_at);
+CREATE INDEX idx_game_sessions_room_id ON game_sessions(room_id);</code></pre></div>
+<p><strong>Email encryption</strong>: <code>users.email</code> stored as <code>BYTEA</code> (AES-256-GCM with server-managed KEK via environment variable or Vault). <code>users.email<em>hash</code> stores <code>HMAC-SHA256(plaintext</em>email, HMAC<em>SECRET</em>KEY)</code> for uniqueness lookup (since AES-GCM is non-deterministic). Decryption occurs only in application layer; never logged.</p>
+<p><strong>Indexing strategy</strong>: <code>user<em>id + created</em>at DESC</code> on transactions for wallet reconciliation; <code>receipt<em>hash</code> unique index on IAP receipts for idempotency; <code>jackpot</em>pool</code> singleton enforced via CHECK constraint.</p>
+<h3 id="27-infrastructure-deployment">§2.7 Infrastructure & Deployment</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">yaml</div><pre><code class="language-yaml"># k8s minimal spec (HPA-enabled)
+# NOTE: Replace ${GIT_SHA} with the actual commit hash via CI/CD (never use :latest in production)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fishing-game-server
+spec:
+  replicas: 2                    # minimum 2 for 99.9% SLA
+  selector:
+    matchLabels: { app: fishing-game }
+  template:
+    spec:
+      terminationGracePeriodSeconds: 60   # allows onDispose (pool persist, session UPDATE) to complete before SIGKILL
+      containers:
+        - name: game-server
+          image: fishing-game-server:${GIT_SHA}   # injected by CI/CD pipeline; never :latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 2567     # Colyseus WebSocket
+            - containerPort: 3000     # REST API
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: db-secret, key: url } }
+            - name: REDIS_URL
+              valueFrom: { secretKeyRef: { name: redis-secret, key: url } }
+            - name: AES_KEY
+              valueFrom: { secretKeyRef: { name: crypto-secret, key: aes-key } }
+            - name: HMAC_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: crypto-secret, key: hmac-key } }
+            - name: JWT_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: jwt-secret, key: private-key } }
+            - name: JWT_PUBLIC_KEY
+              valueFrom: { secretKeyRef: { name: jwt-secret, key: public-key } }
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits:   { cpu: "2",    memory: "2Gi" }
+          livenessProbe:
+            httpGet: { path: /health, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 3000 }  # returns 200 only after DB+Redis connected
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+---
+# Service with sticky sessions required for Colyseus multi-pod WebSocket routing
+apiVersion: v1
+kind: Service
+metadata:
+  name: fishing-game-svc
+  annotations:
+    # Nginx Ingress sticky session for WebSocket — ensures client always reconnects to same pod
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "colyseus-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+spec:
+  selector: { app: fishing-game }
+  ports:
+    - name: ws
+      port: 2567
+      targetPort: 2567
+    - name: rest
+      port: 3000
+      targetPort: 3000
+---
+---
+# PodDisruptionBudget — ensures at least 1 replica is available during node drain / rolling update
+# Prevents both replicas being evicted simultaneously (which would break 99.9% SLA)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fishing-game-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: fishing-game }
+---
+# NetworkPolicy — restrict ingress/egress to named peers only (defence-in-depth for wallet data)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fishing-game-netpol
+spec:
+  podSelector:
+    matchLabels: { app: fishing-game }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - port: 2567    # Colyseus WebSocket
+        - port: 3000    # REST API
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: postgresql }
+      ports: [{ port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app: redis }
+      ports: [{ port: 6379 }]
+    - ports: [{ port: 443 }]   # Apple/Google IAP validation outbound
+---
+# Ingress — TLS termination + WebSocket upgrade + sticky session routing
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fishing-game-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"    # keep WebSocket connections alive
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "colyseus-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+spec:
+  tls:
+    - hosts: [game.example.com]
+      secretName: fishing-game-tls   # cert-manager TLS secret (Let's Encrypt or purchased cert)
+  rules:
+    - host: game.example.com
+      http:
+        paths:
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service: { name: fishing-game-svc, port: { number: 3000 } }
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: fishing-game-svc, port: { number: 2567 } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fishing-game-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1     # required by autoscaling/v2
+    kind: Deployment
+    name: fishing-game-server
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }</code></pre></div>
+<p><strong>Cron Jobs</strong> (Kubernetes CronJob):</p>
+<ul>
+<li><code>deletion-executor</code>: runs daily at 02:00 UTC; calls <code>PrivacyService.executeScheduledDeletions()</code></li>
+<li><code>jackpot-persist</code>: runs every 5 minutes; calls <code>JackpotManager.persistPool()</code> as secondary checkpoint</li>
+<li><code>wallet-reconcile</code>: runs daily at 03:00 UTC; cross-checks <code>user_wallets</code> balance against <code>transactions</code> sum</li>
+<li><code>ip-cleanup</code>: runs daily at 04:00 UTC; <code>UPDATE game<em>sessions SET ip</em>address=NULL WHERE started<em>at &lt; NOW() - INTERVAL '90 days' AND ip</em>address IS NOT NULL</code> (§4.3 data retention policy)</li>
+<li><code>gold-restore</code>: runs daily at 06:00 UTC; calls <code>WalletService.restoreDailyGold()</code> for active users below threshold (threshold value: configurable constant, blocked by OQ5)</li>
+</ul>
+<p><strong>Secrets management</strong>: All credentials in k8s Secrets (or external Vault). Never hardcoded. <code>.env</code> file excluded from VCS via <code>.gitignore</code>. Application validates required env vars at startup and exits with clear error if missing.</p>
+<hr>
+<h2 id="3-client-engineering-cocos-creator-4x-typescript">§3 Client Engineering (Cocos Creator 4.x + TypeScript)</h2>
+<h3 id="31-project-structure">§3.1 Project Structure</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">client/
+├── assets/
+│   ├── scenes/
+│   │   ├── Boot.scene
+│   │   ├── MainMenu.scene
+│   │   ├── GameRoom.scene
+│   │   └── Shop.scene
+│   ├── prefabs/
+│   │   ├── fish/
+│   │   │   ├── NormalFish.prefab
+│   │   │   ├── EliteFish.prefab
+│   │   │   └── BossFish.prefab
+│   │   ├── ui/
+│   │   │   ├── JackpotDisplay.prefab
+│   │   │   ├── PrivacyConsentModal.prefab
+│   │   │   ├── JackpotOddsModal.prefab
+│   │   │   └── CoinInsufficientToast.prefab
+│   │   └── cannon/
+│   │       └── Cannon.prefab
+│   ├── scripts/
+│   │   ├── components/
+│   │   │   ├── cannon/
+│   │   │   │   └── CannonComponent.ts
+│   │   │   ├── fish/
+│   │   │   │   ├── NormalFish.ts
+│   │   │   │   ├── EliteFish.ts
+│   │   │   │   └── BossFish.ts
+│   │   │   ├── ui/
+│   │   │   │   ├── NumberRoller.ts
+│   │   │   │   ├── PrivacyConsentModal.ts
+│   │   │   │   ├── JackpotOddsModal.ts
+│   │   │   │   └── CoinInsufficientToast.ts
+│   │   │   └── layout/
+│   │   │       └── SafeAreaAdapter.ts
+│   │   ├── network/
+│   │   │   ├── NetworkManager.ts
+│   │   │   └── RoomMessageHandler.ts
+│   │   ├── managers/
+│   │   │   ├── DataManager.ts
+│   │   │   └── AudioManager.ts
+│   │   └── utils/
+│   │       ├── ObjectPoolManager.ts
+│   │       ├── AccessibilityHelper.ts
+│   │       └── MotionPreference.ts
+│   └── atlases/
+│       ├── ui_common.atlas
+│       ├── fish_normal.atlas
+│       ├── fish_elite.atlas
+│       ├── fish_boss.atlas
+│       └── effects_common.atlas
+└── native/
+    ├── ios/
+    │   └── AppController+Accessibility.mm   # jsb bridge for VoiceOver
+    └── android/
+        └── Cocos2dxHelper+Accessibility.java # jsb bridge for TalkBack</code></pre></div>
+<h3 id="32-network-layer-websocket-colyseus-sdk">§3.2 Network Layer (WebSocket → Colyseus SDK)</h3>
+<h4 id="connection-management">Connection Management</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// scripts/network/NetworkManager.ts
+// Persistent node: created in Boot.scene, preserved across scenes via director.addPersistRootNode()
+
+@ccclass('NetworkManager')
+export class NetworkManager extends Component {
+    private _client: Client;
+    private _room: Room&lt;GameState&gt; | null = null;
+    private _reconnectAttempts = 0;
+    private static readonly MAX_RECONNECT = 3;
+    private static readonly RECONNECT_DELAYS = [1000, 2000, 4000]; // exponential backoff
+
+    async connect(serverUrl: string) {
+        this._client = new Client(serverUrl);
+    }
+
+    async joinOrCreateRoom(options: RoomJoinOptions): Promise&lt;void&gt; {
+        this._room = await this._client.joinOrCreate&lt;GameState&gt;('game_room', options);
+        this._room.onStateChange(this._handleStateChange.bind(this));
+        this._room.onLeave(this._handleDisconnect.bind(this));
+        this._room.onMessage('shoot_result', this._handleShootResult.bind(this));
+        this._room.onMessage('jackpot_won', this._handleJackpotWon.bind(this));
+        this._reconnectAttempts = 0;
+    }
+
+    private async _handleDisconnect(code: number) {
+        // Capture token before the loop — _room may be nulled by SDK during disconnect handling
+        const reconnectToken = this._room?.reconnectionToken;
+        if (!reconnectToken) { this._emitEvent('reconnect_failed'); return; }
+
+        // Use iterative loop (not recursion) to avoid stack overflow across multiple retries
+        while (this._reconnectAttempts &lt; NetworkManager.MAX_RECONNECT) {
+            this._emitEvent('reconnecting', { attempt: this._reconnectAttempts + 1 });
+            const delay = NetworkManager.RECONNECT_DELAYS[this._reconnectAttempts];
+            await new Promise(r =&gt; setTimeout(r, delay));
+            try {
+                this._room = await this._client.reconnect(reconnectToken);
+                this._reconnectAttempts = 0;
+                this._emitEvent('reconnected');
+                return;
+            } catch {
+                this._reconnectAttempts++;
+            }
+        }
+        this._emitEvent('reconnect_failed');
+    }
+
+    sendShoot(fishId: string, betAmount: number, cannonMultiplier: number) {
+        const bulletId = crypto.randomUUID();  // client-generated for dedup; server validates uniqueness
+        this._room?.send('shoot', { bulletId, fishId, betAmount, cannonMultiplier });
+    }
+
+    /**
+     * Internal event bus using Cocos cc.EventTarget (inherited by Component).
+     * Consumers attach: networkMgr.node.on('reconnected', cb, target)
+     * Internal emit: this._emitEvent('reconnected') → this.node.emit('reconnected', data)
+     */
+    private _emitEvent(type: string, data?: unknown): void {
+        this.node.emit(type, data);
+    }
+}</code></pre></div>
+<p><strong>Event names and payloads</strong> emitted by NetworkManager:</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>Event</th><th>Payload</th><th>Consumer</th></tr></thead>
+<tbody>
+<tr><td><code>reconnected</code></td><td>—</td><td>Hide overlay, resume game</td></tr>
+<tr><td><code>reconnect_failed</code></td><td>—</td><td>Show "Connection lost" dialog; route to lobby</td></tr>
+</tbody></table></div>
+<h4 id="321-jwt-refresh-token-mobile-secure-storage">§3.2.1 JWT Refresh Token — Mobile Secure Storage</h4>
+<p>Access tokens (HS256, 15-min TTL) are obtained via <code>POST /api/v1/auth/login</code> and refreshed by <code>POST /api/v1/auth/refresh</code> using a long-lived refresh token (30-day TTL, HTTP-only cookie on web; native Keychain/Keystore on mobile).</p>
+<p><strong>iOS — Keychain via jsb.reflection:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// scripts/native/SecureStorage.ts
+declare const jsb: { reflection: { callStaticMethod: (cls: string, method: string, sig: string, ...args: string[]) =&gt; string } };
+
+export class SecureStorage {
+    static set(key: string, value: string): void {
+        if (sys.isNative &amp;&amp; sys.platform === sys.Platform.IOS) {
+            // Calls Swift: SecureStorage.set(key:value:) which stores in kSecClassGenericPassword
+            jsb.reflection.callStaticMethod('SecureStorage', 'setKey:value:', '(NSString*,NSString*)V', key, value);
+        } else {
+            // Web fallback: sessionStorage only (access token) — refresh token via HTTP-only cookie
+            sessionStorage.setItem(key, value);
+        }
+    }
+
+    static get(key: string): string {
+        if (sys.isNative &amp;&amp; sys.platform === sys.Platform.IOS) {
+            return jsb.reflection.callStaticMethod('SecureStorage', 'getKey:', '(NSString*)NSString*', key);
+        }
+        return sessionStorage.getItem(key) ?? '';
+    }
+}</code></pre></div>
+<p><strong>Android — Keystore via jsb.reflection:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">if (sys.isNative &amp;&amp; sys.platform === sys.Platform.ANDROID) {
+    // Calls Java: SecureStorageHelper.set(key, value) — stores encrypted in EncryptedSharedPreferences
+    // backed by Android Keystore hardware-backed key (API 23+)
+    jsb.reflection.callStaticMethod('com/example/fishing/SecureStorageHelper', 'set',
+        '(Ljava/lang/String;Ljava/lang/String;)V', key, value);
+}</code></pre></div>
+<p><strong>Usage in NetworkManager:</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// On login success:
+SecureStorage.set('refresh_token', response.refreshToken);
+
+// On access token expiry (401):
+const refreshToken = SecureStorage.get('refresh_token');
+const { accessToken } = await this._http.post('/api/auth/refresh', { refreshToken });
+// Re-join room with fresh token</code></pre></div>
+<p><strong>Security constraints:</strong></p>
+<ul>
+<li>Refresh tokens are single-use; server invalidates on use (rotation).</li>
+<li><code>kSecAttrAccessibleWhenUnlockedThisDeviceOnly</code> (iOS) — token cannot be migrated to another device via iCloud backup.</li>
+<li>Android EncryptedSharedPreferences backed by hardware-backed key (Keystore API 23+); no software fallback in production.</li>
+</ul>
+<h4 id="state-sync-handling-onstatechange-callbacks">State Sync Handling (onStateChange Callbacks)</h4>
+<ul>
+<li><strong>Fish pool updates</strong>: <code>state.fish.onAdd((fish, key) =&gt; FishPool.spawn(fish))</code>; <code>state.fish.onRemove((fish, key) =&gt; FishPool.recycle(fish.fishId))</code></li>
+<li><strong>Player state changes</strong>: <code>state.players.onAdd((player, key) =&gt; { player.listen('gold', newVal =&gt; updateHUD(key, newVal)); player.listen('nickname', ...) })</code> — Colyseus Schema v2 MapSchema uses <code>.onAdd</code> + per-item <code>.listen()</code>, NOT <code>.onChange</code></li>
+<li><strong>Jackpot pool</strong>: <code>state.listen('jackpotPool', (newVal) =&gt; NumberRoller.updateValue(newVal))</code> — Colyseus Schema v2 uses <code>state.listen('fieldName', cb)</code> for primitive field listeners, NOT <code>state.onChange('fieldName', cb)</code></li>
+<li><strong>Room state transitions</strong>: <code>state.listen('roomState', (newVal) =&gt; ...)</code> → trigger scene-level state machine (WaitingOverlay, BossAnnouncement, etc.)</li>
+</ul>
+<h3 id="33-core-game-components">§3.3 Core Game Components</h3>
+<h4 id="datamanager">DataManager</h4>
+<p><code>DataManager</code> is a persistent singleton (added to <code>director.persistRootNode</code> alongside <code>NetworkManager</code>) that caches local copies of player state for UI consumption without querying Colyseus schema on every frame.</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// scripts/managers/DataManager.ts
+export class DataManager {
+    private static _instance: DataManager;
+    static getInstance(): DataManager { ... }
+
+    // Profile
+    get nickname(): string;
+    get userId(): string;
+    updateFromAuth(payload: JWTPayload): void;  // called after login/refresh
+
+    // Wallet — updated from Colyseus state patches via state.players.onAdd + player.listen()
+    get gold(): number;
+    get diamond(): number;
+    updateGold(newVal: number): void;    // called by NetworkManager on state patch
+    updateDiamond(newVal: number): void;
+
+    // Cache invalidation: call reset() on logout or room leave
+    reset(): void;
+}</code></pre></div>
+<p><strong>Invalidation rules:</strong></p>
+<ul>
+<li>Wallet: updated on every <code>player.listen('gold', cb)</code> / <code>player.listen('diamond', cb)</code> Colyseus callback in NetworkManager — no polling needed.</li>
+<li>Profile: updated on <code>POST /api/v1/auth/login</code> response and <code>POST /api/v1/auth/refresh</code>; re-fetched from <code>GET /api/v1/user/profile</code> if stale flag is set after PATCH.</li>
+<li>UILayer reads from DataManager only — never directly from Colyseus schema.</li>
+</ul>
+<h4 id="cannoncomponent-implementation-notes">CannonComponent Implementation Notes</h4>
+<p>Full state machine: <code>IDLE → CHARGING → FIRING → COOLING</code>. Key implementation rules:</p>
+<ul>
+<li><strong>No client-side RTP logic</strong>: <code>CannonComponent.onFireTap()</code> sends <code>shoot</code> message to server. Client displays firing animation immediately (optimistic) but only shows payout or miss after receiving <code>shoot_result</code> message.</li>
+<li><strong>Aim line rendering</strong>: <code>Graphics</code> component redraws every frame (<code>update()</code>). Use <code>cc.Graphics.moveTo / lineTo / stroke</code>. Dashed line via manual segment iteration.</li>
+<li><strong>Reduce Motion</strong>: call <code>MotionPreference.isReduceMotionEnabled()</code> at <code>onLoad</code>. If true, skip idle barrel sway, muzzle pulse, and charging vibration animations. (PDD §3.1 F8 spec)</li>
+</ul>
+<h4 id="objectpoolmanager-basefish-contract">ObjectPoolManager + BaseFish Contract</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// scripts/utils/ObjectPoolManager.ts — singleton, manages CC4.x ObjectPool&lt;Node&gt; instances
+
+export class ObjectPoolManager {
+    private static _instance: ObjectPoolManager;
+    private _pools = new Map&lt;string, NodePool&gt;();
+    private _prefabs = new Map&lt;string, Prefab&gt;();
+
+    static getInstance(): ObjectPoolManager { ... }
+
+    /** Register a prefab under a key; must be called before getPool() for that key */
+    registerPrefab(key: string, prefab: Prefab): void;
+
+    /**
+     * Get (or create) a pool for the given key.
+     * @param prewarmCount  If &gt; 0 and pool is new, pre-instantiate this many nodes immediately.
+     */
+    getPool(key: string, prewarmCount?: number): NodePool;
+
+    /** Release all pools and destroy all pooled nodes — call before scene transition */
+    clearAllPools(): void;
+}
+
+// scripts/components/fish/BaseFish.ts — abstract base component every fish variant extends
+export abstract class BaseFish extends Component {
+    /** Called by spawnFish() immediately after pool.get(). Syncs node to server state. */
+    abstract initWithServerData(data: FishState): void;
+
+    /** Called each frame; advances fish along its pre-computed Bezier path */
+    abstract updatePath(dt: number): void;
+}</code></pre></div>
+<h4 id="fish-objectpool-implementation">Fish ObjectPool Implementation</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// Uses ObjectPoolManager above; CC4.x ObjectPool&lt;Node&gt; handler: { onFree, reuse }
+// handler: { onFree: node =&gt; node.active = false, reuse: node =&gt; node.active = true }
+
+// In GameRoom scene onLoad:
+const poolMgr = ObjectPoolManager.getInstance();
+poolMgr.registerPrefab('NormalFish', this.normalFishPrefab);
+poolMgr.registerPrefab('EliteFish', this.eliteFishPrefab);
+poolMgr.registerPrefab('BossFish', this.bossFishPrefab);
+
+// Warm-up (avoid GC spike during gameplay):
+poolMgr.getPool('NormalFish', 20);   // 20 pre-warmed
+poolMgr.getPool('EliteFish', 5);
+poolMgr.getPool('BossFish', 2);
+poolMgr.getPool('Bullet', 40);
+poolMgr.getPool('HitEffect', 20);
+
+// Spawn (called from state.fish.onAdd callback):
+// FishState.fishType is lowercase ('normal'|'elite'|'boss'); capitalize first letter to match registered key
+const FISH_COMP_MAP: Record&lt;string, typeof BaseFish&gt; = {
+    NormalFish, EliteFish, BossFish
+};
+function spawnFish(data: FishState) {
+    const poolKey = data.fishType.charAt(0).toUpperCase() + data.fishType.slice(1) + 'Fish';
+    const pool = poolMgr.getPool(poolKey, 0);
+    const node = pool.get();
+    const CompClass = FISH_COMP_MAP[poolKey];
+    const comp = node.getComponent(CompClass)!;  // each fish type has its own component class
+    comp.initWithServerData(data);
+    gameLayer.addChild(node);
+}</code></pre></div>
+<p><strong>Scene cleanup</strong>: <code>director.on(Director.EVENT<em>BEFORE</em>SCENE_LAUNCH, () =&gt; poolMgr.clearAllPools())</code> — releases all pooled nodes and Bundle assets before transitioning away from GameRoom.</p>
+<h4 id="numberroller-implementation">NumberRoller Implementation</h4>
+<p>See PDD §3.3 for full implementation. Key constraint: CC4.x <code>tween()</code> only animates <strong>public</strong> properties. <code>currentValue</code> must be declared <code>public</code>. <code>displayLabel.string</code> updated in <code>onUpdate</code> callback with <code>toLocaleString('zh-TW')</code> formatting.</p>
+<h3 id="34-safe-area-responsive-layout">§3.4 Safe Area & Responsive Layout</h3>
+<p><code>SafeAreaAdapter</code> (PDD §4.1.1) uses <code>sys.getSafeAreaRect()</code> + <code>screen.windowSize</code> in physical pixels, divided by <code>screen.devicePixelRatio</code> to produce logical pixel insets for <code>UITransform.setContentSize()</code>. All four insets (top, bottom, left, right) are applied to <code>SafeAreaAdapter</code> child nodes that act as margin spacers.</p>
+<p><strong>Landscape lock</strong>: <code>screen.setOrientation(ScreenOrientation.LANDSCAPE_RIGHT)</code> in Boot.scene. Also declared in <code>AndroidManifest.xml</code> (<code>sensorLandscape</code>) and iOS <code>Info.plist</code>. Android Display Cutout: <code>android:windowLayoutInDisplayCutoutMode="shortEdges"</code> (PDD §4.1.2 F11).</p>
+<p><strong>Design resolution</strong>: 1334×750 (iPhone landscape baseline), with <code>FIXED_WIDTH</code> fit strategy so width is always 1334 logical units and height scales.</p>
+<h3 id="35-performance-budget-2gb-ram-target-prd-75">§3.5 Performance Budget (2GB RAM Target, PRD §7.5)</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Resource</th><th>Budget</th><th>Control Mechanism</th></tr></thead>
+<tbody>
+<tr><td>JS heap</td><td>< 64 MB</td><td>ObjectPool eliminates allocation churn; no leaking event listeners</td></tr>
+<tr><td>FPS</td><td>≥ 30</td><td>Low-End Mode auto-activates when FPS < 25 for 5s (halves particles, disables Bloom)</td></tr>
+<tr><td>Network messages / s</td><td>≤ 10,000 msg/s aggregate (500 rooms × 4 players × 5/s)</td><td>Colyseus state delta encoding; shoot messages are point-to-point not broadcast</td></tr>
+<tr><td>Asset bundle: <code>game_room</code></td><td>≤ 30 MB download</td><td>Atlas compression; Spine skeleton binary format</td></tr>
+</tbody></table></div>
+<p><strong>Profiling checkpoints</strong> (CI): weekly memory snapshot test on iPhone 12 (3GB RAM), Samsung Galaxy A54 (6GB RAM). Gate: no OOM crash in 30-minute stress run.</p>
+<h3 id="36-privacy-ui-components">§3.6 Privacy UI Components</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Component</th><th>Trigger</th><th>Key Behaviour</th></tr></thead>
+<tbody>
+<tr><td><code>JackpotOddsModal</code></td><td>Shop page; Settings → Jackpot odds</td><td>Displays odds table from <code>GET /api/v1/game/jackpot/odds</code>; date-stamped; meets App Store/Google Play disclosure requirement</td></tr>
+<tr><td><code>ConsentManagementUI</code></td><td>Settings → Privacy</td><td>Toggle for marketing consent; calls <code>POST /api/v1/privacy/consent/revoke</code>; disables Firebase <code>marketing_*</code> events client-side</td></tr>
+<tr><td><code>AccountDeletionFlow</code></td><td>Settings → Delete Account</td><td>Two-step: explanation + "DELETE" confirmation; calls <code>POST /api/v1/privacy/account/delete</code>; shows 30-day countdown</td></tr>
+<tr><td><code>ProfileEditModal</code></td><td>Settings → Nickname / Email edit</td><td>Nickname: immediate; Email: sends confirmation link via server</td></tr>
+</tbody></table></div>
+<p>All privacy modals use WCAG AAA contrast (white text on <code>#0B2447</code>). Accessibility labels set via <code>AccessibilityHelper.setAccessibilityLabel()</code> using <code>jsb.reflection</code> bridge (PDD §5.1.3 F12 spec). <code>PrivacyConsentModal</code> focus order: consent checkbox → view-policy link → agree button → disagree button.</p>
+<hr>
+<h2 id="4-security-design">§4 Security Design</h2>
+<h3 id="41-server-authoritative-design">§4.1 Server-Authoritative Design</h3>
+<p>All game outcomes computed server-side. Client cannot influence:</p>
+<ul>
+<li>Hit/miss result (RTP engine on server)</li>
+<li>Fish HP deduction (server state <code>FishState.hp</code>)</li>
+<li>Jackpot trigger (server-side RNG in <code>JackpotManager.tryTrigger</code>)</li>
+<li>Payout amounts (server emits exact gold amount in <code>shoot_result</code> message)</li>
+<li>Fish spawn paths (server generates Bezier control points per fish)</li>
+</ul>
+<p><strong>Client validation</strong>: Server validates every <code>shoot</code> message: (1) session authenticated, (2) <code>fishId</code> exists in room state, (3) player gold ≥ bet amount, (4) bullet rate-limit (max 10 active bullets per player). Invalid messages are silently dropped with a WARN log entry.</p>
+<h3 id="42-api-security">§4.2 API Security</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+<tbody>
+<tr><td>Authorization</td><td>RBAC: <code>player</code> role for all game endpoints; <code>admin</code> role for operational endpoints</td></tr>
+<tr><td>HTTPS</td><td>TLS 1.3+ at Ingress; internal cluster traffic plain TCP</td></tr>
+<tr><td>Rate Limiting</td><td><code>express-rate-limit</code> + Redis store; per-IP for auth; per-user for IAP</td></tr>
+<tr><td>CORS</td><td>Allowlist: app bundle ID (mobile); no wildcard</td></tr>
+<tr><td>Input Validation</td><td>Zod schemas at every REST endpoint boundary; reject unknown fields</td></tr>
+<tr><td>IAP Idempotency</td><td><code>receipt_hash</code> unique index prevents double diamond grant</td></tr>
+<tr><td>STRIDE coverage</td><td>Required Go/No-Go gate (PRD §9.3); must cover: RTP manipulation, IAP receipt forgery, packet replay</td></tr>
+</tbody></table></div>
+<h3 id="43-pii-protection">§4.3 PII Protection</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>Data</th><th>Protection</th></tr></thead>
+<tbody>
+<tr><td><code>users.nickname</code></td><td>Plaintext; partial mask in logs (<code>阿凱<em>*</em></code>)</td></tr>
+<tr><td><code>users.device_id</code></td><td>SHA-256 hash stored; original never persisted</td></tr>
+<tr><td><code>game<em>sessions.ip</em>address</code></td><td>Stored; last 2 octets masked in logs; auto-deleted after 90 days via cron</td></tr>
+<tr><td><code>user<em>consents.user</em>agent</code></td><td>Stored for PDPA evidence; OS version and beyond masked in logs</td></tr>
+<tr><td>JWT claims</td><td>Never include PII beyond <code>userId</code> (UUID) and <code>role</code></td></tr>
+<tr><td>Log masking</td><td>Pino <code>redact</code> config: <code>['<em>.email', '</em>.password', '<em>.receiptData']</code>; <code>user_id</code> displayed as <code>user-</em><em>*</em>-&lt;last4&gt;</code></td></tr>
+</tbody></table></div>
+<h3 id="44-test-strategy-edd-level-test-anchors">§4.4 Test Strategy — EDD-Level Test Anchors</h3>
+<p>This section maps each US-ID to its primary test type, test case ID, and a concrete test description. These anchors are consumed by <code>TEST-PLAN.md</code> (downstream) for full test case expansion.</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>REQ-ID</th><th>Test Case ID</th><th>Type</th><th>Description / Key Assertion</th></tr></thead>
+<tbody>
+<tr><td>US-ROOM-001</td><td>TC-ROOM-002</td><td>Integration</td><td>Disconnect client (code ≠ 1000); verify allowReconnection holds state 10s; reconnect within window; verify gold restored</td></tr>
+<tr><td>US-FISH-001</td><td>TC-FISH-001</td><td>Integration</td><td>Send <code>shoot</code> with sufficient gold; verify gold debited, <code>shoot<em>result</code> received, rtp</em>log row inserted</td></tr>
+<tr><td>US-FISH-001</td><td>TC-FISH-002</td><td>Integration</td><td>Send duplicate <code>bulletId</code>; verify silently dropped (no double-debit, no double rtp_log row)</td></tr>
+<tr><td>US-FISH-001</td><td>TC-FISH-003</td><td>Integration</td><td>Send <code>shoot</code> with gold < betAmount; verify HTTP 400 / message dropped; gold unchanged</td></tr>
+<tr><td>US-FISH-002</td><td>TC-FISH-004</td><td>Integration</td><td>Spawn boss; send no kill messages for 60s; verify boss removed from state and <code>boss_escaped</code> broadcast</td></tr>
+<tr><td>US-RTP-001</td><td>TC-RTP-001</td><td>Simulation</td><td>Run 100,000 adjudications at each fish type; verify aggregate RTP stays within 92%–96% band</td></tr>
+<tr><td>US-RTP-001</td><td>TC-RTP-002</td><td>Unit</td><td>Verify <code><em>dynamicAdjust</code> returns base hitRateNumerator with no adjustment when totalBet < MIN</em>SAMPLE_BETS</td></tr>
+<tr><td>US-JACK-001</td><td>TC-JACK-001</td><td>Integration</td><td>Accumulate jackpot to trigger threshold; verify pool claimed, <code>jackpot<em>won</code> broadcast, winner</em>id in <code>jackpot_history</code>; second concurrent claim rejected (Lua script atomicity)</td></tr>
+<tr><td>US-JACK-001</td><td>TC-JACK-002</td><td>Integration</td><td>Kill server mid-room; restart; verify Redis pool restored from PostgreSQL seed value</td></tr>
+<tr><td>US-CURR-001</td><td>TC-CURR-001</td><td>Integration</td><td>Concurrent shoot from same player with same betAmount × 2; verify <code>FOR UPDATE</code> lock prevents double-debit (wallet never goes negative)</td></tr>
+<tr><td>US-CURR-002</td><td>TC-CURR-002</td><td>Integration</td><td>Submit IAP receipt twice with same <code>receipt_hash</code>; verify idempotent response (200 on repeat, no duplicate diamond credit)</td></tr>
+<tr><td>US-PRIV-001</td><td>TC-PRIV-001</td><td>Integration</td><td>Grant consent → revoke consent → verify <code>user<em>consents</code> table has correct <code>revoked</em>at</code>; Firebase marketing events disabled flag set</td></tr>
+<tr><td>US-PRIV-002</td><td>TC-PRIV-002</td><td>Integration</td><td>Submit deletion → run <code>executeScheduledDeletions</code> cron (fast-forward to scheduled<em>for) → verify email anonymised, <code>deletion</em>requests.executed_at</code> set</td></tr>
+<tr><td>US-PRIV-002</td><td>TC-PRIV-003</td><td>Integration</td><td>Submit deletion → call <code>cancelDeletion</code> → verify <code>cancelled<em>at</code> set, <code>deletion</em>status=active</code>; cron skips this user</td></tr>
+<tr><td>US-PRIV-003</td><td>TC-PRIV-004</td><td>Integration</td><td>PATCH email → verify confirmation token in Redis → simulate click → verify both <code>email</code> and <code>email_hash</code> updated atomically</td></tr>
+<tr><td>US-PRIV-004</td><td>TC-PRIV-005</td><td>Integration</td><td>Revoke <code>privacy<em>policy</code> consent; verify HTTP 409 returned with <code>{ redirect: 'account</em>deletion' }</code></td></tr>
+</tbody></table></div>
+<p><strong>RTP simulation gate</strong> (CI mandatory): <code>TC-RTP-001</code> runs in CI on every PR touching <code>RTPEngine.ts</code>. Gate: all fish types within 92%–96%. Failure blocks merge. <strong>Wallet double-spend gate</strong> (CI mandatory): <code>TC-CURR-001</code> uses a dedicated concurrency test harness (2 concurrent requests, pg <code>FOR UPDATE</code>). Failure blocks merge.</p>
+<hr>
+<h2 id="5-requirements-traceability-req-id-edd-section-mapping">§5 Requirements Traceability (REQ-ID → EDD Section Mapping)</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>REQ-ID</th><th>User Story Title</th><th>EDD Section</th><th>Implementation Notes</th></tr></thead>
+<tbody>
+<tr><td>US-FISH-001</td><td>基礎砲台射擊</td><td>§2.2 (bullet hit detection, RTP engine)</td><td>Server-authoritative; deduct gold before adjudication; broadcast result</td></tr>
+<tr><td>US-FISH-002</td><td>Boss 魚系統</td><td>§2.2 (fish spawn algorithm, FishState.hp)</td><td>HP tracked in FishState; boss spawn timer server-side; 60s escape timeout</td></tr>
+<tr><td>US-FISH-003</td><td>精英魚系統</td><td>§2.2 (fish spawn algorithm)</td><td>Gated by <code>ff<em>elite</em>fish_enabled</code>; HP 3-8; separate spawn probability M% per wave</td></tr>
+<tr><td>US-RTP-001</td><td>RTP 動態命中率系統</td><td>§2.2 (RTPEngine)</td><td>Integer-denominator RNG; 100K CI simulation; dynamic adjustment algorithm; 100% unit coverage</td></tr>
+<tr><td>US-CURR-001</td><td>金幣雙軌貨幣</td><td>§2.3 (WalletService, DB schema)</td><td>Atomic PG transactions; free gold restoration via cron; no withdrawal endpoint</td></tr>
+<tr><td>US-CURR-002</td><td>鑽石道具內購</td><td>§2.3 (IAP flow, iap_receipts idempotency)</td><td>Receipt hash dedup; Apple+Google dual verification; 2s balance update SLA</td></tr>
+<tr><td>US-JACK-001</td><td>Jackpot 池系統</td><td>§2.2 (JackpotManager)</td><td>Redis atomic accumulation; PG persistence; 30-day seed restore</td></tr>
+<tr><td>US-JACK-002</td><td>Jackpot 機率揭示 UI</td><td>§2.2 (Jackpot trigger table), §3.6 (JackpotOddsModal)</td><td>Public <code>GET /game/jackpot/odds</code> endpoint; odds not hardcoded; date-stamped; App Store compliant</td></tr>
+<tr><td>US-PRIV-001</td><td>隱私政策同意流程</td><td>§2.4 (PrivacyService, user_consents schema), §3.6 (PrivacyConsentModal)</td><td>Policy version tracking; re-consent on version change; timestamp+IP+user_agent recorded</td></tr>
+<tr><td>US-PRIV-002</td><td>帳號刪除申請入口</td><td>§2.4 (soft delete, 30-day cron), §3.6 (AccountDeletionFlow)</td><td>Soft delete → 30-day scheduled hard anonymisation; transactions retained 7 years</td></tr>
+<tr><td>US-PRIV-003</td><td>更正個人資料</td><td>§2.4 (Data Correction API), §3.6 (ProfileEditModal)</td><td>Nickname immediate; email requires confirmation link (24h TTL); Colyseus broadcast on nickname change</td></tr>
+<tr><td>US-PRIV-004</td><td>同意撤回</td><td>§2.4 (consent revocation flow), §3.6 (ConsentManagementUI)</td><td><code>revoked<em>at</code> timestamp; client disables Firebase <code>marketing</em>*</code> events; no kill switch (PDPA mandatory)</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="6-open-questions-risks">§6 Open Questions & Risks</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>Question / Risk</th><th>Impact</th><th>Owner</th><th>Deadline</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>OQ2</td><td>Cocos Creator 4.x + Colyseus 0.15 best integration pattern?</td><td>MEDIUM — client arch</td><td>Engineering</td><td>Dev Month 1</td><td>PoC by month 1 end; use <code>@colyseus/cocos-sdk</code> if available, else raw WebSocket + manual deserialization</td></tr>
+<tr><td>OQ4</td><td>App Store / Google Play exact Jackpot disclosure format?</td><td>MEDIUM — UI design</td><td>PM</td><td>Dev Month 1</td><td>Use 1:X,XXX format (PDD §3.5) as placeholder; update before submission</td></tr>
+<tr><td>OQ5</td><td>初始金幣數量 + 免費恢復數值?</td><td>HIGH — blocks US-CURR-001/AC-1,2; US-RTP-001/AC-4; US-FISH-002/AC-1; US-FISH-003/AC-1</td><td>PM + Numeric Designer</td><td>Dev Month 1 end</td><td>Use placeholders; all blocked ACs cannot pass Go/No-Go until resolved</td></tr>
+<tr><td>R1</td><td>Colyseus single-process GC pause under 500 rooms</td><td>HIGH — p99 SLA</td><td>Engineering</td><td>Dev Month 2</td><td>k6 pressure test at month 2; HPA as mitigation; Node.js --max-old-space-size tuning</td></tr>
+<tr><td>R2</td><td>Redis jackpot pool loss on crash before persist</td><td>MEDIUM — financial integrity</td><td>Engineering</td><td>Dev Month 1</td><td>5-minute persist cron + onDispose hook; Redis AOF persistence enabled</td></tr>
+<tr><td>R3</td><td>Apple IAP sandbox vs production receipt routing</td><td>MEDIUM — IAP verification</td><td>Engineering</td><td>Dev Month 3</td><td>Environment-based endpoint switching; test both in Beta phase</td></tr>
+<tr><td>R4</td><td>PDPA cross-border transfer (GCP US region)</td><td>LOW/MEDIUM</td><td>Legal</td><td>2026 Q3</td><td>Prefer GCP Asia region (Taiwan/Singapore); legal review if US region required</td></tr>
+<tr><td>R5</td><td>Per-room RTPEngine isolation means short-session rooms (<200 bets) cannot guarantee ±0.1% RTP accuracy required for regulatory reporting</td><td>MEDIUM — regulatory</td><td>Engineering</td><td>Dev Month 1</td><td>Persist <code>totalBet</code>/<code>totalPaid</code> to PostgreSQL on <code>onDispose</code>; restore on <code>onCreate</code>; OR use Redis <code>HSET game:rtp:&lt;roomType&gt;</code> for cross-room aggregate. Cross-room aggregate RTP is the reportable metric — single-room accuracy is not the requirement.</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="7-change-log">§7 Change Log</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Summary</th></tr></thead>
+<tbody>
+<tr><td>v1.1</td><td>2026-04-22</td><td>tobala</td><td>Review Round 1 fix — 26 findings resolved: onMessage override removed; allowReconnection try/catch added; onAuth JWT guard added; Jackpot Lua atomic claim + missing creditGold; iap<em>receipts missing NOT NULL columns; AES-256-GCM UNIQUE→HMAC-SHA256; shoot message field alignment; RTP 85-95%→92-96%; BigInt basis-point precision; state.listen API correction; ObjectPool key capitalisation; spawnFish component map; fish</em>damaged removed (schema delta); NetworkManager recursive→loop; privacy_policies table added; 2 missing cron jobs added; creditGold function added; Math.random()→crypto.randomInt()</td></tr>
+<tr><td>v1.2</td><td>2026-04-22</td><td>tobala</td><td>Review Round 2 fix — 20 findings resolved: §1.2 HINCRBYFLOAT stale ref; JackpotManager <em>initPromise singleton guard; executeScheduledDeletions filters cancelled</em>at; parseInt→parseFloat for INCRBYFLOAT result; PlayerState.gold updated after wallet mutations; FishState pathData+speed fields added; onLeave boolean→numeric close code; nickname validation in onJoin; state.players.onChange→onAdd+listen; k8s :latest→${GIT<em>SHA}+imagePullPolicy; readinessProbe added; HPA apiVersion added; JWT+HMAC secrets in env; email confirmation updates both email+email</em>hash; rtp<em>logs INSERT in hit flow; game</em>sessions indexes added; Service+sticky session annotation added; FishType exported; WalletService stubs added; reconnect token captured before loop</td></tr>
+<tr><td>v1.5</td><td>2026-04-22</td><td>tobala</td><td>Review Round 5 fix — 5 findings resolved: executeScheduledDeletions now anonymises email<em>hash (PDPA compliance — prevents reversible fingerprint surviving deletion); jackpot</em>won broadcast added to shoot step 6 documentation; refresh token TTL unified to 30-day across §2.5 and §3.2.1; API path /api/v1/ prefix fixed in 5 remaining §2.4+§3.6 locations (IAP diagram, Data Correction, Consent Revocation, 3 client component calls); user_consents ON DELETE CASCADE → ON DELETE RESTRICT with PDPA retention rationale</td></tr>
+<tr><td>v1.4</td><td>2026-04-22</td><td>tobala</td><td>Review Round 4 fix — 15 findings resolved: game<em>sessions DDL added player</em>count+room<em>state columns; player</em>ids DEFAULT '{}'; onJoin uses array<em>append; PodDisruptionBudget minAvailable=1 added; terminationGracePeriodSeconds=60 in Deployment; NetworkPolicy restricting ingress/egress; Ingress resource with TLS+WebSocket upgrade annotations; standard error response envelope in §2.5; API table paths prefixed with /api/v1/; auth register+login+refresh request/response schemas documented; /health/ready added to endpoint table; WebSocket non-shoot message rate limiting (</em>checkRateLimit); rtp<em>logs INSERT moved to async fire-and-forget; ObjectPoolManager+BaseFish TypeScript interface contracts; NetworkManager.</em>emitEvent() defined with Cocos cc.EventTarget; <em>disposed boolean guard in GameRoom; rtp</em>logs user index; jackpot_history winner index; DataManager singleton described; §4.4 Test Strategy with 17 test case anchors</td></tr>
+<tr><td>v1.3</td><td>2026-04-22</td><td>tobala</td><td>Review Round 3 fix — 10 findings resolved: HitResult/JackpotResult TypeScript interfaces added; RTPEngine addExternalPayout() for jackpot inclusion in <em>totalPaid; MIN</em>SAMPLE<em>BETS=200 guard in </em>dynamicAdjust; bullet deduplication (<em>activeBullets Map); boss fish 60s escape timeout (</em>bossEscapeTimers Map + clearTimeout in onDispose); per-room RTP isolation risk added as R5; cancelDeletion() added to PrivacyService; restoreDailyGold() now INSERTs transactions rows for wallet-reconcile; §3.2.1 JWT refresh token mobile secure storage (iOS Keychain + Android Keystore via jsb.reflection); game_sessions INSERT in onCreate + UPDATE in onJoin + UPDATE in onDispose</td></tr>
+</tbody></table></div>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>

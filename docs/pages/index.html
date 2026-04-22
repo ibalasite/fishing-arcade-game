@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+      <main class="content">
+        
+        
+<div class="hero">
+  <span class="hero-emoji">🎣</span>
+  <h1>Fishing Arcade Game<br>Technical Documentation</h1>
+  <p class="hero-desc">
+    A multiplayer fishing arcade game for 4–6 players built with
+    TypeScript, Node.js, Colyseus 0.15, and Cocos Creator 4.x.
+    Designed for Asian markets (Taiwan, Southeast Asia) with real-time
+    synchronisation, RTP-controlled fish scoring, and Jackpot mechanics.
+  </p>
+  <div class="hero-tags">
+    <span class="hero-tag">TypeScript</span>
+    <span class="hero-tag">Node.js</span>
+    <span class="hero-tag">Colyseus 0.15</span>
+    <span class="hero-tag">Cocos Creator 4.x</span>
+    <span class="hero-tag">WebSocket</span>
+    <span class="hero-tag">PostgreSQL</span>
+  </div>
+</div>
+
+<div class="cards-section">
+  <h2>Documentation</h2>
+  <div class="cards-grid">
+    <a href="brd.html" class="doc-card"><div class="card-icon">📋</div><div class="card-title">Business Requirements Document</div><div class="card-desc">Goals, scope, monetisation strategy, and stakeholder requirements for the fishing arcade game.</div><span class="card-badge">Core Doc</span></a>
+<a href="edd.html" class="doc-card"><div class="card-icon">⚙️</div><div class="card-title">Engineering Design Document</div><div class="card-desc">System architecture, technology choices, room lifecycle, RTP engine, and implementation plan.</div><span class="card-badge">Core Doc</span></a>
+<a href="api.html" class="doc-card"><div class="card-icon">🔌</div><div class="card-title">WebSocket &amp; REST API</div><div class="card-desc">Complete API reference for all server messages, room commands, and REST endpoints.</div><span class="card-badge">Reference</span></a>
+<a href="arch.html" class="doc-card"><div class="card-icon">🏗️</div><div class="card-title">System Architecture</div><div class="card-desc">Component diagrams, deployment topology, data flow, and scalability considerations.</div><span class="card-badge">Reference</span></a>
+<a href="schema.html" class="doc-card"><div class="card-icon">🗄️</div><div class="card-title">Data Schema</div><div class="card-desc">Full database schema — players, rooms, transactions, jackpot pool, audit logs.</div><span class="card-badge">Reference</span></a>
+<a href="test-plan.html" class="doc-card"><div class="card-icon">✅</div><div class="card-title">Quality Assurance</div><div class="card-desc">Test strategy, unit/integration/E2E test cases, RTP validation, and performance benchmarks.</div><span class="card-badge">QA</span></a>
+<a href="diagrams.html" class="doc-card"><div class="card-icon">📊</div><div class="card-title">System Diagrams</div><div class="card-desc">Sequence diagrams, state machines, and architecture diagrams in Mermaid format.</div><span class="card-badge">Reference</span></a>
+<a href="alignment.html" class="doc-card"><div class="card-icon">🎯</div><div class="card-title">BRD–EDD Alignment</div><div class="card-desc">Cross-document alignment analysis ensuring engineering design matches business requirements.</div><span class="card-badge">Report</span></a>
+<a href="smoke-test.html" class="doc-card"><div class="card-icon">🔍</div><div class="card-title">Smoke Test Report</div><div class="card-desc">Pre-release smoke test results covering critical paths and regression checks.</div><span class="card-badge">Report</span></a>
+
+  </div>
+</div>
+
+<h2>Quick Overview</h2>
+<p>
+  This site contains the complete technical documentation generated during the
+  <strong>devsop pipeline</strong> for the Fishing Arcade Game project.
+  All documents are auto-generated from the <code>docs/</code> directory
+  of the project repository.
+</p>
+
+<h3>Technology Stack</h3>
+<ul>
+  <li><strong>Client:</strong> Cocos Creator 4.x · TypeScript</li>
+  <li><strong>Server:</strong> Node.js · Colyseus 0.15 · TypeScript</li>
+  <li><strong>Database:</strong> SQLite (pilot) → PostgreSQL (scale)</li>
+  <li><strong>Real-time:</strong> WebSocket (Colyseus room protocol)</li>
+  <li><strong>Deployment:</strong> Docker · Kubernetes</li>
+</ul>
+
+<h3>Key Features</h3>
+<ul>
+  <li>4–6 player real-time rooms with Colyseus</li>
+  <li>RTP-controlled fish scoring engine (85–95% configurable)</li>
+  <li>Progressive Jackpot pool with shared contribution</li>
+  <li>Multi-currency credit system</li>
+  <li>PDPA-compliant player data handling</li>
+  <li>Operator back-office API</li>
+</ul>
+
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>
