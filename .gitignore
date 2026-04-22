@@ -2,3 +2,9 @@
 node_modules/
 dist/
 coverage/
+
+# Local environment files — NEVER commit real secrets
+.env
+.env.local
+*.env.local
+.env.*.local
