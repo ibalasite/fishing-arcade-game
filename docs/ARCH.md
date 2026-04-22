@@ -50,8 +50,8 @@ C4Component
     }
 
     Container_Boundary(data, "Data Layer") {
-        ComponentDb(pg, "PostgreSQL 15", "RDBMS", "Users, wallets, transactions, consents, sessions — ACID guarantees; JSONB; 7-year audit retention")
-        ComponentDb(redis, "Redis 7", "Cache / Atomic Counter", "Jackpot pool (INCRBYFLOAT); session tokens; rate-limit counters; email-confirm tokens (24 h TTL)")
+        ContainerDb(pg, "PostgreSQL 15", "RDBMS", "Users, wallets, transactions, consents, sessions — ACID guarantees; JSONB; 7-year audit retention")
+        ContainerDb(redis, "Redis 7", "Cache / Atomic Counter", "Jackpot pool (INCRBYFLOAT); session tokens; rate-limit counters; email-confirm tokens (24 h TTL)")
     }
 
     Container_Boundary(infra, "Kubernetes Cluster (1.29)") {
@@ -131,12 +131,19 @@ sequenceDiagram
     GR->>GR: assign slotIndex (0=BL, 1=BR, 2=TL, 3=TR)
     GR->>GR: state.players.set(sessionId, playerState)
     GR->>PG: INSERT game_sessions / UPDATE player_ids, player_count
-    GR-->>C: Schema state patch (all players, room state)
-    
-    Note over GR: When playerCount >= 4 → _transitionToPlaying()
-    GR->>GR: state.roomState = 'PLAYING'
-    GR-->>C: State patch broadcast (roomState='PLAYING')
-    C->>C: UILayer hides WaitingOverlay; game begins
+    GR-->>C: Schema state patch (all players, room state='WAITING')
+
+    alt playerCount < 4 (players 1–3 joined)
+        Note over GR,C: Room stays WAITING — WaitingOverlay shows player count
+        GR-->>C: State delta broadcast (player added, playerCount updated)
+        Note over C: Client shows WaitingOverlay with "Waiting for players (N/4)"
+    else playerCount == 4 (room full)
+        Note over GR: _transitionToPlaying() called
+        GR->>GR: state.roomState = 'PLAYING'
+        GR->>GR: FishSpawner.start() — begin normal wave schedule
+        GR-->>C: State patch broadcast (roomState='PLAYING')
+        C->>C: UILayer hides WaitingOverlay; game begins
+    end
 ```
 
 ### §2.2 Shoot → RTP Adjudicate → Jackpot Check → Wallet Update Flow
@@ -197,10 +204,12 @@ sequenceDiagram
             else no jackpot
                 JP-->>GR: null
             end
+        else hit == false (miss)
+            Note over GR,C: Gold already debited (bet cost); no payout; no fish state change
         end
         
         GR->>PG: INSERT rtp_logs (fire-and-forget, catch+log on error)
-        GR-->>C: send('shoot_result', {hit, payout})
+        GR-->>C: send('shoot_result', {hit, payout: 0 if miss})
         GR->>GR: activeBullets.delete(bulletId)
     end
 ```
@@ -346,6 +355,8 @@ Application validates all required env vars at startup and exits with a clear er
 
 ## §4 Game Room State Machine
 
+> Cross-reference: EDD §2.1 (Colyseus Room Architecture) — `GameRoom` class; `_transitionToPlaying()`, `_spawnBoss()`, `_onBossKilled()` implementations.
+
 ```mermaid
 stateDiagram-v2
     [*] --> WAITING : onCreate() — GameRoom created\nINSERT game_sessions
@@ -377,6 +388,8 @@ stateDiagram-v2
         Normal + Elite fish active
         Jackpot pool accumulating
         20 Hz tick: running
+        Partial leave: 10 s reconnect window
+        Room stays PLAYING during window
     end note
 
     note right of BOSS_BATTLE
@@ -441,3 +454,7 @@ stateDiagram-v2
 | Data retention — IP address | 90 days | `ip-cleanup` CronJob NULLs `game_sessions.ip_address` after 90 days |
 | Data retention — transactions | 7 years | Transaction rows retained after user deletion (userId UUID reference only); PII anonymised in `users` row |
 | PDPA deletion | 30 days | Soft-delete on request; `deletion-executor` cron anonymises PII after 30 days; consent records retained (ON DELETE RESTRICT) |
+| PDPA consent record retention | Indefinite | `consent_records` table has `ON DELETE RESTRICT` foreign key; consent row survives user soft-delete; required for audit trail |
+| IAP idempotency | Zero double-credit | `iap_receipts.receipt_hash` unique index; `SELECT … WHERE receipt_hash=$1` before any credit; idempotent path returns current balance without additional credit |
+| Reconnection window | 10 s | Colyseus `allowReconnection(client, 10)` holds player slot; room stays in current state during window; slot released and game continues if timeout expires |
+| Jackpot pool durability | No data loss on pod restart | Redis AOF persistence + `jackpot-persist` CronJob (*/5 min) writes pool to PG; pod restart reads PG as source of truth |
