@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, Button, director, Node, UITransform, Color } from 'cc';
+import { _decorator, Component, Label, Button, director, Node, UITransform, Color, Layers } from 'cc';
 
 const { ccclass, property } = _decorator;
 
@@ -35,6 +35,7 @@ export class MainMenu extends Component {
 
   private makeLabel(parent: Node, text: string, fontSize: number, x: number, y: number): Node {
     const node = new Node(text);
+    node.layer = Layers.Enum.UI_2D; // must match Canvas camera layer mask
     parent.addChild(node);
     node.setPosition(x, y, 0);
     const tf = node.addComponent(UITransform);
