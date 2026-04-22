@@ -276,6 +276,13 @@ describe('crypto utilities', () => {
       process.env.ENCRYPTION_KEY = original;
     });
 
+    it('throws when ENCRYPTION_KEY env var is completely unset (undefined → empty string fallback)', () => {
+      const original = process.env.ENCRYPTION_KEY;
+      delete process.env.ENCRYPTION_KEY; // triggers the ?? '' branch → length 0 ≠ 64
+      expect(() => encrypt('test')).toThrow(/ENCRYPTION_KEY must be a 64-character hex string/);
+      process.env.ENCRYPTION_KEY = original;
+    });
+
     it('produces different ciphertext for the same plaintext (unique IV per call)', () => {
       const ct1 = encrypt('same plaintext');
       const ct2 = encrypt('same plaintext');
