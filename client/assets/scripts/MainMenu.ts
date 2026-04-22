@@ -35,12 +35,14 @@ export class MainMenu extends Component {
 
   private makeLabel(parent: Node, text: string, fontSize: number, x: number, y: number): Node {
     const node = new Node(text);
-    node.layer = Layers.Enum.UI_2D; // must match Canvas camera layer mask
+    node.layer = Layers.Enum.UI_2D;
     parent.addChild(node);
     node.setPosition(x, y, 0);
     const tf = node.addComponent(UITransform);
     tf.setContentSize(700, fontSize + 20);
     const lbl = node.addComponent(Label);
+    lbl.useSystemFont = true;
+    lbl.fontFamily = 'Arial';
     lbl.string = text;
     lbl.fontSize = fontSize;
     lbl.lineHeight = fontSize + 4;
