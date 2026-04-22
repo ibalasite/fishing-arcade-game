@@ -105,28 +105,35 @@ export class PrivacyService {
     );
 
     for (const row of rows.rows) {
-      await this._db.transaction(async (trx) => {
-        const anonSuffix = randomUUID().slice(0, 8);
-        const anonNickname = `deleted_${anonSuffix}`;
-        const anonEmail = `${anonNickname}@deleted.invalid`;
+      try {
+        await this._db.transaction(async (trx) => {
+          const anonSuffix = randomUUID().slice(0, 8);
+          const anonNickname = `deleted_${anonSuffix}`;
+          const anonEmail = `${anonNickname}@deleted.invalid`;
 
-        // PDPA hard delete: anonymise BOTH email (encrypted) AND email_hash (HMAC)
-        const encryptedAnonEmail = encrypt(anonEmail);
-        const anonEmailHash = hmac(anonEmail, this._hmacSecret);
+          // PDPA hard delete: anonymise BOTH email (encrypted) AND email_hash (HMAC)
+          const encryptedAnonEmail = encrypt(anonEmail);
+          const anonEmailHash = hmac(anonEmail, this._hmacSecret);
 
-        await trx.query(
-          `UPDATE users
-           SET email = $1, email_hash = $2, nickname = $3, deletion_status = 'deleted'
-           WHERE id = $4`,
-          [encryptedAnonEmail, anonEmailHash, anonNickname, row.user_id],
-        );
+          await trx.query(
+            `UPDATE users
+             SET email = $1, email_hash = $2, nickname = $3, deletion_status = 'deleted'
+             WHERE id = $4`,
+            [encryptedAnonEmail, anonEmailHash, anonNickname, row.user_id],
+          );
 
-        // Mark executed — prevents re-processing in subsequent cron runs
-        await trx.query(
-          "UPDATE deletion_requests SET executed_at=NOW() WHERE user_id=$1",
-          [row.user_id],
-        );
-      });
+          // Mark executed — prevents re-processing in subsequent cron runs
+          await trx.query(
+            "UPDATE deletion_requests SET executed_at=NOW() WHERE user_id=$1",
+            [row.user_id],
+          );
+        });
+      } catch (err: unknown) {
+        // Log and continue — a single user failure must not block the rest of the batch.
+        // The failed user will be retried on the next cron run (executed_at is still NULL).
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[PrivacyService] executeScheduledDeletions failed for user ${row.user_id}: ${message}`);
+      }
     }
   }
 }

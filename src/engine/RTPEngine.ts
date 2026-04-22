@@ -175,7 +175,14 @@ export class RTPEngine {
     }
 
     if (rtp < this._config.targetRtpMin) {
-      // Underpaying — scale up to boost hit rate
+      // Underpaying — scale up to boost hit rate.
+      // Guard: if rtp === 0, the scale factor is Infinity.
+      // 0 * Infinity = NaN in IEEE 754, so we guard explicitly:
+      // - If base numerator is 0 (fish configured as unkillable), keep it 0.
+      // - Otherwise cap at denominator - 1 (max hit rate without 100%).
+      if (rtp === 0) {
+        return cfg.hitRateNumerator === 0 ? 0 : cfg.hitRateDenominator - 1;
+      }
       const scale = this._config.targetRtpMin / rtp;
       return Math.min(
         Math.floor(cfg.hitRateNumerator * scale),

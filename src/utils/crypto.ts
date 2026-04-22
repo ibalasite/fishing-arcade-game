@@ -36,9 +36,16 @@ export function encrypt(plaintext: string): string {
 
 /**
  * HMAC-SHA256 for deterministic email fingerprint (uniqueness enforcement without decryption).
+ *
+ * Returns a lowercase hex string for portable, human-readable storage in
+ * TEXT/VARCHAR database columns. This is consistent with how `encrypt()`
+ * returns base64 rather than raw bytes.
+ *
+ * Note: comparisons happen in the database (WHERE email_hash = $1), so
+ * constant-time comparison is not required in application code here.
  */
-export function hmac(data: string, secret: string): Buffer {
-  return crypto.createHmac('sha256', secret).update(data).digest();
+export function hmac(data: string, secret: string): string {
+  return crypto.createHmac('sha256', secret).update(data).digest('hex');
 }
 
 export { randomUUID };

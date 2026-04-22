@@ -81,15 +81,11 @@ export class WalletService {
     });
   }
 
-  /** Allowed transaction credit types for the gold ledger. */
-  // eslint-disable-next-line no-use-before-define
-  // (Declared inline to avoid circular reference; if this type grows, move to a shared types file.)
-
   /**
    * Credits `amount` gold to the user's wallet.
    *
-   * @param type Transaction type — constrained to known values to prevent
-   *             arbitrary strings being inserted into the transactions table.
+   * @param type Transaction type — constrained to a known union to prevent
+   *             arbitrary strings from being inserted into the transactions table.
    *             Defaults to 'earn'.
    */
   async creditGold(

@@ -354,7 +354,15 @@ export class GameRoom extends Room<GameState> {
     const player = this.state.players.get(sessionId);
     if (!player) return;
 
-    // 1. Validate bet amount and balance
+    // 1. Validate all shot parameters before any side effects
+    if (
+      !Number.isInteger(cannonMultiplier) ||
+      cannonMultiplier < MIN_MULTIPLIER ||
+      cannonMultiplier > MAX_MULTIPLIER
+    ) {
+      client.send('shoot_result', { bulletId, hit: false, payout: 0, error: 'invalid_multiplier' });
+      return;
+    }
     if (!Number.isInteger(betAmount) || betAmount <= 0) {
       client.send('shoot_result', { bulletId, hit: false, payout: 0, error: 'invalid_bet' });
       return;
