@@ -47,10 +47,11 @@ describe('JackpotManager', () => {
     });
 
     it('falls back to 1x odds for unknown multipliers', () => {
-      // This is tested indirectly via tryTrigger using multiplier 99
-      // Odds for 99 → fallback to JACKPOT_ODDS[1] = 500_000
+      // Odds for 99 → not in table → fallback to JACKPOT_ODDS[1] = 500_000
       expect(JACKPOT_ODDS[99]).toBeUndefined();
-      // tryTrigger should use JACKPOT_ODDS[1] as fallback
+      // Verify the fallback value (JACKPOT_ODDS[1]) is the expected seed
+      const fallback = JACKPOT_ODDS[1];
+      expect(fallback).toBe(500_000);
     });
   });
 

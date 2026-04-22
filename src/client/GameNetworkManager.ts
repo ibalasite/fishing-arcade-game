@@ -65,8 +65,7 @@ export class GameNetworkManager {
   sendShoot(bulletType: BulletType, targetFishId: string): void {
     if (!this._isConnected || !this._room) return;
     const msg: ShootMessage = { bulletType, targetFishId };
-    // In real impl: this._room.send('shoot', msg);
-    void msg;
+    (this._room as { send: (event: string, payload: ShootMessage) => void }).send('shoot', msg);
   }
 
   /**

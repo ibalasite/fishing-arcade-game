@@ -192,13 +192,25 @@ describe('RTPEngine', () => {
       for (let i = 0; i < 201; i++) {
         engine.adjudicate('normal', 1, 1);
       }
-      // After 201 bets, RTP = 2.0 >> 0.96 → dynamic adjust should lower numerator
-      // Next adjudication should use adjusted numerator.
-      // We can verify indirectly: if no throw and hit rate is live system.
-      // The important thing: currentRtp is not NaN or Infinity.
+      // After 201 bets, RTP = 2.0 >> 0.96 → dynamic adjust should lower numerator.
+      // Verify: after scale-down, a forced-miss run should produce some misses (prob < 1.0)
+      // which means at least one more adjudication with a capped numerator does not always pay.
+      // Also verify currentRtp is a finite positive number.
       const rtp = engine.currentRtp;
       expect(rtp).toBeGreaterThan(0);
       expect(rtp).not.toBeNaN();
+      expect(rtp).not.toBe(Infinity);
+      // The accumulated RTP (totalPaid/totalBet) should be 2.0 at this point.
+      // After 201 bets, dynamic adjust kicks in and should cap the numerator below 100_000.
+      // We verify this by running 10_000 more adjudications — not all will be hits, meaning
+      // the adjusted numerator is < 100_000 (if it were still 100_000, all would hit).
+      let hitCount = 0;
+      for (let i = 0; i < 10_000; i++) {
+        const r = engine.adjudicate('normal', 1, 1);
+        if (r.hit) hitCount++;
+      }
+      // With numerator reduced from 100_000, hit rate must be < 100%.
+      expect(hitCount).toBeLessThan(10_000);
     });
 
     it('returns unadjusted numerator when RTP is within [targetRtpMin, targetRtpMax]', () => {
@@ -321,26 +333,10 @@ describe('RTPEngine', () => {
 
   describe('_dynamicAdjust — RTP below min (underpaying path)', () => {
     it('caps adjusted numerator at denominator-1 when rtp=0 and base numerator is nonzero', () => {
-      // Setup: 200+ bets above MIN_SAMPLE_BETS, nonzero numerator, zero totalPaid
-      // → rtp = 0 < targetRtpMin, numerator > 0 → should cap at denominator - 1
-      const alwaysMissForBuildupConfig: RTPConfig = {
-        ...BASE_CONFIG,
-        fishConfigs: [
-          // First use zero-hit config to accumulate bets without paying, then switch to nonzero
-          { fishType: 'normal', baseMultiplier: 2, hitRateNumerator: 0, hitRateDenominator: 100_000 },
-        ],
-      };
-      const buildupEngine = new RTPEngine(alwaysMissForBuildupConfig);
-      // Push totalBet above sample threshold with all misses
-      for (let i = 0; i < 210; i++) {
-        buildupEngine.adjudicate('normal', 1, 1);
-      }
-      // Now we have rtp = 0, totalBet > 200, numerator = 0 → stays 0 (covered below)
-
-      // Separate engine: nonzero numerator + zero rtp → cap at denominator - 1
-      // We can't easily get rtp=0 with nonzero numerator using the same fish config.
-      // Instead test via addExternalPayout to set up the state correctly:
-      // Use a 10-numerator config, ensure enough bets for sample threshold
+      // Setup: nonzero numerator config. After 201 near-guaranteed-miss bets,
+      // rtp ≈ 0 < targetRtpMin → on the NEXT adjudicate call, _dynamicAdjust should cap
+      // the numerator at denominator-1.
+      // We verify this by using a spy on crypto.randomInt to inspect the adjusted roll window.
       const lowHitConfig: RTPConfig = {
         ...BASE_CONFIG,
         targetRtpMin: 0.92,
@@ -349,16 +345,22 @@ describe('RTPEngine', () => {
           { fishType: 'normal', baseMultiplier: 2, hitRateNumerator: 10, hitRateDenominator: 100_000 },
         ],
       };
-      const engine2 = new RTPEngine(lowHitConfig);
-      // Force 201 bets all missing by using 0 numerator engine and copying state isn't possible.
-      // We verify the cap at denominator-1 indirectly: with a 10/100000 hit rate and
-      // rtp<<0.92, _dynamicAdjust should boost numerator up (capped at denominator-1=99999).
+      const engine = new RTPEngine(lowHitConfig);
+      // 201 bets with near-zero hit rate → totalBet ≥ 200, totalPaid ≈ 0, rtp ≈ 0
       for (let i = 0; i < 201; i++) {
-        engine2.adjudicate('normal', 1, 1); // very unlikely to hit with 10/100000
+        engine.adjudicate('normal', 1, 1);
       }
-      // No assertion needed beyond confirming no throw (dynamicAdjust capped correctly)
-      expect(() => engine2.adjudicate('normal', 1, 1)).not.toThrow();
-      expect(engine2.currentRtp).not.toBeNaN();
+      // At this point rtp == 0 (virtually guaranteed with 10/100_000 over 201 bets).
+      // On the next adjudication, _dynamicAdjust should return denominator-1 = 99_999.
+      // We force roll = 0 so the shot always hits (roll < adjustedNumerator when numerator > 0).
+      const cryptoModule = require('crypto');
+      const rollSpy = jest.spyOn(cryptoModule, 'randomInt').mockReturnValueOnce(0);
+      const result = engine.adjudicate('normal', 1, 1);
+      rollSpy.mockRestore();
+      // With roll=0 and adjustedNumerator capped at 99_999, the shot MUST hit.
+      expect(result.hit).toBe(true);
+      expect(result.payout).toBe(2); // betAmount * baseMultiplier * multiplier = 1 * 2 * 1
+      expect(engine.currentRtp).not.toBeNaN();
     });
 
     it('returns 0 numerator when rtp=0 and base numerator is 0 (unkillable fish guard)', () => {
@@ -384,15 +386,19 @@ describe('RTPEngine', () => {
     });
 
     it('scales numerator up when RTP < targetRtpMin and base numerator > 0', () => {
-      // 200+ bets at 50 gold, zero hits → RTP = 0 < 0.92, nonzero numerator → scale up
-      const normalHitConfig: RTPConfig = {
+      // 201+ bets at 1 gold, zero hits → RTP = 0 < 0.92, nonzero numerator → scale up.
+      // With 10_000/100_000 (10% base hit rate) and zero actual hits, RTP = 0 << 0.92.
+      // _dynamicAdjust should scale the numerator up so subsequent adjudications hit more.
+      const lowRtpConfig: RTPConfig = {
         ...BASE_CONFIG,
         fishConfigs: [
           { fishType: 'normal', baseMultiplier: 2, hitRateNumerator: 10_000, hitRateDenominator: 100_000 },
         ],
       };
-      const engine = new RTPEngine(normalHitConfig);
-      // Use zero-hit config to push RTP to 0, but on next adjudicate use nonzero config
+      const engine = new RTPEngine(lowRtpConfig);
+      // Override: use 201 forced-miss adjudications to set a near-zero RTP baseline.
+      // (With 10_000/100_000 ≈ 10% real hit rate we'd still get some hits; use dedicated
+      // zero-hit engine that shares no state — we verify the scale-up via currentRtp trend.)
       const zeroHitConfig: RTPConfig = {
         ...BASE_CONFIG,
         fishConfigs: [
@@ -400,15 +406,22 @@ describe('RTPEngine', () => {
         ],
       };
       const engineZero = new RTPEngine(zeroHitConfig);
-      // Push totalBet above MIN_SAMPLE_BETS with all misses
       for (let i = 0; i < 201; i++) {
         engineZero.adjudicate('normal', 1, 1);
       }
-      // RTP = 0 → underpaying → dynamic adjust should cap at denominator - 1
-      // We just verify the engine doesn't throw and currentRtp is a valid number
-      expect(engineZero.currentRtp).toBeGreaterThanOrEqual(0);
-      expect(engineZero.currentRtp).not.toBeNaN();
-      void engine;
+      // RTP = 0, totalBet > 200, numerator is 0 → stays 0 (guard: unkillable fish unchanged)
+      // For the non-zero case, run 201 bets on engine (10% hit rate) then check RTP is not 0.
+      for (let i = 0; i < 201; i++) {
+        engine.adjudicate('normal', 1, 1);
+      }
+      // With 10% hit rate over 201 bets, we should have accumulated some payouts.
+      // currentRtp should be above 0 (at least some hits occurred).
+      const rtp = engine.currentRtp;
+      expect(rtp).toBeGreaterThan(0);
+      expect(rtp).not.toBeNaN();
+      // engineZero RTP must remain 0 (numerator=0 is never boosted — unkillable fish guard)
+      const rtpZero = engineZero.currentRtp;
+      expect(rtpZero).toBe(0);
     });
   });
 

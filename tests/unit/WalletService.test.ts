@@ -127,7 +127,7 @@ describe('WalletService', () => {
       expect(trxQuery.mock.calls[2][0]).toMatch(/INSERT INTO transactions/);
     });
 
-    it('uses mocked db.query (does not call real database)', async () => {
+    it('passes correct userId and betAmount to the UPDATE query', async () => {
       const trxQuery = jest.fn()
         .mockResolvedValueOnce({ rows: [{ gold: 1000 }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
@@ -140,8 +140,14 @@ describe('WalletService', () => {
 
       const service = makeService();
       await service.debitGold('user-42', 200);
-      // The mock was called — no real DB was touched
-      expect(mockTransaction).toHaveBeenCalledTimes(1);
+
+      // The UPDATE query must use 200 as the debit amount and 'user-42' as the user filter
+      const updateCall = trxQuery.mock.calls.find((c: unknown[]) =>
+        (c[0] as string).startsWith('UPDATE'),
+      );
+      expect(updateCall).toBeDefined();
+      expect(updateCall![1]).toContain(200);
+      expect(updateCall![1]).toContain('user-42');
     });
   });
 
@@ -165,7 +171,7 @@ describe('WalletService', () => {
       expect(trxQuery.mock.calls[0][0]).toMatch(/UPDATE user_wallets SET gold = gold \+ \$1/);
     });
 
-    it('uses mocked db.query (does not call real database)', async () => {
+    it('passes correct userId and amount to the UPDATE and INSERT queries', async () => {
       const trxQuery = jest.fn()
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });
@@ -177,7 +183,14 @@ describe('WalletService', () => {
 
       const service = makeService();
       await service.creditGold('user-99', 1000, 'earn');
-      expect(mockTransaction).toHaveBeenCalledTimes(1);
+
+      // UPDATE must include the credit amount (1000) and user id (user-99)
+      const updateCall = trxQuery.mock.calls[0];
+      expect(updateCall[1]).toContain(1000);
+      expect(updateCall[1]).toContain('user-99');
+      // INSERT (transaction record) must also reference the user id
+      const insertCall = trxQuery.mock.calls[1];
+      expect(insertCall[1]).toContain('user-99');
     });
 
     it('defaults type to "earn" when not specified', async () => {

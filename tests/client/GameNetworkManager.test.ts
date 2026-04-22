@@ -67,9 +67,11 @@ describe('GameNetworkManager', () => {
       gnm._setRoom(mockRoom);
       // When: sendShoot is called
       gnm.sendShoot('normal', 'fish-99');
-      // Then: room.send was called (in stub this is a no-op but we can verify the method exists)
-      // The stub implementation does nothing yet, so we verify no exception is thrown
-      expect(() => gnm.sendShoot('normal', 'fish-99')).not.toThrow();
+      // Then: room.send was called with shoot event containing the right bulletType and fishId
+      expect(mockRoom.send).toHaveBeenCalledTimes(1);
+      const [eventName, payload] = mockRoom.send.mock.calls[0];
+      expect(eventName).toBe('shoot');
+      expect(payload).toMatchObject({ bulletType: 'normal', targetFishId: 'fish-99' });
     });
 
     it('does not throw when called while not connected', () => {
@@ -79,14 +81,22 @@ describe('GameNetworkManager', () => {
       expect(() => gnm.sendShoot('laser', 'fish-1')).not.toThrow();
     });
 
-    it('supports all bullet types without error', () => {
+    it('sends the correct bulletType payload for each supported bullet type', () => {
       // Given: connected manager
       const gnm = GameNetworkManager.getInstance();
-      gnm._setRoom(makeMockRoom());
+      const mockRoom = makeMockRoom();
+      gnm._setRoom(mockRoom);
       const bulletTypes = ['normal', 'spread', 'laser', 'bomb'] as const;
-      // When / Then: each type sends without error
+      // When: sendShoot is called for each type
       bulletTypes.forEach((type) => {
-        expect(() => gnm.sendShoot(type, 'fish-x')).not.toThrow();
+        gnm.sendShoot(type, 'fish-x');
+      });
+      // Then: room.send was called once per bullet type with the correct bulletType in the payload
+      expect(mockRoom.send).toHaveBeenCalledTimes(bulletTypes.length);
+      bulletTypes.forEach((type, idx) => {
+        const [eventName, payload] = mockRoom.send.mock.calls[idx];
+        expect(eventName).toBe('shoot');
+        expect(payload).toMatchObject({ bulletType: type });
       });
     });
   });
