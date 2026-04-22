@@ -24,6 +24,11 @@ const config: Config = {
     ],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  // Map Cocos Creator and JSB modules to their mock implementations
+  moduleNameMapper: {
+    '^cc$': '<rootDir>/tests/client/__mocks__/cc.ts',
+    '^jsb$': '<rootDir>/tests/client/__mocks__/jsb.ts',
+  },
   coverageDirectory: 'coverage',
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
   coverageThreshold: {
