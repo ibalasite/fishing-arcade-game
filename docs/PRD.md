@@ -261,6 +261,8 @@ C4Context
 
 ### 5.3.1 精英魚系統（P0）
 
+> **注意**：精英魚（Elite Fish）是與 Boss 魚（§5.3）並列的獨立魚種，非 Boss 魚子系統。兩者同屬 BRD P0「3 種魚類」需求。精英魚倍率（中等）介於普通魚與 Boss 魚之間，有獨立 Kill Switch（`ff_elite_fish_enabled`），可獨立關閉。
+
 **User Story：**
 > 作為 **玩家**，
 > 我希望能 **看到精英魚出現並以較高砲台倍率射擊獲得中等獎勵**，
@@ -278,7 +280,7 @@ C4Context
 | US-FISH-003 / AC-2 | 精英魚存活，玩家命中 | 服務器 RTP 判定命中成功 | 金幣獎勵 = 子彈費用 × 精英魚倍率，全房間廣播命中事件 | Integration |
 | US-FISH-003 / AC-3 | 精英魚被命中但未擊殺（精英魚有 HP > 1）| 同一或不同玩家繼續射擊 | 服務器廣播精英魚當前 HP 狀態，最後一擊玩家獲得全部獎勵 | Integration |
 | US-FISH-003 / AC-4 | 精英魚 30 秒未被擊殺 | 精英魚逾時 | 精英魚游出畫面，服務器廣播逃脫事件，本次無人獲獎 | Integration |
-| US-FISH-003 / AC-5 | RTP 引擎啟動，包含精英魚命中的 10,000 局模擬執行 | 模擬完成 | 整體 RTP（含普通魚 + 精英魚 + Boss 魚 + Jackpot 貢獻）仍落在 85%-95%，誤差 < 0.1% | Unit |
+| US-FISH-003 / AC-5 | RTP 引擎啟動，包含精英魚出現波次的 10,000 局模擬 | 模擬完成 | 精英魚命中率分布符合設計倍率範圍（2-5x），精英魚平均 RTP 貢獻不超過全局 RTP 85-95% 上限的 30%（整體 RTP 由 US-RTP-001 AC-1 的 100,000 局統一驗收，本 AC 為精英魚子場景前置驗證）| Unit |
 
 **邊界條件：**
 - 精英魚倍率需嚴格介於普通魚（1x）與 Boss 魚（5x+）之間
@@ -654,13 +656,15 @@ stateDiagram-v2
 | 功能 | Event Name | 觸發動作 | 必要 Payload | 關聯 KPI | 實作狀態 |
 |------|-----------|---------|-------------|---------|:-------:|
 | 快速配對 | `room_match_started` | 點擊快速配對 | `{user_id, room_id, timestamp}` | DAU、留存率 | 🔲 |
-| 射擊命中 | `fish_caught` | 成功命中魚類 | `{user_id, fish_type, multiplier, gold_earned, room_id}` | ARPPU、Boss射擊比例 | 🔲 |
+| 射擊命中 | `fish_caught` | 成功命中魚類 | `{user_id, fish_type, multiplier, gold_earned, room_id}`（`fish_type` 合法值：`normal \| elite \| boss`）| ARPPU、Boss/精英魚射擊比例 | 🔲 |
 | Boss 擊殺 | `boss_killed` | Boss HP 歸零 | `{user_id, boss_type, gold_earned, room_id, players_in_room}` | 留存率 | 🔲 |
 | Jackpot 觸發 | `jackpot_triggered` | Jackpot 條件達成 | `{user_id, jackpot_amount, room_id}` | 留存率、付費率 | 🔲 |
 | 內購完成 | `iap_purchase_completed` | IAP 驗證成功 | `{user_id, product_id, amount_usd, diamond_granted}` | ARPPU、付費率 | 🔲 |
 | 內購失敗 | `iap_purchase_failed` | IAP 驗證失敗 | `{user_id, product_id, error_code}` | 付費轉化率 | 🔲 |
 | 隱私同意 | `privacy_consent_granted` | 用戶同意隱私政策 | `{user_id, policy_version, timestamp}` | PDPA 合規 | 🔲 |
 | 帳號刪除申請 | `account_deletion_requested` | 用戶申請刪除帳號 | `{user_id, requested_at}` | PDPA 合規 | 🔲 |
+| 同意撤回 | `consent_revoked` | 玩家關閉行銷通知同意（US-PRIV-004）| `{user_id, consent_type, revoked_at}` | PDPA 合規 | 🔲 |
+| 個人資料更新 | `user_profile_updated` | 玩家儲存暱稱/Email 更新（US-PRIV-003）| `{user_id, field_updated, timestamp}` | PDPA 合規 | 🔲 |
 
 **Event 命名規範：** `{object}_{action}_{result}` 全小寫底線
 **Analytics 工具鏈：** Firebase Analytics（MVP）
@@ -872,6 +876,9 @@ stateDiagram-v2
 | `user_consents.consent_type` | VARCHAR | 100 | 是 | 同意類型（privacy_policy / marketing）| `privacy_policy` | 否 |
 | `user_consents.granted_at` | TIMESTAMPTZ | - | 條件 | 同意時間戳 | `2026-05-01T10:01:00Z` | 否 |
 | `user_consents.policy_version` | VARCHAR | 20 | 是 | 隱私政策版本 | `v1.0` | 否 |
+| `user_consents.revoked_at` | TIMESTAMPTZ | - | 條件 | 撤回同意時間戳（US-PRIV-004），NULL 代表未撤回 | `2026-05-15T08:30:00Z` | 否 |
+| `user_consents.user_agent` | TEXT | - | 否 | PDPA §7/§18 同意記錄完整性，Log 遮罩 OS 版本後 | `Mozilla/5.0 (iPhone...)` | **是** |
+| `users.device_id` | VARCHAR | 64 | 否 | SHA-256 Hash 儲存（不可逆），反作弊 / 反重複帳號用途 | `a3f8c1d2...` | **是** |
 
 ### 11.3 資料品質要求
 
@@ -897,7 +904,7 @@ stateDiagram-v2
 |---------|---------|---------|---------|---------|
 | `users.email` | 聯絡資料 | AES-256-GCM 加密 + Log 遮罩 | 台灣 PDPA §2 | 帳號存活期 + 30 天（刪除申請後）|
 | `users.nickname` | 識別資料 | 明文儲存，Log 遮罩部分字元 | 台灣 PDPA §2 | 帳號存活期 + 30 天 |
-| `sessions.ip_address` | 網路識別碼 | 不加密，Log 匿名化（後兩段遮罩）| 合法利益 | 90 天後自動刪除 |
+| `game_sessions.ip_address` | 網路識別碼 | 不加密，Log 匿名化（後兩段遮罩）| 合法利益 | 90 天後自動刪除 |
 | `user_consents.ip_address` | 網路識別碼 | 不加密（同意記錄完整性）| PDPA 同意記錄義務 | 帳號存活期 |
 | `user_consents.user_agent` | 裝置識別資料 | 不加密，Log 遮罩 OS 版本以後欄位 | PDPA §7、§18 法規義務 | 帳號存活期 |
 | `users.device_id` | 裝置識別資料 | Hash 儲存（SHA-256），不可逆 | 合法利益（反作弊）| 90 天後移除明文，Hash 保留 |
@@ -928,6 +935,7 @@ stateDiagram-v2
 | **DAU** | Daily Active Users，日活躍用戶，目標 10,000 |
 | **ARPPU** | Average Revenue Per Paying User，付費用戶平均月收入，目標 $20 USD |
 | **整數分母 RNG** | 以整數分母表示概率，防止浮點精度誤差累積 |
+| **精英魚** | 中等難度特殊魚類，倍率介於普通魚（1x）與 Boss 魚（5x+）之間（設計暫定 2-5x），有獨立 HP，需擊殺才能獲獎；同房間最多 N 條並存（N 由數值設計確認）|
 | **Boss 魚** | 高倍率高難度特殊魚類，需多人協力或高倍砲台捕獲 |
 | **鑽石** | 付費虛擬幣，用於購買高倍砲台與道具；不可提現 |
 | **金幣** | 免費虛擬幣，由捕魚行為獲得，用於基礎遊戲消費 |
@@ -938,6 +946,7 @@ stateDiagram-v2
 | **OQ** | Open Question，待解問題 |
 | **ECR** | Engineering Change Request，工程變更請求 |
 | **Kill Switch** | 可即時關閉功能的 Feature Flag，5 分鐘內生效 |
+| **marketing_* 事件** | Firebase Analytics 行銷類事件命名前綴（如 `marketing_push_clicked`）；僅在玩家主動 opt-in 行銷通知同意（US-PRIV-004）後由客戶端 SDK 上報；撤回同意後立即停止上報 |
 
 ---
 
@@ -1005,7 +1014,7 @@ stateDiagram-v2
 |---------|--------|---------|---------|--------------|---------|---------|
 | `email` | `users` | 聯絡資料 | 帳號識別、通知 | 契約必要（PDPA §6I）| 帳號存活期 + 30 天 | AES-256-GCM |
 | `nickname` | `users` | 識別資料 | 遊戲顯示名稱 | 契約必要 | 帳號存活期 + 30 天 | 明文（無敏感性）|
-| `ip_address` | `sessions` | 網路識別碼 | 安全分析、反作弊 | 合法利益 | 90 天 | 不加密（匿名化日誌）|
+| `ip_address` | `game_sessions` | 網路識別碼 | 安全分析、反作弊 | 合法利益 | 90 天 | 不加密（匿名化日誌）|
 | `ip_address` | `user_consents` | 網路識別碼 | PDPA 同意記錄完整性 | 法規義務 | 帳號存活期 | 不加密 |
 | `user_agent` | `user_consents` | 裝置識別資料 | PDPA 同意記錄完整性（裝置環境證明）| 法規義務（PDPA §7、§18）| 帳號存活期 | 不加密（Log 遮罩 OS 以後欄位）|
 | `device_id` | `users`（反重複帳號索引）| 裝置識別資料 | 反作弊 / 反重複帳號（BRD §7.4）| 合法利益（PDPA §19I）| 90 天後自動 Hash 移除明文 | Hash 儲存（SHA-256，不可逆）|
