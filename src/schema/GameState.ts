@@ -102,4 +102,4 @@ export class GameState extends Schema {
   rtpNumerator: number = 92;
 }
 
-export { PlayerState, FishState, BulletState };
+export { PlayerState, FishState };

@@ -185,10 +185,11 @@ export class GameRoom extends Room<GameState> {
   }
 
   /**
-   * Colyseus 0.15: second param is a numeric WebSocket close code, NOT a boolean.
-   * code === 1000 = intentional disconnect; any other = unexpected.
+   * Colyseus 0.15: second param is `consented` boolean (true = intentional disconnect).
+   * When consented is false/undefined the client disconnected unexpectedly and
+   * we allow a reconnection window.
    */
-  async onLeave(client: Client, code: number): Promise<void> {
+  async onLeave(client: Client, consented?: boolean): Promise<void> {
     const player = this.state.players.get(client.sessionId);
     if (player) player.isConnected = false;
 
@@ -198,7 +199,7 @@ export class GameRoom extends Room<GameState> {
       if (key.startsWith(client.sessionId + ':')) this._msgRateLimits.delete(key);
     });
 
-    if (code !== 1000) {
+    if (!consented) {
       try {
         // Allow reconnection within 10s (PRD US-ROOM-001/AC-4)
         await this.allowReconnection(client, RECONNECT_TIMEOUT_S);
