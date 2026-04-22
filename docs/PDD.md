@@ -14,8 +14,8 @@
 |------|------|
 | **DOC-ID** | PDD-FISHING-ARCADE-GAME-20260422 |
 | **專案名稱** | fishing-arcade-game |
-| **文件版本** | v1.0-draft |
-| **狀態** | DRAFT |
+| **文件版本** | v1.1 |
+| **狀態** | IN_REVIEW |
 | **作者** | tobala（由 /devsop-gen-pdd 自動生成） |
 | **建立日期** | 2026-04-22 |
 | **最後更新** | 2026-04-22 |
@@ -90,7 +90,7 @@
 | 前景 | 背景 | 對比度比例 | WCAG 等級 |
 |------|------|-----------|---------|
 | 電光金 `#FFD700` | 深海藍黑 `#050D1A` | 13.2:1 | AAA |
-| 玻璃白文字（HUD） | 玻璃白底 `rgba(255,255,255,0.12)` 覆蓋 `#050D1A` | 8.7:1 | AA |
+| 玻璃白文字（HUD） | 玻璃白底 `rgba(255,255,255,0.12)` 覆蓋 `#050D1A` | 8.7:1 | AAA |
 | 霓虹橘 `#FF6B2B` | 深海藍黑 `#050D1A` | 5.1:1 | AA |
 | 白色 `#FFFFFF` | 危機紅 `#FF2D55` | 4.6:1 | AA |
 | 白色 `#FFFFFF` | 對話框底 `#0B2447 95%` | 12.8:1 | AAA |
@@ -140,8 +140,8 @@
 ```
 RootScene（根場景）
 ├── Canvas（適配根節點，FitHeight / FixedWidth 策略）
-│   ├── Camera（主相機，ClearColor = #050D1A）
-│   │   └── PostProcessingVolume（後處理：Bloom + ColorGrading）
+│   ├── Camera（主相機，ClearColor = #050D1A，掛載 PostProcess 組件）
+│   │   └── [PostProcess 組件直接掛在 Camera 節點，非子節點；CC4.x API]
 │   ├── UILayer（純 UI，RenderOrder = 100）
 │   │   ├── HUDNode（遊戲房間 HUD）
 │   │   ├── MenuOverlay（主選單覆蓋層）
@@ -152,7 +152,7 @@ RootScene（根場景）
 │   │   ├── BulletPool（子彈物件池，ObjectPool）
 │   │   └── CannonSlots（砲台容器，4 子節點）
 │   ├── EffectLayer（特效，RenderOrder = 75）
-│   │   ├── ParticleSystem（粒子系統節點）
+│   │   ├── ParticleSystem（粒子系統節點；CC4.x API，掛 ParticleSystem 組件）
 │   │   ├── JackpotEffect（Jackpot 全屏特效）
 │   │   └── HitEffects（命中爆炸特效物件池）
 │   └── SafeAreaAdapter（安全區域適配節點）
@@ -405,6 +405,66 @@ GameRoom（Scene Root）
 
 ---
 
+### §2.2a 等待大廳覆蓋層（WaitingLobbyOverlay）— F9
+
+**觸發條件**：玩家點擊「快速配對」後，Colyseus 配對尚未湊滿 4 人時顯示。
+
+**設計規格：**
+
+```
+┌───────────────────────────────────────────────────┐
+│                                                   │
+│           🎣 搜尋對手中...                         │
+│                                                   │
+│   ●──────────────────── ○ ○ ○    1 / 4 人已加入   │
+│                                                   │
+│   [動態海浪 Loading 動畫，Neon Cyan，週期 1.2s]    │
+│                                                   │
+│   預估等待：< 30 秒                                │
+│                                                   │
+│         [取消配對]（Crisis Red 邊框按鈕）          │
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+- **底層**：全屏半透明 `rgba(5,13,26,0.90)`，不可穿透點擊
+- **面板**：居中，寬度 80%，圓角 `20px`，邊框 `1px solid rgba(0,245,255,0.3)`
+- **進度圖示**：4 個玩家槽位圖示（●=已入場，○=等待），當有玩家加入時，○ 以 0.3s bounce 動畫切換為 ●（Neon Cyan 填充）
+- **Loading 動畫**：三條水平海浪線（Neon Cyan），交替上下 offset（不使用旋轉 spinner，符合街機風格）
+- **等待超過 15s 時**：新增提示「人數不足時將以 AI 補位」（Amber 色）
+
+---
+
+### §2.2b 網路斷線重連覆蓋層（NetworkReconnectOverlay）— F8
+
+**觸發條件**：WebSocket 連線中斷（NetworkManager 偵測到 `close` 事件），自動顯示。
+
+**設計規格：**
+
+```
+┌───────────────────────────────────────────────────┐
+│                                                   │
+│        ⚠ 網路連線中斷                              │
+│                                                   │
+│   正在重新連線...（第 1 / 3 次嘗試）               │
+│                                                   │
+│   ████████░░░░░░░░  45%                           │
+│   （重連進度條，Crisis Red → Amber → Success Green）│
+│                                                   │
+│   [立即重試]    [返回主畫面]                        │
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+- **底層**：全屏 `rgba(5,13,26,0.95)`，阻斷所有遊戲互動（遊戲在後台暫停計時）
+- **面板**：居中，寬度 70%，圓角 `20px`，Crisis Red 邊框（`2px solid #FF2D55`）
+- **重連策略**：指數退避，最多 3 次（1s → 2s → 4s）；3 次失敗後進度條凍結於 100% Crisis Red，顯示「重連失敗」
+- **進度條顏色**：重連中 → Crisis Red；最後一次嘗試中 → Amber；成功 → Success Green（0.3s transition）
+- **成功後**：覆蓋層以 `opacity 1→0`（0.5s）淡出，遊戲狀態由服務器同步恢復
+- **[返回主畫面] 按鈕**：僅在重連失敗後啟用（重連中為灰色 disabled）
+
+---
+
 ### §2.3 商城畫面（Shop）
 
 #### §2.3.1 佈局規格
@@ -440,16 +500,24 @@ GameRoom（Scene Root）
 └──────────────────────────────────────────────────────────────┘
 ```
 
-#### §2.3.2 鑽石套餐展示規格
+#### §2.3.2 鑽石套餐展示規格（F15 Anti-Template 強化）
+
+**視覺層級差異化策略（非平等卡片網格）：**
+
+三個套餐採用「不對稱層級」而非等寬等高的模板卡片網格：
+- **小套餐（TWD 30）**：標準高度，淡化處理（透明度 80%），引導視線向右
+- **中套餐（TWD 150）**：標準高度，適中強調（金邊框 1.5px）
+- **旗艦套餐（TWD 300）**：高度比其他卡片**多 32px**（突出陳列），加熱橘「🔥最暢銷」徽章，全寬發光邊框（Neon Coral + Bloom 光暈），購買按鈕使用動態脈搏動畫
 
 **套餐卡片（Diamond Package Card）：**
-- 尺寸：`160px × 200px`，圓角 `16px`
-- 背景：Glassmorphism（`rgba(0,245,255,0.06)` + `1px solid rgba(0,245,255,0.25)`）
-- 鑽石圖示：尺寸 `48px`，動畫：輕微旋轉 + 光暈脈搏
-- 金額顯示：Orbitron Bold，`24sp`，電光金
+- 旗艦套餐尺寸：`180px × 232px`；標準套餐：`160px × 200px`；圓角 `16px`
+- 旗艦套餐背景：Glassmorphism（`rgba(255,107,43,0.12)` + `2px solid #FF6B2B`）+ 外層 Neon Coral 光暈
+- 標準套餐背景：Glassmorphism（`rgba(0,245,255,0.06)` + `1px solid rgba(0,245,255,0.25)`）
+- 鑽石圖示：旗艦套餐 `64px`（旋轉 + 強光暈脈搏）；標準套餐 `48px`（微旋轉）
+- 金額顯示：Orbitron Bold，旗艦 `28sp`；標準 `24sp`；電光金
 - 台幣價格：Noto Sans TC Regular，`14sp`，`#C8D6E5`
-- 暢銷標籤：熱橘底色 + 「🔥最暢銷」，絕對定位於卡片右上角
-- 購買按鈕：霓虹橘，高度 `44px`，寬度等同卡片寬
+- 暢銷標籤：熱橘底色 + 「🔥最暢銷」，絕對定位於卡片右上角，旗艦套餐專用
+- 購買按鈕：旗艦套餐霓虹橘 + 脈搏縮放（1.0↔1.03，1.5s）；標準套餐靜態橘色；高度 `44px`
 
 **Jackpot 機率揭示入口（合規必需）：**
 - 每個砲台道具旁顯示 `⚠ Jackpot 觸發機率: 1:X,XXX`（格式由 PM 於開發月 1 確認）
@@ -461,6 +529,53 @@ GameRoom（Scene Root）
 ### §2.4 設定 / 隱私畫面（Settings / Privacy）
 
 #### §2.4.1 佈局結構
+
+**ASCII 線框稿（F16 fix）：**
+
+```
+┌───────────────────────────────────────────────────────────┐
+│  ← [返回]    ⚙ 設定                    ♦ 1,250  ● 25,000 │
+│ ─────────────────────────────────────────────────────── ─ │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  👤 個人資料                                          ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  暱稱：FishMaster_99                   [✏ 編輯]      ║  │
+│  ║  Email：fish***@example.com           [✉ 更改]      ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  🎮 遊戲設定                                          ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  音效           ●────────────────  [  ON  ]         ║  │
+│  ║  背景音樂        ●────────────────  [  ON  ]         ║  │
+│  ║  語言            繁體中文            [  >  ]         ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  🔒 隱私設定                                          ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  行銷推播通知    ●────────────────  [ OFF  ]         ║  │
+│  ║  查看隱私政策                         [  >  ]         ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  ℹ 其他                                              ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  客服聯繫                              [  >  ]        ║  │
+│  ║  Jackpot 機率說明（法規揭示）          [  >  ]        ║  │
+│  ║  版本資訊  v1.0.0 (Build 100)                        ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ─────────────────────────────────────────────────────── │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │  ⚠ 刪除帳號         （Crisis Red 空心按鈕）           │  │
+│  └─────────────────────────────────────────────────────┘  │
+│  [Safe Area Bottom]                                       │
+└───────────────────────────────────────────────────────────┘
+```
+
+**分區樹狀結構：**
 
 ```
 設定主頁
@@ -642,7 +757,7 @@ export class EliteFish extends Component {
     @property(sp.Skeleton) skeleton: sp.Skeleton = null;
     @property(ProgressBar) hpBar: ProgressBar = null;
     @property(Label) multiplierLabel: Label = null;
-    @property(ParticleSystem2D) glowParticle: ParticleSystem2D = null;
+    @property(ParticleSystem) glowParticle: ParticleSystem = null;  // F5 fix: CC4.x 使用 ParticleSystem，非 CC3.x 的 ParticleSystem2D
 
     public updateHP(current: number, max: number): void {
         // 更新 HP 條，顏色依 HP% 動態切換
@@ -667,7 +782,7 @@ export class EliteFish extends Component {
 export class BossFish extends Component {
     @property(sp.Skeleton) skeleton: sp.Skeleton = null;
     @property(ProgressBar) hpBar: ProgressBar = null;
-    @property(ParticleSystem2D) bodyParticle: ParticleSystem2D = null;
+    @property(ParticleSystem) bodyParticle: ParticleSystem = null;  // F6 fix: CC4.x 使用 ParticleSystem
     @property(Node) auraEffect: Node = null;
 
     public onAppear(): void {
@@ -704,7 +819,8 @@ export class NumberRoller extends Component {
     @property(Label) displayLabel: Label = null;
     @property public duration: number = 0.3;  // 滾動動畫時長（秒）
 
-    private _currentValue: number = 0;
+    // F3 fix: CC4.x tween 只能動畫化 public 屬性，private `_currentValue` 會被忽略
+    public currentValue: number = 0;
     private _targetValue: number = 0;
     private _tween: Tween<this> = null;
 
@@ -712,14 +828,14 @@ export class NumberRoller extends Component {
         if (this._tween) { this._tween.stop(); }
         this._targetValue = newValue;
 
-        // 使用 tween 模擬數字滾動，每幀更新 Label
+        // 使用 tween 動畫化 public currentValue，onUpdate 每幀同步 Label
         this._tween = tween(this)
-            .to(this.duration, { _currentValue: newValue }, {
+            .to(this.duration, { currentValue: newValue }, {
                 easing: 'cubicOut',
                 onUpdate: () => {
-                    // 格式化為帶千位分隔符的字符串
+                    // 格式化為帶千位分隔符的字串
                     this.displayLabel.string =
-                        Math.floor(this._currentValue).toLocaleString('zh-TW');
+                        Math.floor(this.currentValue).toLocaleString('zh-TW');
                 }
             })
             .start();
@@ -811,6 +927,73 @@ export class NumberRoller extends Component {
 
 ---
 
+### §3.5 Jackpot 機率揭示 Modal（JackpotOddsModal）— F17
+
+**觸發方式**：
+- 商城頁砲台道具旁的「⚠ 查看 Jackpot 觸發機率」連結
+- 設定頁「Jackpot 機率說明（法規揭示）」選項
+- App Store 審查要求：機率資訊必須在購買前可存取
+
+**設計規格：**
+
+```
+┌──────────────────────────────────────────────┐
+│  📊 Jackpot 機率說明                           │
+│                                              │
+│  ─────────────────────────────────────────── │
+│  砲台倍率   Jackpot 觸發機率   期望單次 RTP    │
+│  ────────   ──────────────   ────────────── │
+│    1x       1 : 500,000       92%            │
+│   10x       1 :  50,000       93%            │
+│   50x       1 :  10,000       95%            │
+│  100x       1 :   5,000       95%            │
+│  ─────────────────────────────────────────── │
+│                                              │
+│  整體 RTP（所有下注加權平均）：92% – 96%        │
+│                                              │
+│  📋 Jackpot 池觸發條件：                      │
+│  • 每次有效下注均有機率觸發                    │
+│  • 高倍率砲台提升觸發機率，但不保證中獎          │
+│  • Jackpot 池由所有房間玩家共同累積              │
+│                                              │
+│  最後更新：2026-04-22（由開發月 1 確認最終值）  │
+│  [📋 完整隱私與機率說明文件]（資訊藍連結）      │
+│                                              │
+│              [知道了，關閉]                   │
+└──────────────────────────────────────────────┘
+```
+
+- **觸發方式**：`ModalStack.push('JackpotOddsModal')`（優先級低於 PrivacyConsentModal）
+- **表格樣式**：Glassmorphism 底，表頭 Neon Cyan，數字 Orbitron Bold 電光金
+- **合規說明**：最後一行「最後更新」日期由後台動態注入；若日期距今超過 90 天，顯示 Amber 警示
+- **[知道了，關閉] 按鈕**：霓虹橘，高度 `48px`，全寬
+
+---
+
+### §3.6 金幣不足提示 Toast（CoinInsufficientToast）— F18
+
+**觸發條件**：玩家嘗試射擊但金幣餘額 < 當前砲台倍率費用時觸發。
+
+**設計規格：**
+
+```
+   ┌──────────────────────────────────────────┐
+   │  ⚠  金幣不足！                           │
+   │  當前餘額：150 金幣  │  需要：500 金幣    │
+   │  [前往商城購買鑽石] 兌換更多金幣           │
+   └──────────────────────────────────────────┘
+   （從畫面底部上滑顯示，位於砲台 HUD 正上方）
+```
+
+- **出現位置**：畫面底部中央（在砲台 HUD 上方 16px），不遮擋遊戲核心區域
+- **出現動畫**：從畫面下方 40px 滑入（0.25s ease-out）
+- **持續時間**：3 秒後自動消失（淡出 0.3s）；玩家點擊 [前往商城] 立即消失並跳轉
+- **顏色**：底色 `rgba(255,45,85,0.95)`（Crisis Red 半透明），文字白色，圓角 `12px`
+- **[前往商城購買鑽石] 按鈕**：內嵌文字連結，底線，白色，點擊後觸發場景跳轉至 Shop
+- **防重複觸發**：同一個射擊動作最多觸發一次 Toast；3 秒冷卻期內不重複顯示
+
+---
+
 ## §4 響應式與裝置適配
 
 ### §4.1 Safe Area 處理
@@ -828,18 +1011,20 @@ export class SafeAreaAdapter extends Component {
 
     onLoad() {
         // 使用 Cocos Creator 4.x 的 sys.getSafeAreaRect() 取得安全區域
+        // safeArea.y = 底部安全距離（CC4.x Y 軸向上），topPad 需用螢幕高度反算
         const safeArea = sys.getSafeAreaRect();
-        const screen = screen.windowSize;
+        const screenSize = screen.windowSize;  // F1 fix: 避免 screen 變數自我引用 ReferenceError
 
-        const topPad = safeArea.y;
-        const bottomPad = screen.height - safeArea.y - safeArea.height;
+        // F2 fix: CC4.x 座標 Y 軸向上，safeArea.y 為底部 inset，頂部 inset 需反算
+        const topPad = screenSize.height - safeArea.y - safeArea.height;
+        const bottomPad = safeArea.y;
         const leftPad = safeArea.x;
-        const rightPad = screen.width - safeArea.x - safeArea.width;
+        const rightPad = screenSize.width - safeArea.x - safeArea.width;
 
-        this.topInset.setContentSize(screen.width, topPad);
-        this.bottomInset.setContentSize(screen.width, bottomPad);
-        this.leftInset.setContentSize(leftPad, screen.height);
-        this.rightInset.setContentSize(rightPad, screen.height);
+        this.topInset.setContentSize(screenSize.width, topPad);
+        this.bottomInset.setContentSize(screenSize.width, bottomPad);
+        this.leftInset.setContentSize(leftPad, screenSize.height);
+        this.rightInset.setContentSize(rightPad, screenSize.height);
     }
 }
 ```
@@ -852,9 +1037,32 @@ export class SafeAreaAdapter extends Component {
 | iPhone 13/14（劉海）| 頂部 47px 瀏海遮擋 | `topInset` = 47px |
 | iPhone SE 3rd（無瀏海）| 標準狀態欄 20px | `topInset` = 20px |
 | iPhone 15 Pro Max（全圓角）| 底部 Home Bar 34px | `bottomInset` = 34px；砲台 UI 向上移動 |
-| Android 打孔屏（如 Samsung Galaxy S24）| 頂部打孔相機，尺寸依裝置 | 使用 `WindowInsets.getDisplayCutout()` 回傳，Cocos `sys.getSafeAreaRect()` 自動取得 |
+| **iPhone 16 / 16 Plus**（動態島）| 頂部動態島同 14 Pro：59px | `topInset` = 59px |
+| **iPhone 16 Pro / 16 Pro Max**（動態島更寬）| 頂部 68px（動態島加大）；底部 34px | `topInset` = 68px，`bottomInset` = 34px |
+| Android 打孔屏（如 Samsung Galaxy S24）| 頂部打孔相機，尺寸依裝置 | `sys.getSafeAreaRect()` 自動取得；F11 fix：另須在 `AndroidManifest.xml` 加入 `android:windowLayoutInDisplayCutoutMode="shortEdges"` 確保 fullscreen 模式下 Cutout 區域正確回報 |
 | Android 全面屏（導覽列手勢）| 底部手勢感應區 24px | `bottomInset` = 24px |
 | iPad（橫屏）| 圓角 + 側邊安全距離 | 左右 `leftInset/rightInset` 各 20px |
+
+**Android Display Cutout 設定（F11）：**
+
+在 `proj.android/app/src/main/AndroidManifest.xml` 的 `<activity>` 標籤加入：
+```xml
+<activity
+    android:screenOrientation="sensorLandscape"
+    android:windowLayoutInDisplayCutoutMode="shortEdges">
+```
+
+在 `AppActivity.java`（或 `AppActivity.kt`）的 `onCreate()` 加入：
+```java
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    WindowManager.LayoutParams attrs = getWindow().getAttributes();
+    attrs.layoutInDisplayCutoutMode =
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+    getWindow().setAttributes(attrs);
+}
+```
+
+此設定確保橫屏時 `sys.getSafeAreaRect()` 正確回報打孔屏左右兩側的安全區域。
 
 ---
 
@@ -913,16 +1121,21 @@ sys.gameType === sys.GameType.DesktopBrowser
 
 ```typescript
 // utils/ObjectPoolManager.ts
+// F4 fix: CC4.x 已移除 NodePool，改用泛型 ObjectPool<T>
 export class ObjectPoolManager {
-    private _pools: Map<string, NodePool> = new Map();
+    private _pools: Map<string, ObjectPool<Node>> = new Map();
 
-    getPool(prefabKey: string, warmUpCount: number): NodePool {
+    getPool(prefabKey: string, warmUpCount: number): ObjectPool<Node> {
         if (!this._pools.has(prefabKey)) {
-            const pool = new NodePool();
-            // 預熱 N 個節點（避免遊戲中動態 instantiate）
+            const prefab = this._prefabs.get(prefabKey);
+            const pool = new ObjectPool<Node>(
+                () => instantiate(prefab),           // creator：建立新節點
+                (node) => { node.active = false; },  // onPut：回收時隱藏
+                (node) => { node.active = true; }    // onGet：取出時顯示
+            );
+            // 預熱 N 個節點（避免遊戲中動態 instantiate 造成 GC 峰值）
             for (let i = 0; i < warmUpCount; i++) {
-                const node = instantiate(this._prefabs.get(prefabKey));
-                pool.put(node);
+                pool.put(instantiate(prefab));
             }
             this._pools.set(prefabKey, pool);
         }
@@ -966,7 +1179,7 @@ director.on(Director.EVENT_BEFORE_SCENE_LAUNCH, () => {
 | 命中特效粒子數 | 80 粒子（Boss 命中）| 40 粒子 |
 | Jackpot 觸發粒子 | 500 粒子 | 200 粒子 |
 | 水草動畫 | 所有水草擺動 | 僅前景水草擺動 |
-| 背景光效後處理 | Bloom + ColorGrading | 僅 ColorGrading |
+| 後處理（Camera PostProcess 組件）| Bloom + ColorGrading | 僅 ColorGrading |
 | 廣播 Banner 動畫 | 滑入動畫 | 直接顯示（無動畫）|
 
 ---
@@ -981,7 +1194,7 @@ PRD 要求：**WCAG 2.1 Level A（MVP）→ Level AA（Phase 2）**
 
 | 需求 ID | WCAG 2.1 準則 | 具體要求 | Cocos Creator 實作方式 |
 |--------|-------------|---------|----------------------|
-| A11y-01 | 1.1.1 非文字內容 | 圖示按鈕需有替代文字 | `node.getComponent(UITransform).setContentSize()` + 設定 `accessibilityLabel`（iOS/Android 原生無障礙 API via jsb）|
+| A11y-01 | 1.1.1 非文字內容 | 圖示按鈕需有替代文字 | F12 fix：透過 `jsb.reflection` 呼叫原生無障礙 API 設定 `accessibilityLabel`（詳見 §5.1.3 範例）|
 | A11y-02 | 1.4.1 顏色非唯一資訊 | 不能僅靠顏色傳達資訊 | 狀態變化同時使用顏色 + 圖示 + 文字（例：HP 條顏色 + 數字 + 閃爍）|
 | A11y-03 | 1.4.3 對比度（最低）| 文字對比度 ≥ 4.5:1；大文字（18pt+）≥ 3:1 | 所有靜態 UI 文字符合 §1.2 色彩對比度表 |
 | A11y-04 | 2.1.1 鍵盤操作 | 所有功能可透過輔助觸控操作 | 確保 iOS VoiceOver / Android TalkBack 焦點順序正確 |
@@ -1008,24 +1221,89 @@ Cocos Creator 本身不提供對比度計算工具，建議在設計階段使用
 - Glassmorphism 面板（半透明）：對比度計算以面板底色的「視覺有效背景色」計算（面板背景色 = `rgba(0,245,255,0.08)` 疊加於 `#050D1A` → 有效色約 `#071830`），確保白色文字在此有效背景上對比度 ≥ 14:1
 - 粒子特效期間（動態背景）：計算以最暗可能背景為基準（最差情境）
 
-#### §5.1.3 Reduce Motion（減少動態效果）支援
+#### §5.1.3 accessibilityLabel 設定（F12）與 Reduce Motion 支援（F13）
+
+**accessibilityLabel 設定方式（F12 fix）：**
+
+Cocos Creator 4.x 沒有直接的 `accessibilityLabel` 屬性，需透過 `jsb.reflection` 呼叫原生 API。下列工具函式封裝此邏輯：
+
+```typescript
+// utils/AccessibilityHelper.ts
+export function setAccessibilityLabel(node: Node, label: string, hint?: string): void {
+    if (!jsb) return;  // Web 平台跳過
+    const nativeView = node.getComponent(UITransform)?._uiTransformComp?.nativeObject;
+    if (!nativeView) return;
+
+    if (sys.os === sys.OS.IOS) {
+        // iOS：UIView.accessibilityLabel + accessibilityHint
+        jsb.reflection.callStaticMethod(
+            'AppController',
+            'setAccessibilityLabel:hint:forNodeId:',
+            `${label}|${hint ?? ''}|${node.uuid}`
+        );
+    } else if (sys.os === sys.OS.ANDROID) {
+        // Android：ViewCompat.setAccessibilityDelegate + contentDescription
+        jsb.reflection.callStaticMethod(
+            'org/cocos2dx/lib/Cocos2dxHelper',
+            'setAccessibilityLabel',
+            '(Ljava/lang/String;Ljava/lang/String;)V',
+            node.uuid,
+            label
+        );
+    }
+}
+
+// 使用範例（在 MainMenu 初始化時）
+setAccessibilityLabel(this.quickMatchBtn.node, '快速配對按鈕', '點擊後進入配對等待');
+setAccessibilityLabel(this.shopBtn.node, '商城按鈕');
+setAccessibilityLabel(this.settingsBtn.node, '設定按鈕');
+setAccessibilityLabel(this.privacyCheckbox.node, '隱私政策同意勾選框', '必須勾選才能繼續');
+```
+
+**Reduce Motion 支援（F13 fix）：**
 
 ```typescript
 // utils/MotionPreference.ts
 export function isReduceMotionEnabled(): boolean {
-    // iOS: UIAccessibilityIsReduceMotionEnabled()
-    // Android: Settings.Global.ANIMATOR_DURATION_SCALE = 0
+    if (!jsb) return false;  // Web 平台預設不減少動態效果
+
     if (sys.os === sys.OS.IOS) {
+        // iOS：UIAccessibility.isReduceMotionEnabled
         return jsb.reflection.callStaticMethod(
-            'UIAccessibility', 'isReduceMotionEnabled', ''
+            'UIAccessibility',
+            'isReduceMotionEnabled',
+            ''
         ) === 'true';
     }
-    // Android 實作（透過 jsb.reflection 呼叫 Java）
+
+    if (sys.os === sys.OS.ANDROID) {
+        // F13 fix: Android 透過 Settings.Global.ANIMATOR_DURATION_SCALE 偵測
+        // ANIMATOR_DURATION_SCALE = 0 時，使用者已在開發者選項中關閉動畫（等同 Reduce Motion）
+        // 正常值為 1.0；無障礙設定的「移除動畫」也會設為 0
+        const scale = jsb.reflection.callStaticMethod(
+            'org/cocos2dx/lib/Cocos2dxHelper',
+            'getAnimatorDurationScale',
+            '()F'
+        );
+        return parseFloat(scale as string) === 0;
+    }
+
     return false;
 }
 
 // 在 Boot.scene 初始化時讀取並儲存至 DataManager
-// 特效播放前檢查此設定，調整動畫強度（§3.3.2 中已定義降低策略）
+// 特效播放前檢查此設定，調整動畫強度（§3.3.2 中已定義降低策略：粒子減半、震動減弱 50%）
+```
+
+**Android 原生端配合實作（`Cocos2dxHelper.java`）：**
+```java
+public static float getAnimatorDurationScale() {
+    return Settings.Global.getFloat(
+        Cocos2dxActivity.getContext().getContentResolver(),
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1.0f
+    );
+}
 ```
 
 ---
