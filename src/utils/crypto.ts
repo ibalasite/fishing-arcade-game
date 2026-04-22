@@ -4,8 +4,14 @@ import { randomUUID } from 'crypto';
 /**
  * CSPRNG wrapper for game-critical random values.
  * Uses crypto.randomInt() for uniform integer distribution without floating-point bias.
+ *
+ * @param max Exclusive upper bound. Must be a positive integer (>= 1).
+ *            crypto.randomInt(0) throws; this guard surfaces the issue early.
  */
 export function secureRandomInt(max: number): number {
+  if (!Number.isInteger(max) || max <= 0) {
+    throw new Error(`secureRandomInt: max must be a positive integer, got ${max}`);
+  }
   return crypto.randomInt(max);
 }
 

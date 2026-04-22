@@ -148,12 +148,18 @@ export class JackpotManager {
   /**
    * Contribute to jackpot pool from a bet.
    * Called by GameRoom._handleShoot after debit.
+   *
+   * Requires the Redis client to support INCRBYFLOAT. If it is absent
+   * (e.g., a minimal mock that omits the method), contributions are skipped
+   * and a warning is emitted so the misconfiguration is visible in logs.
    */
   async contribute(betAmount: number): Promise<void> {
-    const contribution = betAmount * CONTRIBUTION_RATE;
-    if (this._redis.incrbyfloat) {
-      await this._redis.incrbyfloat(POOL_KEY, contribution);
+    if (!this._redis.incrbyfloat) {
+      console.warn('[JackpotManager] incrbyfloat unavailable — jackpot contribution skipped');
+      return;
     }
+    const contribution = betAmount * CONTRIBUTION_RATE;
+    await this._redis.incrbyfloat(POOL_KEY, contribution);
   }
 
   /**

@@ -77,6 +77,24 @@ export class RTPEngine {
   private _config: RTPConfig;
 
   constructor(config: RTPConfig) {
+    // Validate fish configs at construction time to catch mis-configuration early.
+    for (const fc of config.fishConfigs) {
+      if (!Number.isInteger(fc.hitRateDenominator) || fc.hitRateDenominator <= 0) {
+        throw new Error(
+          `RTPEngine: fishType "${fc.fishType}" has invalid hitRateDenominator (${fc.hitRateDenominator}). Must be a positive integer.`,
+        );
+      }
+      if (!Number.isInteger(fc.hitRateNumerator) || fc.hitRateNumerator < 0) {
+        throw new Error(
+          `RTPEngine: fishType "${fc.fishType}" has invalid hitRateNumerator (${fc.hitRateNumerator}). Must be a non-negative integer.`,
+        );
+      }
+      if (fc.hitRateNumerator > fc.hitRateDenominator) {
+        throw new Error(
+          `RTPEngine: fishType "${fc.fishType}" hitRateNumerator (${fc.hitRateNumerator}) exceeds hitRateDenominator (${fc.hitRateDenominator}). Hit probability cannot exceed 100%.`,
+        );
+      }
+    }
     this._config = config;
   }
 
