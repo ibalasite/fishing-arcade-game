@@ -162,6 +162,19 @@ describe('SecureStorage', () => {
     });
   });
 
+  // ---- _fallbackSave when cc.sys is absent ----
+
+  describe('saveToken fallback — no cc.sys (silent no-op)', () => {
+    it('does not throw when no jsb and no cc.sys is available', () => {
+      // Given: no jsb, no cc.sys (neither installed)
+      removeJsb();
+      // cc global NOT installed
+      const storage = SecureStorage.getInstance();
+      // When: saveToken is called (will try _fallbackSave, which checks cc?.sys)
+      expect(() => storage.saveToken('test-token')).not.toThrow();
+    });
+  });
+
   // ---- clearToken without jsb (else branch) ----
 
   describe('clearToken — no jsb (localStorage fallback)', () => {

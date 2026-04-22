@@ -138,6 +138,48 @@ describe('CannonController', () => {
     });
   });
 
+  // ---- _isCoolingDownState / _setCoolingDown ----
+
+  describe('_isCoolingDownState() and _setCoolingDown()', () => {
+    it('_isCoolingDownState() returns false initially', () => {
+      // Given: fresh cannon (not fired yet)
+      expect(cannon._isCoolingDownState()).toBe(false);
+    });
+
+    it('_isCoolingDownState() returns true after firing', () => {
+      // Given: cannon fired — cooling down
+      const listener = jest.fn();
+      cannon.onShoot(listener);
+      cannon.fire('normal');
+      // Then: _isCoolingDownState returns true
+      expect(cannon._isCoolingDownState()).toBe(true);
+    });
+
+    it('_setCoolingDown(true) prevents firing', () => {
+      // Given: cooling down is forced via _setCoolingDown
+      cannon._setCoolingDown(true);
+      const listener = jest.fn();
+      cannon.onShoot(listener);
+      // When: fire is called
+      cannon.fire('normal');
+      // Then: listener not called (still cooling)
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('_setCoolingDown(false) allows firing even within cooldown window', () => {
+      // Given: cannon fired (entering cooldown)
+      const listener = jest.fn();
+      cannon.onShoot(listener);
+      cannon.fire('normal');
+      expect(listener).toHaveBeenCalledTimes(1);
+      // When: _setCoolingDown is forced to false mid-cooldown
+      cannon._setCoolingDown(false);
+      cannon.fire('normal');
+      // Then: second shot fires
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+  });
+
   // ---- switchBulletType() ----
 
   describe('switchBulletType(type)', () => {

@@ -69,6 +69,22 @@ describe('WalletService', () => {
       await expect(service.debitGold('user-1', 100)).rejects.toThrow(InsufficientFundsError);
     });
 
+    it('throws InsufficientFundsError when user has no wallet row (gold defaults to 0)', async () => {
+      // Arrange: SELECT returns empty rows (user has no wallet yet)
+      mockTransaction.mockImplementationOnce(async (callback: (trx: DbClient) => Promise<void>) => {
+        const trx: DbClient = {
+          query: jest.fn()
+            .mockResolvedValueOnce({ rows: [], rowCount: 0 }), // no wallet row → gold defaults to 0
+          transaction: jest.fn(),
+        };
+        await callback(trx);
+      });
+
+      const service = makeService();
+      // Even 1 gold debit fails when wallet doesn't exist (0 < 1)
+      await expect(service.debitGold('user-no-wallet', 1)).rejects.toThrow(InsufficientFundsError);
+    });
+
     it('does NOT call UPDATE when balance is insufficient (no partial debit)', async () => {
       const trxQuery = jest.fn()
         .mockResolvedValueOnce({ rows: [{ gold: 10 }], rowCount: 1 }); // SELECT: only 10 gold

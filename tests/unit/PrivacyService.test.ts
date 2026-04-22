@@ -1,6 +1,6 @@
 import { PrivacyService } from '../../src/services/PrivacyService';
 import { DbClient } from '../../src/utils/db';
-import { secureRandomInt, encrypt, hmac } from '../../src/utils/crypto';
+import { secureRandomInt, encrypt, hmac, randomUUID } from '../../src/utils/crypto';
 
 // ---------------------------------------------------------------------------
 // Test environment setup
@@ -206,6 +206,27 @@ describe('PrivacyService', () => {
       expect(trxQueryOk).toHaveBeenCalledTimes(2);
       errorSpy.mockRestore();
     });
+
+    it('logs non-Error thrown values as String (err instanceof Error false branch)', async () => {
+      // Arrange: one pending user, transaction throws a non-Error value (string)
+      mockQuery.mockResolvedValueOnce({ rows: [{ user_id: 'user-str-err' }], rowCount: 1 });
+
+      mockTransaction.mockImplementationOnce(async () => {
+        // Throw a non-Error value (raw string — exercises String(err) branch)
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw 'raw string error';
+      });
+
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = makeService();
+      await expect(service.executeScheduledDeletions()).resolves.toBeUndefined();
+
+      // String(err) = 'raw string error'
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('raw string error'),
+      );
+      errorSpy.mockRestore();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -280,6 +301,21 @@ describe('crypto utilities', () => {
       const a = hmac('email1@example.com', 'key');
       const b = hmac('email2@example.com', 'key');
       expect(a).not.toBe(b);
+    });
+  });
+
+  describe('randomUUID', () => {
+    it('returns a valid UUID v4 string', () => {
+      const uuid = randomUUID();
+      expect(typeof uuid).toBe('string');
+      // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+      expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    });
+
+    it('returns unique UUIDs on each call', () => {
+      const uuid1 = randomUUID();
+      const uuid2 = randomUUID();
+      expect(uuid1).not.toBe(uuid2);
     });
   });
 });
