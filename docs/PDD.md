@@ -14,8 +14,8 @@
 |------|------|
 | **DOC-ID** | PDD-FISHING-ARCADE-GAME-20260422 |
 | **專案名稱** | fishing-arcade-game |
-| **文件版本** | v1.1 |
-| **狀態** | IN_REVIEW |
+| **文件版本** | v1.5 |
+| **狀態** | APPROVED |
 | **作者** | tobala（由 /devsop-gen-pdd 自動生成） |
 | **建立日期** | 2026-04-22 |
 | **最後更新** | 2026-04-22 |
@@ -1021,7 +1021,13 @@ export class NumberRoller extends Component {
   setAccessibilityLabel(row3Node, '砲台倍率 50 倍，Jackpot 觸發機率 1 比 10,000，期望 RTP 95%');
   setAccessibilityLabel(row4Node, '砲台倍率 100 倍，Jackpot 觸發機率 1 比 5,000，期望 RTP 95%');
   ```
-  個別 Label 子節點從無障礙樹移除（`node._uiProperties.uiTransformComp.contentSize` = 0 × 0 以外的實作由 EDD 確認），確保螢幕報讀器以整行為單位朗讀。
+  個別 Label 子節點需從無障礙樹排除，確保螢幕報讀器以整行為單位朗讀。使用公開的 CC4.x API（Round 5 F4 fix，取代私有屬性路徑）：
+  ```typescript
+  // 對每個 Label 子節點設定 contentSize 為 (0,0) 使其不響應點擊，並在原生端排除可及性
+  childLabel.getComponent(UITransform).setContentSize(0, 0);
+  // 同時透過 AccessibilityHelper 標記為不可存取（原生端實作：isAccessibilityElement = NO / setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO)）
+  setAccessibilityLabel(childLabel.node, '', '');  // 空字串 label 令報讀器略過此元素
+  ```
 
 ---
 
@@ -1047,6 +1053,14 @@ export class NumberRoller extends Component {
 - **[前往商城購買鑽石] 按鈕**：內嵌文字連結，底線，白色，點擊後觸發場景跳轉至 Shop
 - **防重複觸發**：同一個射擊動作最多觸發一次 Toast；3 秒冷卻期內不重複顯示
 - **F-R2-15 對比度風險說明**：白色文字在 `rgba(255,45,85,0.95)` 上有效背景約 `#F42B51`，對比度約 4.5:1（WCAG AA 邊界）。遊戲場景動態背景（金色/青色粒子）可能降低半透明層的有效對比。建議實作時在裝置上以最壞情況背景（Boss 命中特效啟動中）驗證對比；若不通過，將背景不透明度調整至 1.0（`#FF2D55` 對白色對比度為 5.9:1，充分通過 AA）。
+- **Round 5 F3 無障礙標籤規格**（與其他 overlay 規格對齊）：
+
+| 元素 | accessibilityLabel | accessibilityHint |
+|------|-------------------|-----------------|
+| Toast 容器節點（出現時觸發 VoiceOver 報讀）| 「金幣不足，當前餘額 N 金幣，需要 M 金幣」（動態插值）| — |
+| [前往商城購買鑽石] 文字連結 | 「前往商城購買鑽石按鈕」| 「點擊跳轉商城兌換金幣」|
+
+> 實作注意：Toast 出現時呼叫 `setAccessibilityLabel(toastNode, '金幣不足，當前餘額 ${balance} 金幣，需要 ${required} 金幣')` 並觸發焦點移至 Toast 節點（iOS VoiceOver：`UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification,...)`；Android TalkBack：`announceForAccessibility()`），確保螢幕報讀器在 3s 自動消失前讀出資訊。
 
 ---
 
@@ -1067,21 +1081,26 @@ export class SafeAreaAdapter extends Component {
 
     onLoad() {
         // 使用 Cocos Creator 4.x 的 sys.getSafeAreaRect() 取得安全區域
-        // safeArea.y = 底部安全距離（CC4.x Y 軸向上），topPad 需用螢幕高度反算
-        const safeArea = sys.getSafeAreaRect();
-        const screenSize = screen.windowSize;  // F1 fix: 避免 screen 變數自我引用 ReferenceError
+        // sys.getSafeAreaRect() 與 screen.windowSize 均以實體像素（physical pixels）為單位
+        // UITransform.setContentSize() 接受邏輯單位（設計解析度 design resolution units）
+        // → 必須除以 devicePixelRatio 轉換，否則在 3x DPI 裝置上 inset 會放大 3 倍
+        const safeArea = sys.getSafeAreaRect();  // physical pixels
+        const screenSize = screen.windowSize;    // physical pixels
+        const dpr = screen.devicePixelRatio || 1;  // Round 5 F2 fix: 實體→邏輯像素轉換比例
 
-        // F2 fix: CC4.x 座標 Y 軸向上，safeArea.y 為底部 inset，頂部 inset 需反算
-        const topPad = screenSize.height - safeArea.y - safeArea.height;
-        const bottomPad = safeArea.y;
-        const leftPad = safeArea.x;
-        const rightPad = screenSize.width - safeArea.x - safeArea.width;
+        // Y 軸向上：safeArea.y = 底部實體像素 inset；頂部需反算
+        const topPad    = (screenSize.height - safeArea.y - safeArea.height) / dpr;
+        const bottomPad = safeArea.y / dpr;
+        const leftPad   = safeArea.x / dpr;
+        const rightPad  = (screenSize.width - safeArea.x - safeArea.width) / dpr;
+        const logicalW  = screenSize.width  / dpr;
+        const logicalH  = screenSize.height / dpr;
 
-        // F-R2-03 fix: CC4.x 移除 Node.setContentSize()，改用 UITransform 組件
-        this.topInset.getComponent(UITransform).setContentSize(screenSize.width, topPad);
-        this.bottomInset.getComponent(UITransform).setContentSize(screenSize.width, bottomPad);
-        this.leftInset.getComponent(UITransform).setContentSize(leftPad, screenSize.height);
-        this.rightInset.getComponent(UITransform).setContentSize(rightPad, screenSize.height);
+        // UITransform.setContentSize 接受邏輯單位
+        this.topInset.getComponent(UITransform).setContentSize(logicalW, topPad);
+        this.bottomInset.getComponent(UITransform).setContentSize(logicalW, bottomPad);
+        this.leftInset.getComponent(UITransform).setContentSize(leftPad, logicalH);
+        this.rightInset.getComponent(UITransform).setContentSize(rightPad, logicalH);
     }
 }
 ```
@@ -1210,12 +1229,13 @@ export class ObjectPoolManager {
     getPool(prefabKey: string, warmUpCount: number): ObjectPool<Node> {
         if (!this._pools.has(prefabKey)) {
             const prefab = this._prefabs.get(prefabKey);
-            // F-R2-01 fix: CC4.x ObjectPool 接受 creator 函式 + handler 物件
+            // CC4.x ObjectPool handler 介面：IPoolHandlerComponent<T> 定義為 { onFree, reuse }
+            // （Round 5 F1 驗證：onFree = 回收時呼叫；reuse = 取出時呼叫，符合 CC4.x TypeScript 型別定義）
             const pool = new ObjectPool<Node>(
                 () => instantiate(prefab),
                 {
-                    onFree: (node) => { node.active = false; },  // 回收時隱藏
-                    reuse: (node) => { node.active = true; }     // 取出時顯示
+                    onFree: (node) => { node.active = false; },  // 回收入池時隱藏
+                    reuse: (node) => { node.active = true; }     // 從池中取出時顯示
                 }
             );
             // 預熱 N 個節點（避免遊戲中動態 instantiate 造成 GC 峰值）
