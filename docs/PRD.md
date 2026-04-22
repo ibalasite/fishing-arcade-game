@@ -827,7 +827,7 @@ stateDiagram-v2
 | Flag 名稱 | 預設值 | 目標群組 | 啟用條件 | Kill Switch | 預計移除日 |
 |-----------|--------|---------|---------|------------|-----------|
 | `ff_jackpot_enabled` | ON | 所有玩家 | 永遠啟用（MVP 必要功能）| 是（5 分鐘內生效）| GA + 30 天穩定後移除 |
-| `ff_boss_fish_enabled` | ON | 所有玩家 | 永遠啟用 | 是 | GA + 30 天 |
+| `ff_boss_fish_enabled` | ON | 所有玩家 | 永遠啟用 | 是（關閉後 Boss 魚停止生成，進行中房間 Boss 魚逾時消失，不影響基礎射擊或精英魚）| GA + 30 天 |
 | `ff_iap_enabled` | OFF（Alpha）→ ON（Beta+）| Beta 玩家起 | Beta 測試開始 | 是（立即關閉 IAP）| GA + 30 天 |
 | `ff_privacy_consent` | ON | 新用戶 | 首次啟動 | 否（法規強制，不可關閉）| 永久保留 |
 | `ff_multiplayer_4p` | ON | 所有玩家 | 永遠啟用 | 是（降級為單機模式）| GA + 30 天 |
@@ -968,7 +968,7 @@ stateDiagram-v2
 
 | REQ-ID | BRD 目標 | User Story 章節 | AC# | 設計章節（PDD） | 技術方案（EDD） | 測試案例 ID | Feature Flag | 狀態 |
 |--------|---------|----------------|-----|----------------|----------------|-----------|------------|------|
-| US-ROOM-001 | OBJ-4 技術 SLA、A2 | §5.1 | AC-1~AC-5 | PDD §待補填 | EDD §待補填 | TC-ROOM-001 | ff_multiplayer_4p | DRAFT |
+| US-ROOM-001 | OBJ-4 技術 SLA、A2 | §5.1 | AC-1~AC-5 | PDD §— | EDD §— | TC-ROOM-001 | ff_multiplayer_4p | DRAFT |
 | US-FISH-001 | OBJ-5 留存率、A1 | §5.2 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-001 | ff_multiplayer_4p（基礎射擊包含於多人功能範圍）| DRAFT |
 | US-FISH-002 | OBJ-5 留存率、A1 | §5.3 | AC-1~AC-4 | PDD §— | EDD §— | TC-FISH-002 | ff_boss_fish_enabled | DRAFT |
 | US-FISH-003 | OBJ-5 留存率（精英魚）| §5.3.1 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-003 | ff_elite_fish_enabled | DRAFT |
