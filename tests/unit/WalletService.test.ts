@@ -202,6 +202,128 @@ describe('WalletService', () => {
   });
 
   // -------------------------------------------------------------------------
+  // creditDiamond — non-idempotent path (new receipt)
+  // -------------------------------------------------------------------------
+  describe('creditDiamond — new receipt', () => {
+    it('inserts receipt and credits diamond when receipt is new', async () => {
+      const trxQuery = jest.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 })   // SELECT: no existing receipt
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })   // INSERT iap_receipts
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })   // UPDATE user_wallets
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });  // INSERT transactions
+
+      mockTransaction.mockImplementationOnce(async (callback: (trx: DbClient) => Promise<void>) => {
+        const trx: DbClient = { query: trxQuery, transaction: jest.fn() };
+        await callback(trx);
+      });
+
+      const service = makeService();
+      await service.creditDiamond('user-1', 100, 'new-hash-xyz', 'apple', 'com.example.diamonds100');
+
+      // Should have called 4 queries: SELECT + INSERT + UPDATE + INSERT
+      expect(trxQuery).toHaveBeenCalledTimes(4);
+      expect(trxQuery.mock.calls[1][0]).toMatch(/INSERT INTO iap_receipts/);
+      expect(trxQuery.mock.calls[2][0]).toMatch(/UPDATE user_wallets SET diamond/);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // InsufficientFundsError statusCode
+  // -------------------------------------------------------------------------
+  describe('InsufficientFundsError', () => {
+    it('has statusCode 422', () => {
+      const err = new InsufficientFundsError();
+      expect(err.statusCode).toBe(422);
+      expect(err.name).toBe('InsufficientFundsError');
+    });
+
+    it('supports custom message', () => {
+      const err = new InsufficientFundsError('Not enough gold');
+      expect(err.message).toBe('Not enough gold');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // restoreDailyGold
+  // -------------------------------------------------------------------------
+  describe('restoreDailyGold', () => {
+    const ORIGINAL_ENV = process.env;
+
+    beforeEach(() => {
+      process.env = { ...ORIGINAL_ENV };
+    });
+
+    afterEach(() => {
+      process.env = ORIGINAL_ENV;
+    });
+
+    it('returns early (no-op) when DAILY_GOLD_THRESHOLD is 0 (disabled)', async () => {
+      process.env.DAILY_GOLD_THRESHOLD = '0';
+      process.env.DAILY_GOLD_AMOUNT = '100';
+      const service = makeService();
+      await service.restoreDailyGold();
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('returns early (no-op) when DAILY_GOLD_AMOUNT is 0 (disabled)', async () => {
+      process.env.DAILY_GOLD_THRESHOLD = '500';
+      process.env.DAILY_GOLD_AMOUNT = '0';
+      const service = makeService();
+      await service.restoreDailyGold();
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('returns early when neither env var is set (defaults to 0)', async () => {
+      delete process.env.DAILY_GOLD_THRESHOLD;
+      delete process.env.DAILY_GOLD_AMOUNT;
+      const service = makeService();
+      await service.restoreDailyGold();
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('credits daily gold to eligible users when threshold and amount are set', async () => {
+      process.env.DAILY_GOLD_THRESHOLD = '500';
+      process.env.DAILY_GOLD_AMOUNT = '100';
+
+      const trxQuery = jest.fn()
+        .mockResolvedValueOnce({ rows: [{ user_id: 'user-a' }, { user_id: 'user-b' }], rowCount: 2 }) // SELECT eligible
+        .mockResolvedValueOnce({ rows: [], rowCount: 2 }) // UPDATE wallets
+        .mockResolvedValueOnce({ rows: [], rowCount: 2 }); // INSERT transactions
+
+      mockTransaction.mockImplementationOnce(async (callback: (trx: DbClient) => Promise<void>) => {
+        const trx: DbClient = { query: trxQuery, transaction: jest.fn() };
+        await callback(trx);
+      });
+
+      const service = makeService();
+      await service.restoreDailyGold();
+
+      expect(mockTransaction).toHaveBeenCalledTimes(1);
+      expect(trxQuery).toHaveBeenCalledTimes(3);
+      expect(trxQuery.mock.calls[1][0]).toMatch(/UPDATE user_wallets SET gold = gold \+ \$1/);
+    });
+
+    it('skips UPDATE when no eligible users found (rowCount = 0)', async () => {
+      process.env.DAILY_GOLD_THRESHOLD = '500';
+      process.env.DAILY_GOLD_AMOUNT = '100';
+
+      const trxQuery = jest.fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // SELECT: no eligible users
+
+      mockTransaction.mockImplementationOnce(async (callback: (trx: DbClient) => Promise<void>) => {
+        const trx: DbClient = { query: trxQuery, transaction: jest.fn() };
+        await callback(trx);
+      });
+
+      const service = makeService();
+      await service.restoreDailyGold();
+
+      // Only 1 query (SELECT), no UPDATE or INSERT
+      expect(trxQuery).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // flushBatch
   // -------------------------------------------------------------------------
   describe('flushBatch', () => {

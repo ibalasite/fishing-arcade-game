@@ -153,4 +153,52 @@ describe('ObjectPoolManager', () => {
       expect(pool.getMaxSize()).toBe(5);
     });
   });
+
+  // ---- clearPoolFor() ----
+
+  describe('clearPoolFor(prefabKey)', () => {
+    it('clears only the specified pool, leaving others intact', () => {
+      // Given: nodes in multiple pools
+      const keyA = 'fish_a';
+      const keyB = 'fish_b';
+      pool.put(keyA, makeNode(keyA));
+      pool.put(keyA, makeNode(keyA));
+      pool.put(keyB, makeNode(keyB));
+      expect(pool.getPoolSize(keyA)).toBe(2);
+      expect(pool.getPoolSize(keyB)).toBe(1);
+      // When: clearPoolFor is called for only keyA
+      pool.clearPoolFor(keyA);
+      // Then: keyA pool is empty, keyB is unchanged
+      expect(pool.getPoolSize(keyA)).toBe(0);
+      expect(pool.getPoolSize(keyB)).toBe(1);
+    });
+
+    it('does not throw when clearing a non-existent pool key', () => {
+      // Given: key does not exist
+      expect(() => pool.clearPoolFor('nonexistent_fish')).not.toThrow();
+      expect(pool.getPoolSize('nonexistent_fish')).toBe(0);
+    });
+  });
+
+  // ---- singleton ----
+
+  describe('getInstance() singleton', () => {
+    it('returns the same instance on repeated calls', () => {
+      // Given: getInstance is called twice
+      const instance1 = ObjectPoolManager.getInstance();
+      const instance2 = ObjectPoolManager.getInstance();
+      // Then: same reference
+      expect(instance1).toBe(instance2);
+    });
+
+    it('creates fresh instance after resetInstance()', () => {
+      // Given: an existing singleton
+      const original = ObjectPoolManager.getInstance();
+      // When: resetInstance is called
+      ObjectPoolManager.resetInstance();
+      const fresh = ObjectPoolManager.getInstance();
+      // Then: fresh is different from original
+      expect(fresh).not.toBe(original);
+    });
+  });
 });

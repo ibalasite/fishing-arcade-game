@@ -143,4 +143,38 @@ describe('UIManager', () => {
       warnSpy.mockRestore();
     });
   });
+
+  // ---- getGoldLabel / getDiamondLabel ----
+
+  describe('getGoldLabel()', () => {
+    it('returns null when no label has been set', () => {
+      // Given: fresh UIManager instance (no label set)
+      // Then: getGoldLabel returns null
+      expect(ui.getGoldLabel()).toBeNull();
+    });
+
+    it('returns the label after setGoldLabel()', () => {
+      // Given: a label is set
+      const label = makeLabel();
+      ui.setGoldLabel(label);
+      // Then: getGoldLabel returns the same label
+      expect(ui.getGoldLabel()).toBe(label);
+    });
+  });
+
+  describe('getDiamondLabel()', () => {
+    it('returns null when no label has been set', () => {
+      // Given: fresh UIManager instance
+      // Then: getDiamondLabel returns null
+      expect(ui.getDiamondLabel()).toBeNull();
+    });
+
+    it('returns the label after setDiamondLabel()', () => {
+      // Given: a diamond label is set
+      const label = makeLabel();
+      ui.setDiamondLabel(label);
+      // Then: getDiamondLabel returns the same label
+      expect(ui.getDiamondLabel()).toBe(label);
+    });
+  });
 });

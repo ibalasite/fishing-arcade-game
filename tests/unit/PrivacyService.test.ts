@@ -1,5 +1,6 @@
 import { PrivacyService } from '../../src/services/PrivacyService';
 import { DbClient } from '../../src/utils/db';
+import { secureRandomInt, encrypt, hmac } from '../../src/utils/crypto';
 
 // ---------------------------------------------------------------------------
 // Test environment setup
@@ -176,4 +177,75 @@ describe('PrivacyService', () => {
   // -------------------------------------------------------------------------
   // JackpotManager — tested separately; Privacy focuses on PDPA compliance
   // -------------------------------------------------------------------------
+});
+
+// ---------------------------------------------------------------------------
+// crypto utilities (secureRandomInt, encrypt, hmac)
+// ---------------------------------------------------------------------------
+describe('crypto utilities', () => {
+  describe('secureRandomInt', () => {
+    it('returns a non-negative integer less than max', () => {
+      const result = secureRandomInt(100);
+      expect(Number.isInteger(result)).toBe(true);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThan(100);
+    });
+
+    it('throws when max is 0', () => {
+      expect(() => secureRandomInt(0)).toThrow(/max must be a positive integer/);
+    });
+
+    it('throws when max is negative', () => {
+      expect(() => secureRandomInt(-5)).toThrow(/max must be a positive integer/);
+    });
+
+    it('throws when max is a non-integer float', () => {
+      expect(() => secureRandomInt(1.5)).toThrow(/max must be a positive integer/);
+    });
+  });
+
+  describe('encrypt', () => {
+    it('returns a non-empty base64 string for valid ENCRYPTION_KEY', () => {
+      // ENCRYPTION_KEY already set in beforeAll to 64-char hex
+      const ciphertext = encrypt('hello world');
+      expect(typeof ciphertext).toBe('string');
+      expect(ciphertext.length).toBeGreaterThan(0);
+      // Valid base64: no error when decoded
+      expect(() => Buffer.from(ciphertext, 'base64')).not.toThrow();
+    });
+
+    it('throws when ENCRYPTION_KEY is missing or too short', () => {
+      const original = process.env.ENCRYPTION_KEY;
+      process.env.ENCRYPTION_KEY = 'tooshort';
+      expect(() => encrypt('test')).toThrow(/ENCRYPTION_KEY must be a 64-character hex string/);
+      process.env.ENCRYPTION_KEY = original;
+    });
+
+    it('produces different ciphertext for the same plaintext (unique IV per call)', () => {
+      const ct1 = encrypt('same plaintext');
+      const ct2 = encrypt('same plaintext');
+      // Unique IV ensures different ciphertext even for identical input
+      expect(ct1).not.toBe(ct2);
+    });
+  });
+
+  describe('hmac', () => {
+    it('returns a non-empty hex string', () => {
+      const result = hmac('email@example.com', 'secret');
+      expect(typeof result).toBe('string');
+      expect(result).toMatch(/^[0-9a-f]+$/);
+    });
+
+    it('is deterministic for the same inputs', () => {
+      const a = hmac('data', 'key');
+      const b = hmac('data', 'key');
+      expect(a).toBe(b);
+    });
+
+    it('produces different output for different data', () => {
+      const a = hmac('email1@example.com', 'key');
+      const b = hmac('email2@example.com', 'key');
+      expect(a).not.toBe(b);
+    });
+  });
 });

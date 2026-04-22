@@ -146,4 +146,59 @@ describe('SecureStorage', () => {
       expect(() => storage.clearToken()).not.toThrow();
     });
   });
+
+  // ---- getToken fallback paths ----
+
+  describe('getToken fallback — no cc.sys.localStorage', () => {
+    it('returns null when no jsb and no cc.sys available', () => {
+      // Given: jsb removed, no cc installed
+      removeJsb();
+      // cc is not installed (afterEach removes it, but beforeEach has removeJsb)
+      const storage = SecureStorage.getInstance();
+      // When: getToken is called
+      const token = storage.getToken();
+      // Then: null because no storage available
+      expect(token).toBeNull();
+    });
+  });
+
+  // ---- clearToken without jsb (else branch) ----
+
+  describe('clearToken — no jsb (localStorage fallback)', () => {
+    it('removes token from localStorage when jsb is unavailable', () => {
+      // Given: no jsb, cc.sys.localStorage has a token
+      installCcSys();
+      ccSys.localStorage.setItem('auth_token', 'token-to-clear');
+      const storage = SecureStorage.getInstance();
+      // When: clearToken called without jsb
+      storage.clearToken();
+      // Then: token removed from localStorage
+      expect(ccSys.localStorage.getItem('auth_token')).toBeNull();
+    });
+  });
+
+  // ---- getToken jsb throws — catch fallback ----
+
+  describe('getToken — jsb throws fallback', () => {
+    it('falls back to localStorage when jsb.reflection throws on getToken', () => {
+      // Given: jsb throws on callStaticMethod
+      const faultyJsb = {
+        reflection: {
+          callStaticMethod: jest.fn(() => {
+            throw new Error('Reflection error');
+          }),
+        },
+      };
+      (globalThis as Record<string, unknown>).jsb = faultyJsb;
+      installCcSys();
+      ccSys.localStorage.setItem('auth_token', 'fallback-retrieved');
+      const storage = SecureStorage.getInstance();
+      // When: getToken is called (jsb throws → falls back to localStorage)
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const token = storage.getToken();
+      // Then: token retrieved from localStorage
+      expect(token).toBe('fallback-retrieved');
+      warnSpy.mockRestore();
+    });
+  });
 });

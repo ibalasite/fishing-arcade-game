@@ -167,5 +167,86 @@ describe('JackpotManager', () => {
       );
       expect(mockRedisSet).toHaveBeenCalledWith('game:jackpot:pool', '12345');
     });
+
+    it('seeds pool with "0" when jackpot_pool row has no current_amount', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // no row
+      mockRedisSet.mockResolvedValueOnce('OK');
+
+      await JackpotManager.getInstance(mockDb as never, mockRedis as never);
+
+      expect(mockRedisSet).toHaveBeenCalledWith('game:jackpot:pool', '0');
+    });
+  });
+
+  describe('getInstance — error path', () => {
+    it('throws when db and redis are not provided on first call', async () => {
+      // No db/redis passed — should throw with helpful error
+      await expect(JackpotManager.getInstance()).rejects.toThrow(
+        'JackpotManager.getInstance() requires db and redis on first call.',
+      );
+    });
+  });
+
+  describe('contribute', () => {
+    it('calls incrbyfloat with correct contribution amount', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [{ current_amount: '1000' }], rowCount: 1 });
+      mockRedisSet.mockResolvedValueOnce('OK');
+      mockRedisIncrByFloat.mockResolvedValueOnce('1001');
+
+      const mgr = await JackpotManager.getInstance(mockDb as never, mockRedis as never);
+      await mgr.contribute(100);
+
+      // Default JACKPOT_CONTRIB_RATE is 0.01, so contribution = 100 * 0.01 = 1
+      expect(mockRedisIncrByFloat).toHaveBeenCalledWith('game:jackpot:pool', 1);
+    });
+
+    it('skips contribution and logs warning when incrbyfloat is unavailable', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [{ current_amount: '1000' }], rowCount: 1 });
+      mockRedisSet.mockResolvedValueOnce('OK');
+
+      // Create redis mock without incrbyfloat
+      const minimalRedis = {
+        get: mockRedisGet,
+        set: mockRedisSet,
+        eval: mockRedisEval,
+        // incrbyfloat intentionally omitted
+      };
+
+      const mgr = await JackpotManager.getInstance(mockDb as never, minimalRedis as never);
+
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await mgr.contribute(100);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('incrbyfloat unavailable'),
+      );
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('tryTrigger — _claimPool poolAmount = 0 guard', () => {
+    it('returns null when Lua script returns pool of 0 (already claimed)', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [{ current_amount: '1000' }], rowCount: 1 });
+      mockRedisSet.mockResolvedValueOnce('OK');
+
+      const mgr = await JackpotManager.getInstance(mockDb as never, mockRedis as never);
+
+      // Force jackpot via triggerForTest with poolAmount = 0
+      const result = await mgr.triggerForTest('user-x', 0);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when pool claim results in zero amount (concurrent race simulation)', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [{ current_amount: '5000' }], rowCount: 1 });
+      mockRedisSet.mockResolvedValueOnce('OK');
+
+      const mgr = await JackpotManager.getInstance(mockDb as never, mockRedis as never);
+
+      // Simulate concurrent race: pool was concurrently claimed, so Lua GETDEL returns '0'
+      // We use triggerForTest with 0 to test the poolAmount <= 0 guard in _claimPoolWithAmount
+      // which is also hit when _claimPool calculates Math.round(parseFloat('0')) = 0
+      const result = await mgr.triggerForTest('user-race', 0);
+      expect(result).toBeNull();
+    });
   });
 });
