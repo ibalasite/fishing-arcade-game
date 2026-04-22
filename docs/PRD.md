@@ -274,9 +274,11 @@ C4Context
 
 | REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
 |--------------|-------------|------------|------------|---------|
-| US-FISH-003 / AC-1 | 遊戲進行中，精英魚依隨機概率（M% 機率/波次，由數值設計確認，AC 凍結前填入）出現 | 玩家命中精英魚 | 服務器計算獎勵：金幣獎勵 = 子彈費用 × 精英魚倍率（2-5x，數值設計確認前暫定），全房間廣播命中事件 | Integration |
-| US-FISH-003 / AC-2 | 精英魚被命中但未擊殺（精英魚有 HP > 1） | 同一或不同玩家繼續射擊 | 服務器廣播精英魚當前 HP 狀態，最後一擊玩家獲得全部獎勵 | Integration |
-| US-FISH-003 / AC-3 | 精英魚 30 秒未被擊殺 | 精英魚逾時 | 精英魚游出畫面，服務器廣播逃脫事件，本次無人獲獎 | Integration |
+| US-FISH-003 / AC-1 | 遊戲進行中，精英魚出現條件達成（M% 機率/波次，**BLOCKED 依賴 OQ5 數值設計確認**）| 精英魚觸發 | 全房間玩家收到精英魚出現廣播，客戶端顯示精英魚特效動畫與倍率標示（2-5x，數值設計確認前暫定）| Integration |
+| US-FISH-003 / AC-2 | 精英魚存活，玩家命中 | 服務器 RTP 判定命中成功 | 金幣獎勵 = 子彈費用 × 精英魚倍率，全房間廣播命中事件 | Integration |
+| US-FISH-003 / AC-3 | 精英魚被命中但未擊殺（精英魚有 HP > 1）| 同一或不同玩家繼續射擊 | 服務器廣播精英魚當前 HP 狀態，最後一擊玩家獲得全部獎勵 | Integration |
+| US-FISH-003 / AC-4 | 精英魚 30 秒未被擊殺 | 精英魚逾時 | 精英魚游出畫面，服務器廣播逃脫事件，本次無人獲獎 | Integration |
+| US-FISH-003 / AC-5 | RTP 引擎啟動，包含精英魚命中的 10,000 局模擬執行 | 模擬完成 | 整體 RTP（含普通魚 + 精英魚 + Boss 魚 + Jackpot 貢獻）仍落在 85%-95%，誤差 < 0.1% | Unit |
 
 **邊界條件：**
 - 精英魚倍率需嚴格介於普通魚（1x）與 Boss 魚（5x+）之間
@@ -418,7 +420,7 @@ C4Context
 
 ---
 
-### 5.10.1 同意撤回（MVP 最小可行）
+### 5.10 同意撤回（MVP 最小可行）
 
 **User Story：**
 > 作為 **任何玩家**，
@@ -433,14 +435,15 @@ C4Context
 | REQ-ID / AC# | Given（前提） | When（行動） | Then（結果） | 測試類型 |
 |--------------|-------------|------------|------------|---------|
 | US-PRIV-004 / AC-1 | 玩家已登入 | 進入設定 → 隱私設定 | 顯示同意管理頁：「行銷通知同意」開關（已同意者顯示開啟） | E2E |
-| US-PRIV-004 / AC-2 | 玩家關閉「行銷通知同意」開關 | 點擊確認撤回 | 資料庫 `user_consents` 記錄 `revoked_at` 時間戳，後續不再傳送行銷推播 | Integration |
+| US-PRIV-004 / AC-2 | 玩家關閉「行銷通知同意」開關 | 點擊確認撤回 | 資料庫 `user_consents` 記錄 `revoked_at` 時間戳；Firebase Analytics `marketing_*` 前綴事件立即停止上報（客戶端 SDK 關閉對應事件類別）；後續不再傳送行銷推播 | Integration |
 | US-PRIV-004 / AC-3 | 玩家撤回必要同意（隱私政策）| 系統提示說明 | 顯示「撤回必要同意等同申請刪除帳號」，引導至帳號刪除流程（US-PRIV-002）| E2E |
+| US-PRIV-004 / AC-4 | 玩家已撤回行銷通知同意（開關關閉）| 玩家重新開啟開關並確認同意 | 資料庫新增一筆 `granted_at` 記錄（`revoked_at` 清空）；Firebase Analytics `marketing_*` 事件恢復上報；同意管理頁顯示開關為開啟 | E2E |
 
 > **注意**：完整資料存取權（匯出 JSON）與可攜性保留至 Phase 2；撤回必要同意觸發刪除流程符合 PDPA 最小化合規。
 
 ---
 
-### 5.11.1 更正個人資料（MVP）
+### 5.11 更正個人資料（MVP）
 
 **User Story：**
 > 作為 **任何玩家**，
@@ -457,6 +460,7 @@ C4Context
 | US-PRIV-003 / AC-1 | 玩家已登入 | 進入設定 → 個人資料 → 編輯暱稱 | 顯示暱稱編輯欄位（最長 50 字元），點擊儲存後立即生效並廣播更新給同房間玩家 | E2E |
 | US-PRIV-003 / AC-2 | 玩家修改 Email | 輸入新 Email 並點擊送出 | 系統發送確認信至新 Email；舊 Email 繼續有效至確認完成；確認信連結 24 小時內有效 | Integration |
 | US-PRIV-003 / AC-3 | 玩家輸入無效 Email 格式 | 點擊送出 | 顯示「請輸入有效的 Email 格式」，不發送確認信，不修改資料庫 | E2E |
+| US-PRIV-003 / AC-4 | 玩家輸入的新 Email 已被另一帳號使用 | 點擊送出 | 顯示「此 Email 已被使用，請輸入其他 Email」，不發送確認信，不修改資料庫（對應 §11.3 users.email 唯一索引）| Integration |
 
 ---
 
@@ -555,7 +559,7 @@ stateDiagram-v2
 | 房間狀態廣播頻率 | 20 次/秒（50ms tick） | 服務器計時器 | 降頻至 10 次/秒 |
 | 客戶端 FPS（Cocos） | ≥ 30 FPS（中端手機） | 設備效能測試 | LOD 降級 |
 | IAP 驗證回應 | < 3s | APM | 排隊重試機制 |
-| API 吞吐量（射擊事件）| ≥ 10,000 RPS（500 房間 × 4 人 × 5 次/秒），P99 < 100ms | k6 壓測 | 水平擴展 + 限流 |
+| WebSocket 射擊事件吞吐量 | ≥ 10,000 msg/s（500 房間 × 4 人 × 5 次/秒），P99 < 100ms（量測工具：k6 WebSocket 壓測，非 HTTP APM）| k6 壓測 | 水平擴展 + 限流 |
 
 ### 7.2 可用性（Availability）
 
@@ -799,7 +803,7 @@ stateDiagram-v2
 | ✅ Code Review | PR 已通過 2 名 reviewer，無 CRITICAL 問題 |
 | ✅ Security Scan | SAST 無 HIGH/CRITICAL，IAP receipt 無硬編碼 secret |
 | ✅ Performance Gate | WebSocket p99 ≤ 100ms @ 500 並發房間 |
-| ✅ Feature Flag | 所有 P0 功能在 Feature Flag 保護下可快速關閉 |
+| ✅ Feature Flag | 所有 P0 非法規強制功能在 Feature Flag 保護下可快速關閉（法規強制功能如 US-PRIV-003/004 無需 Kill Switch，但有後台管控機制）|
 | ✅ Runbook | 新功能 Runbook 加入 docs/runbooks/ |
 
 ---
@@ -823,9 +827,12 @@ stateDiagram-v2
 | `ff_multiplayer_4p` | ON | 所有玩家 | 永遠啟用 | 是（降級為單機模式）| GA + 30 天 |
 | `ff_rtp_engine` | ON | 所有玩家 | 永遠啟用 | 是（5 分鐘內生效，降級為固定 85% RTP 安全模式）| GA + 30 天穩定後移除 |
 | `ff_dual_currency` | ON | 所有玩家 | 永遠啟用 | 是（關閉免費金幣自動恢復，防止異常金幣增發）| GA + 30 天 |
+| `ff_elite_fish_enabled` | ON | 所有玩家 | 永遠啟用 | 是（獨立關閉精英魚，不影響 Boss 魚或基礎射擊）| GA + 30 天 |
 
 **Flag 管理原則：**
-- 所有 P0 功能均有 Kill Switch Feature Flag（含 ff_rtp_engine、ff_dual_currency）
+- 所有 P0 非法規強制功能均有獨立 Kill Switch Feature Flag
+- 法規強制功能（US-PRIV-003 更正權、US-PRIV-004 撤回同意）因 PDPA 義務不設 Kill Switch，但可透過後台管理員介面控制處理流程
+- 精英魚（ff_elite_fish_enabled）與 Boss 魚（ff_boss_fish_enabled）獨立分離，確保最小化 Kill Switch 影響範圍
 - Flag 在功能穩定 GA 後 30 天內評估移除（避免 Flag debt）
 - Flag 狀態變更需記錄在 Decision Log
 
@@ -907,7 +914,7 @@ stateDiagram-v2
 | OQ2 | Cocos Creator 4.x 與 Colyseus 0.15 最佳整合模式？ | 技術 | EDD 客戶端架構設計可能返工 | Engineering | 開發月 1 底 | 🔲 OPEN |
 | OQ3 | 東南亞市場法規差異（越南/泰國/印尼）| 法規 | 影響 Phase 2 上市時程 | Legal/PM | 2026 Q3 | 🔲 Phase 2 |
 | OQ4 | App Store / Google Play Jackpot 機率揭示確切格式？ | 合規 | 影響 UI 設計 + 商店審查 | PM | 開發月 1 | 🔲 OPEN |
-| OQ5 | 初始金幣數量與免費恢復機制數值？ | 功能 | 影響留存率與付費動機設計 | PM + 數值設計師 | EDD 完成前 | 🔲 OPEN |
+| OQ5 | 初始金幣數量與免費恢復機制數值？ | 功能 | **BLOCKED ACs**：US-CURR-001/AC-1、US-CURR-001/AC-2、US-RTP-001/AC-4、US-FISH-002/AC-1、US-FISH-003/AC-1 無法通過 Go/No-Go 驗收直至本 OQ 關閉 | PM + 數值設計師 | 開發月 1 底（2026-06）| 🔲 OPEN |
 
 ---
 
@@ -951,9 +958,9 @@ stateDiagram-v2
 | REQ-ID | BRD 目標 | User Story 章節 | AC# | 設計章節（PDD） | 技術方案（EDD） | 測試案例 ID | Feature Flag | 狀態 |
 |--------|---------|----------------|-----|----------------|----------------|-----------|------------|------|
 | US-ROOM-001 | OBJ-4 技術 SLA、A2 | §5.1 | AC-1~AC-5 | PDD §待補填 | EDD §待補填 | TC-ROOM-001 | ff_multiplayer_4p | DRAFT |
-| US-FISH-001 | OBJ-5 留存率、A1 | §5.2 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-001 | ff_boss_fish_enabled | DRAFT |
+| US-FISH-001 | OBJ-5 留存率、A1 | §5.2 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-001 | ff_multiplayer_4p（基礎射擊包含於多人功能範圍）| DRAFT |
 | US-FISH-002 | OBJ-5 留存率、A1 | §5.3 | AC-1~AC-4 | PDD §— | EDD §— | TC-FISH-002 | ff_boss_fish_enabled | DRAFT |
-| US-FISH-003 | OBJ-5 留存率（精英魚）| §5.3.1 | AC-1~AC-3 | PDD §— | EDD §— | TC-FISH-003 | ff_boss_fish_enabled | DRAFT |
+| US-FISH-003 | OBJ-5 留存率（精英魚）| §5.3.1 | AC-1~AC-5 | PDD §— | EDD §— | TC-FISH-003 | ff_elite_fish_enabled | DRAFT |
 | US-RTP-001 | OBJ-2 付費轉化、R2 | §5.4 | AC-1~AC-4 | PDD §— | EDD §— | TC-RTP-001 | ff_rtp_engine | DRAFT |
 | US-CURR-001 | OBJ-2 付費轉化 | §5.5 | AC-1~AC-4 | PDD §— | EDD §— | TC-CURR-001 | ff_dual_currency | DRAFT |
 | US-CURR-002 | OBJ-2/OBJ-3 | §5.6 | AC-1~AC-5 | PDD §— | EDD §— | TC-CURR-002 | ff_iap_enabled | DRAFT |
@@ -961,8 +968,8 @@ stateDiagram-v2
 | US-JACK-002 | §9.1 平台合規 | §5.8 | AC-1~AC-4 | PDD §— | EDD §— | TC-JACK-002 | ff_jackpot_enabled | DRAFT |
 | US-PRIV-001 | §9.1 PDPA | §5.9 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-001 | ff_privacy_consent | DRAFT |
 | US-PRIV-002 | §9.1 PDPA | §5.12 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-002 | N/A（法規強制）| DRAFT |
-| US-PRIV-003 | PDPA 更正權 | §5.11.1 | AC-1~AC-3 | PDD §— | EDD §— | TC-PRIV-003 | N/A | DRAFT |
-| US-PRIV-004 | PDPA 撤回同意 | §5.10.1 | AC-1~AC-3 | PDD §— | EDD §— | TC-PRIV-004 | N/A（法規強制）| DRAFT |
+| US-PRIV-003 | PDPA 更正權 | §5.11 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-003 | N/A（法規強制，無需 Kill Switch）| DRAFT |
+| US-PRIV-004 | PDPA 撤回同意 | §5.10 | AC-1~AC-4 | PDD §— | EDD §— | TC-PRIV-004 | N/A（法規強制，無需 Kill Switch）| DRAFT |
 
 ---
 
