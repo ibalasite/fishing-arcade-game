@@ -91,6 +91,145 @@ if d.get('launch', {}).get('launchScene') != 'db://assets/scenes/MainMenu.scene'
 "
     log "launchScene verified: MainMenu.scene"
   fi
+
+  # Inject game controllers into bundle.js (CC3 CLI doesn't compile TS into bundles)
+  local BUNDLE_JS="$CLIENT_DIR/build/web-desktop/src/chunks/bundle.js"
+  if [ -f "$BUNDLE_JS" ] && ! grep -q "MainMenuController" "$BUNDLE_JS"; then
+    log "Injecting game controllers into bundle.js..."
+    BUNDLE_JS_PATH="$BUNDLE_JS" python3 << 'PYEOF'
+import os, sys
+bundle_path = os.environ.get('BUNDLE_JS_PATH')
+with open(bundle_path, 'r') as f:
+    src = f.read()
+
+insert_marker = '\n\n} }; });'
+idx = src.rfind(insert_marker)
+
+controllers = '''
+
+// ── Game Script Controllers (compiled for CC3 web-desktop) ──────────────────
+(function registerGameControllers() {
+  function doRegister() {
+    if (typeof cc === 'undefined' || !cc._decorator || !cc.Component) {
+      setTimeout(doRegister, 0);
+      return;
+    }
+    var ccclass   = cc._decorator.ccclass;
+    var Component = cc.Component;
+
+    function makeLabel(parent, text, fontSize, x, y) {
+      var node = new cc.Node(text);
+      node.layer = cc.Layers.Enum.UI_2D;
+      parent.addChild(node);
+      node.setPosition(x, y, 0);
+      var tf = node.addComponent(cc.UITransform);
+      tf.setContentSize(700, fontSize + 20);
+      var lbl = node.addComponent(cc.Label);
+      lbl.useSystemFont = true;
+      lbl.fontFamily    = 'Arial';
+      lbl.string        = text;
+      lbl.fontSize      = fontSize;
+      lbl.lineHeight    = fontSize + 4;
+      lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+      lbl.verticalAlign   = cc.Label.VerticalAlign.CENTER;
+      lbl.color = new cc.Color(255, 255, 255, 255);
+      return node;
+    }
+
+    var GNM = {
+      stateCallbacks: [],
+      room: null,
+      connectToRoom: function() {
+        return new Promise(function(resolve, reject) {
+          try {
+            var Cly = window.Colyseus;
+            if (!Cly) throw new Error('Colyseus not loaded');
+            var client = new Cly.Client('ws://localhost:3000');
+            client.joinOrCreate('fishing_room').then(function(room) {
+              GNM.room = room;
+              room.onStateChange(function(s) {
+                GNM.stateCallbacks.forEach(function(cb) { cb(s); });
+              });
+              resolve();
+            }).catch(reject);
+          } catch(e) { reject(e); }
+        });
+      },
+      onStateChange: function(cb) { GNM.stateCallbacks.push(cb); }
+    };
+
+    ccclass('BootController')(class BootController extends Component {
+      start() { cc.director.loadScene('MainMenu'); }
+    });
+
+    ccclass('MainMenuController')(class MainMenuController extends Component {
+      start() {
+        var canvas = this.node.parent;
+        if (!canvas) return;
+        makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(cc.Label).isBold = true;
+        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+        makeLabel(canvas, '\\u25b6  PLAY', 44, 0, 0).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('GameRoom'); });
+        makeLabel(canvas, 'SHOP', 36, 0, -80).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('Shop'); });
+        fetch('/api/v1/game/jackpot/pool')
+          .then(function(r) { return r.json(); })
+          .then(function(j) { jackpotLbl.string = 'Jackpot: ' + j.data.amount.toLocaleString(); })
+          .catch(function() {});
+      }
+    });
+
+    ccclass('ShopController')(class ShopController extends Component {
+      start() {
+        var canvas = this.node.parent;
+        if (!canvas) return;
+        makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(cc.Label).isBold = true;
+        makeLabel(canvas, '\\u2014 Coming Soon \\u2014', 32, 0, 120);
+        makeLabel(canvas, '\\u25c4  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
+      }
+    });
+
+    ccclass('GameRoomController')(class GameRoomController extends Component {
+      start() {
+        var canvas = this.node.parent;
+        if (!canvas) return;
+        makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(cc.Label).isBold = true;
+        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+        makeLabel(canvas, 'Gold: 0', 36, 0, 60);
+        var statusLbl = makeLabel(canvas, '\\u2014 Connecting\\u2026 \\u2014', 28, 0, -20).getComponent(cc.Label);
+        makeLabel(canvas, '\\u25c4  BACK', 40, 0, -120).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
+        GNM.connectToRoom()
+          .then(function() {
+            GNM.onStateChange(function(state) {
+              if (jackpotLbl && state.jackpotPool !== undefined) {
+                jackpotLbl.string = 'Jackpot: ' + Math.round(Number(state.jackpotPool)).toLocaleString();
+              }
+            });
+            statusLbl.string = '\\u2014 Connected \\u2014';
+          })
+          .catch(function() { statusLbl.string = '\\u2014 Server offline \\u2014'; });
+      }
+    });
+
+    console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom');
+  }
+  doRegister();
+})();
+'''
+
+if idx != -1 and insert_marker in src:
+    new_src = src[:idx] + controllers + src[idx:]
+else:
+    new_src = src.rstrip() + controllers
+
+tmp = bundle_path + '.tmp'
+with open(tmp, 'w') as f:
+    f.write(new_src)
+os.replace(tmp, bundle_path)
+print(f'Injected game controllers into bundle.js ({len(new_src)} bytes)')
+PYEOF
+    log "Game controllers injected into bundle.js"
+  else
+    log "bundle.js already contains game controllers, skipping injection"
+  fi
 }
 
 # ── Step 1: Upload build context to PVC ──────────────────────────────────────

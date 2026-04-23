@@ -6,115 +6,94 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 // ── Game Script Controllers (compiled for CC3 web-desktop) ──────────────────
 (function registerGameControllers() {
   function doRegister() {
-    if (typeof cc === 'undefined' || !cc._decorator || !cc.Component || !cc.Label) {
-      setTimeout(doRegister, 20);
+    if (typeof cc === 'undefined' || !cc._decorator || !cc.Component) {
+      setTimeout(doRegister, 0);
       return;
     }
-    var ccclass     = cc._decorator.ccclass;
-    var Component   = cc.Component;
-    var Label       = cc.Label;
-    var director    = cc.director;
-    var Node        = cc.Node;
-    var UITransform = cc.UITransform;
-    var Color       = cc.Color;
-    var Layers      = cc.Layers;
+    try {
+      var ccclass = cc._decorator.ccclass;
+      var Component = cc.Component;
 
-    function makeLabel(parent, text, fontSize, x, y) {
-      var node = new Node(text);
-      node.layer = Layers.Enum.UI_2D;
-      parent.addChild(node);
-      node.setPosition(x, y, 0);
-      var tf = node.addComponent(UITransform);
-      tf.setContentSize(700, fontSize + 20);
-      var lbl = node.addComponent(Label);
-      lbl.useSystemFont = true;
-      lbl.fontFamily    = 'Arial';
-      lbl.string        = text;
-      lbl.fontSize      = fontSize;
-      lbl.lineHeight    = fontSize + 4;
-      lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
-      lbl.verticalAlign   = Label.VerticalAlign.CENTER;
-      lbl.color = new Color(255, 255, 255, 255);
-      return node;
-    }
+      function makeLabel(parent, text, fontSize, x, y) {
+        var node = new cc.Node(text);
+        node.layer = cc.Layers.Enum.UI_2D;
+        parent.addChild(node);
+        node.setPosition(x, y, 0);
+        var tf = node.addComponent(cc.UITransform);
+        tf.setContentSize(700, fontSize + 20);
+        var lbl = node.addComponent(cc.Label);
+        lbl.useSystemFont = true; lbl.fontFamily = 'Arial';
+        lbl.string = text; lbl.fontSize = fontSize;
+        lbl.lineHeight = fontSize + 4;
+        lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        lbl.verticalAlign = cc.Label.VerticalAlign.CENTER;
+        lbl.color = new cc.Color(255, 255, 255, 255);
+        return node;
+      }
 
-    var GNM = {
-      stateCallbacks: [],
-      room: null,
-      connectToRoom: function() {
-        return new Promise(function(resolve, reject) {
-          try {
-            var Cly = window.Colyseus;
-            if (!Cly) throw new Error('Colyseus not loaded');
-            var client = new Cly.Client('ws://localhost:3000');
-            client.joinOrCreate('fishing_room').then(function(room) {
-              GNM.room = room;
-              room.onStateChange(function(s) {
-                GNM.stateCallbacks.forEach(function(cb) { cb(s); });
-              });
-              resolve();
+      var GNM = {
+        _room: null,
+        _handlers: [],
+        connectToRoom: function() {
+          var self = this;
+          return new Promise(function(resolve, reject) {
+            if (!window.Colyseus) { reject(new Error('Colyseus not loaded')); return; }
+            var client = new window.Colyseus.Client('ws://localhost:3000');
+            client.joinOrCreate('game_room').then(function(room) {
+              self._room = room;
+              self._handlers.forEach(function(h) { room.onStateChange(h); });
+              resolve(room);
             }).catch(reject);
-          } catch(e) { reject(e); }
-        });
-      },
-      onStateChange: function(cb) { GNM.stateCallbacks.push(cb); }
-    };
+          });
+        },
+        onStateChange: function(fn) {
+          this._handlers.push(fn);
+          if (this._room) this._room.onStateChange(fn);
+        }
+      };
 
-    ccclass('BootController')(class BootController extends Component {
-      start() { director.loadScene('MainMenu'); }
-    });
+      ccclass('BootController')(class BootController extends Component {
+        start() { cc.director.loadScene('MainMenu'); }
+      });
 
-    ccclass('MainMenuController')(class MainMenuController extends Component {
-      start() {
-        var canvas = this.node.parent;
-        if (!canvas) return;
-        makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(Label).isBold = true;
-        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(Label);
-        makeLabel(canvas, '▶  PLAY', 44, 0, 0).on(Node.EventType.TOUCH_END, function() { director.loadScene('GameRoom'); });
-        makeLabel(canvas, 'SHOP', 36, 0, -80).on(Node.EventType.TOUCH_END, function() { director.loadScene('Shop'); });
-        fetch('http://localhost:3000/api/v1/game/jackpot/pool')
-          .then(function(r) { return r.json(); })
-          .then(function(j) { jackpotLbl.string = 'Jackpot: ' + j.data.amount.toLocaleString(); })
-          .catch(function() {});
-      }
-    });
+      ccclass('MainMenuController')(class MainMenuController extends Component {
+        start() {
+          var canvas = this.node.parent; if (!canvas) return;
+          makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(cc.Label).isBold = true;
+          var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+          makeLabel(canvas, '▶  PLAY', 44, 0, 0).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('GameRoom'));
+          makeLabel(canvas, 'SHOP', 36, 0, -80).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('Shop'));
+          fetch('/api/v1/game/jackpot/pool').then(r=>r.json()).then(j=>{jackpotLbl.string='Jackpot: '+j.data.amount.toLocaleString();}).catch(()=>{});
+        }
+      });
 
-    ccclass('ShopController')(class ShopController extends Component {
-      start() {
-        var canvas = this.node.parent;
-        if (!canvas) return;
-        makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(Label).isBold = true;
-        makeLabel(canvas, '— Coming Soon —', 32, 0, 120);
-        makeLabel(canvas, '◄  BACK', 40, 0, -100).on(Node.EventType.TOUCH_END, function() { director.loadScene('MainMenu'); });
-      }
-    });
+      ccclass('ShopController')(class ShopController extends Component {
+        start() {
+          var canvas = this.node.parent; if (!canvas) return;
+          makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(cc.Label).isBold = true;
+          makeLabel(canvas, '— Coming Soon —', 32, 0, 120);
+          makeLabel(canvas, '◄  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('MainMenu'));
+        }
+      });
 
-    ccclass('GameRoomController')(class GameRoomController extends Component {
-      start() {
-        var canvas = this.node.parent;
-        if (!canvas) return;
-        makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(Label).isBold = true;
-        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(Label);
-        makeLabel(canvas, 'Gold: 0', 36, 0, 60);
-        var statusLbl = makeLabel(canvas, '— Connecting… —', 28, 0, -20).getComponent(Label);
-        makeLabel(canvas, '◄  BACK', 40, 0, -120).on(Node.EventType.TOUCH_END, function() { director.loadScene('MainMenu'); });
-        GNM.connectToRoom()
-          .then(function() {
-            GNM.onStateChange(function(state) {
-              if (jackpotLbl && state.jackpotPool !== undefined) {
-                jackpotLbl.string = 'Jackpot: ' + Math.round(Number(state.jackpotPool)).toLocaleString();
-              }
-            });
-            statusLbl.string = '— Connected —';
-          })
-          .catch(function() { statusLbl.string = '— Server offline —'; });
-      }
-    });
+      ccclass('GameRoomController')(class GameRoomController extends Component {
+        start() {
+          var canvas = this.node.parent; if (!canvas) return;
+          makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(cc.Label).isBold = true;
+          var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+          makeLabel(canvas, 'Gold: 0', 36, 0, 60);
+          var statusLbl = makeLabel(canvas, '— Connecting… —', 28, 0, -20).getComponent(cc.Label);
+          makeLabel(canvas, '◄  BACK', 40, 0, -120).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('MainMenu'));
+          GNM.connectToRoom().then(()=>{GNM.onStateChange(state=>{if(jackpotLbl&&state.jackpotPool!==undefined)jackpotLbl.string='Jackpot: '+Math.round(Number(state.jackpotPool)).toLocaleString();});statusLbl.string='— Connected —';}).catch(()=>{statusLbl.string='— Server offline —';});
+        }
+      });
 
-    console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom');
+      console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom');
+    } catch(err) {
+      console.error('[bundle] registration error:', err);
+    }
   }
   doRegister();
 })();
-
 
 } }; });
