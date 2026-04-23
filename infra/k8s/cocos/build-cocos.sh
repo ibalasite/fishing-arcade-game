@@ -109,9 +109,14 @@ controllers = '''
 
 // ── Game Script Controllers (compiled for CC3 web-desktop) ──────────────────
 (function registerGameControllers() {
+  var _regAttempts = 0;
+  console.log('[bundle] execute() cc:', typeof cc, '_decorator:', typeof cc !== 'undefined' && !!cc._decorator, 'Component:', typeof cc !== 'undefined' && !!cc.Component);
+
   function doRegister() {
+    _regAttempts++;
+    console.log('[bundle] doRegister #' + _regAttempts + ' cc:', typeof cc, '_dec:', typeof cc !== 'undefined' && !!cc._decorator, 'Comp:', typeof cc !== 'undefined' && !!cc.Component);
     if (typeof cc === 'undefined' || !cc._decorator || !cc.Component) {
-      setTimeout(doRegister, 0);
+      if (_regAttempts < 500) setTimeout(doRegister, 1);
       return;
     }
     var ccclass   = cc._decorator.ccclass;
@@ -209,7 +214,7 @@ controllers = '''
       }
     });
 
-    console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom');
+    console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom | MMC:', cc.js.getClassByName('MainMenuController'));
   }
   doRegister();
 })();

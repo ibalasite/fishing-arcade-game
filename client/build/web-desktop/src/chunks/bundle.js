@@ -5,93 +5,102 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 
 // ── Game Script Controllers (compiled for CC3 web-desktop) ──────────────────
 (function registerGameControllers() {
+  var _regAttempts = 0;
+  console.log('[bundle] execute() running, typeof cc =', typeof cc);
+
+  function registerClasses() {
+    var ccclass   = cc._decorator.ccclass;
+    var Component = cc.Component;
+    console.log('[bundle] registering classes synchronously');
+
+    function makeLabel(parent, text, fontSize, x, y) {
+      var node = new cc.Node(text);
+      node.layer = cc.Layers.Enum.UI_2D;
+      parent.addChild(node);
+      node.setPosition(x, y, 0);
+      var tf = node.addComponent(cc.UITransform);
+      tf.setContentSize(700, fontSize + 20);
+      var lbl = node.addComponent(cc.Label);
+      lbl.useSystemFont = true; lbl.fontFamily = 'Arial';
+      lbl.string = text; lbl.fontSize = fontSize;
+      lbl.lineHeight = fontSize + 4;
+      lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+      lbl.verticalAlign = cc.Label.VerticalAlign.CENTER;
+      lbl.color = new cc.Color(255, 255, 255, 255);
+      return node;
+    }
+
+    var GNM = {
+      _room: null, _handlers: [],
+      connectToRoom: function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+          if (!window.Colyseus) { reject(new Error('Colyseus not loaded')); return; }
+          var client = new window.Colyseus.Client('ws://localhost:3000');
+          client.joinOrCreate('game_room').then(function(room) {
+            self._room = room;
+            self._handlers.forEach(function(h) { room.onStateChange(h); });
+            resolve(room);
+          }).catch(reject);
+        });
+      },
+      onStateChange: function(fn) {
+        this._handlers.push(fn);
+        if (this._room) this._room.onStateChange(fn);
+      }
+    };
+
+    ccclass('BootController')(class BootController extends Component {
+      start() { cc.director.loadScene('MainMenu'); }
+    });
+
+    ccclass('MainMenuController')(class MainMenuController extends Component {
+      start() {
+        var canvas = this.node.parent; if (!canvas) return;
+        makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(cc.Label).isBold = true;
+        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+        makeLabel(canvas, '▶  PLAY', 44, 0, 0).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('GameRoom'));
+        makeLabel(canvas, 'SHOP', 36, 0, -80).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('Shop'));
+        fetch('/api/v1/game/jackpot/pool').then(r=>r.json()).then(j=>{jackpotLbl.string='Jackpot: '+j.data.amount.toLocaleString();}).catch(()=>{});
+      }
+    });
+
+    ccclass('ShopController')(class ShopController extends Component {
+      start() {
+        var canvas = this.node.parent; if (!canvas) return;
+        makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(cc.Label).isBold = true;
+        makeLabel(canvas, '— Coming Soon —', 32, 0, 120);
+        makeLabel(canvas, '◄  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('MainMenu'));
+      }
+    });
+
+    ccclass('GameRoomController')(class GameRoomController extends Component {
+      start() {
+        var canvas = this.node.parent; if (!canvas) return;
+        makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(cc.Label).isBold = true;
+        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+        makeLabel(canvas, 'Gold: 0', 36, 0, 60);
+        var statusLbl = makeLabel(canvas, '— Connecting… —', 28, 0, -20).getComponent(cc.Label);
+        makeLabel(canvas, '◄  BACK', 40, 0, -120).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('MainMenu'));
+        GNM.connectToRoom().then(()=>{GNM.onStateChange(state=>{if(jackpotLbl&&state.jackpotPool!==undefined)jackpotLbl.string='Jackpot: '+Math.round(Number(state.jackpotPool)).toLocaleString();});statusLbl.string='— Connected —';}).catch(()=>{statusLbl.string='— Server offline —';});
+      }
+    });
+
+    console.log('[bundle] all classes registered. MainMenuController lookup:', cc.js.getClassByName('MainMenuController'));
+  }
+
   function doRegister() {
+    _regAttempts++;
+    console.log('[bundle] doRegister attempt', _regAttempts,
+      '| cc:', typeof cc,
+      '| _decorator:', typeof cc !== 'undefined' && !!cc._decorator,
+      '| Component:', typeof cc !== 'undefined' && !!cc.Component);
     if (typeof cc === 'undefined' || !cc._decorator || !cc.Component) {
-      setTimeout(doRegister, 0);
+      if (_regAttempts < 200) setTimeout(doRegister, 1);
       return;
     }
-    try {
-      var ccclass = cc._decorator.ccclass;
-      var Component = cc.Component;
-
-      function makeLabel(parent, text, fontSize, x, y) {
-        var node = new cc.Node(text);
-        node.layer = cc.Layers.Enum.UI_2D;
-        parent.addChild(node);
-        node.setPosition(x, y, 0);
-        var tf = node.addComponent(cc.UITransform);
-        tf.setContentSize(700, fontSize + 20);
-        var lbl = node.addComponent(cc.Label);
-        lbl.useSystemFont = true; lbl.fontFamily = 'Arial';
-        lbl.string = text; lbl.fontSize = fontSize;
-        lbl.lineHeight = fontSize + 4;
-        lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        lbl.verticalAlign = cc.Label.VerticalAlign.CENTER;
-        lbl.color = new cc.Color(255, 255, 255, 255);
-        return node;
-      }
-
-      var GNM = {
-        _room: null,
-        _handlers: [],
-        connectToRoom: function() {
-          var self = this;
-          return new Promise(function(resolve, reject) {
-            if (!window.Colyseus) { reject(new Error('Colyseus not loaded')); return; }
-            var client = new window.Colyseus.Client('ws://localhost:3000');
-            client.joinOrCreate('game_room').then(function(room) {
-              self._room = room;
-              self._handlers.forEach(function(h) { room.onStateChange(h); });
-              resolve(room);
-            }).catch(reject);
-          });
-        },
-        onStateChange: function(fn) {
-          this._handlers.push(fn);
-          if (this._room) this._room.onStateChange(fn);
-        }
-      };
-
-      ccclass('BootController')(class BootController extends Component {
-        start() { cc.director.loadScene('MainMenu'); }
-      });
-
-      ccclass('MainMenuController')(class MainMenuController extends Component {
-        start() {
-          var canvas = this.node.parent; if (!canvas) return;
-          makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(cc.Label).isBold = true;
-          var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
-          makeLabel(canvas, '▶  PLAY', 44, 0, 0).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('GameRoom'));
-          makeLabel(canvas, 'SHOP', 36, 0, -80).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('Shop'));
-          fetch('/api/v1/game/jackpot/pool').then(r=>r.json()).then(j=>{jackpotLbl.string='Jackpot: '+j.data.amount.toLocaleString();}).catch(()=>{});
-        }
-      });
-
-      ccclass('ShopController')(class ShopController extends Component {
-        start() {
-          var canvas = this.node.parent; if (!canvas) return;
-          makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(cc.Label).isBold = true;
-          makeLabel(canvas, '— Coming Soon —', 32, 0, 120);
-          makeLabel(canvas, '◄  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('MainMenu'));
-        }
-      });
-
-      ccclass('GameRoomController')(class GameRoomController extends Component {
-        start() {
-          var canvas = this.node.parent; if (!canvas) return;
-          makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(cc.Label).isBold = true;
-          var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
-          makeLabel(canvas, 'Gold: 0', 36, 0, 60);
-          var statusLbl = makeLabel(canvas, '— Connecting… —', 28, 0, -20).getComponent(cc.Label);
-          makeLabel(canvas, '◄  BACK', 40, 0, -120).on(cc.Node.EventType.TOUCH_END, () => cc.director.loadScene('MainMenu'));
-          GNM.connectToRoom().then(()=>{GNM.onStateChange(state=>{if(jackpotLbl&&state.jackpotPool!==undefined)jackpotLbl.string='Jackpot: '+Math.round(Number(state.jackpotPool)).toLocaleString();});statusLbl.string='— Connected —';}).catch(()=>{statusLbl.string='— Server offline —';});
-        }
-      });
-
-      console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom');
-    } catch(err) {
-      console.error('[bundle] registration error:', err);
-    }
+    try { registerClasses(); }
+    catch(err) { console.error('[bundle] registration error:', err); }
   }
   doRegister();
 })();
