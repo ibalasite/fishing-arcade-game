@@ -167,7 +167,7 @@ controllers = '''
     var BootCls = ccclass('BootController')(class BootController extends Component {
       start() { cc.director.loadScene('MainMenu'); }
     });
-    cc.js.setClassId('dr7cEDBOSC6opU-KGVX_Cg', BootCls);
+    cc.js._setClassId('dr7cEDBOSC6opU-KGVX_Cg', BootCls);
 
     var MainMenuCls = ccclass('MainMenuController')(class MainMenuController extends Component {
       start() {
@@ -183,7 +183,7 @@ controllers = '''
           .catch(function() {});
       }
     });
-    cc.js.setClassId('M4_wL54JQVGZvEK-vivrdQ', MainMenuCls);
+    cc.js._setClassId('M4_wL54JQVGZvEK-vivrdQ', MainMenuCls);
 
     var ShopCls = ccclass('ShopController')(class ShopController extends Component {
       start() {
@@ -194,7 +194,7 @@ controllers = '''
         makeLabel(canvas, '\\u25c4  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
       }
     });
-    cc.js.setClassId('lDgeqMu6SGaOBJcO4ul45A', ShopCls);
+    cc.js._setClassId('lDgeqMu6SGaOBJcO4ul45A', ShopCls);
 
     var GameRoomCls = ccclass('GameRoomController')(class GameRoomController extends Component {
       start() {
@@ -217,9 +217,9 @@ controllers = '''
           .catch(function() { statusLbl.string = '\\u2014 Server offline \\u2014'; });
       }
     });
-    cc.js.setClassId('fB5BpGMIRDGJ7OLiACc-Pw', GameRoomCls);
+    cc.js._setClassId('fB5BpGMIRDGJ7OLiACc-Pw', GameRoomCls);
 
-    console.log('[bundle] controllers registered by name+UUID | MMC by ID:', cc.js.getClassById ? cc.js.getClassById('M4_wL54JQVGZvEK-vivrdQ') : 'no getClassById');
+    console.log('[bundle] controllers registered by name+UUID | MMC by ID:', cc.js.getClassById('M4_wL54JQVGZvEK-vivrdQ'));
   }
   doRegister();
 })();
