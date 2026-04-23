@@ -434,10 +434,9 @@ injection = r"""
               });
             }
           }
-          if(!g.hudRefs) return;
           if(state.jackpotPool!==undefined)
             rollJackpot(Math.round(Number(state.jackpotPool)));
-          if(state.roomState){
+          if(state.roomState&&g.hudRefs){
             g.hudRefs.stateLbl.string=state.roomState;
             if(state.roomState!=='WAITING'&&g.waitingOverlay)g.waitingOverlay.node.active=false;
           }
@@ -445,9 +444,9 @@ injection = r"""
             var cnt=0;
             state.players.forEach(function(p){
               cnt++;
-              if(g.room&&p.sessionId===g.room.sessionId){
-                if(p.slot!==undefined)g.localSlot=p.slot;
-                if(p.gold!==undefined){g.gold=p.gold;g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();}
+              if(g.room&&p.playerId===g.room.sessionId){
+                if(p.slotIndex!==undefined)g.localSlot=p.slotIndex;
+                if(p.gold!==undefined){g.gold=p.gold;if(g.hudRefs)g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();}
               }
             });
             if(g.waitingOverlay)g.waitingOverlay.slbl.string=cnt+' / 4 players';
@@ -537,7 +536,11 @@ injection = r"""
       var dx=wx-sp[0],dy=wy-sp[1];
       if(dx*dx+dy*dy<3600) return;
       var angle=Math.atan2(dy,dx)*180/Math.PI;
-      g.room.send('shoot',{angle:angle,cannonMul:g.cannonMul});
+      var nearFishId=null,nearDist=Infinity;
+      if(g.fish){Object.keys(g.fish).forEach(function(fid){var fd=g.fish[fid];if(!fd||!fd.alive)return;var fdx=(fd.posX||0)-wx,fdy=(fd.posY||0)-wy;var d=fdx*fdx+fdy*fdy;if(d<nearDist){nearDist=d;nearFishId=fid;}});}
+      var bId='b'+Date.now()+Math.random().toString(36).slice(2,7);
+      var betAmt=Math.max(1,(g.cannonMul||1))*100;
+      if(nearFishId)g.room.send('shoot',{bulletId:bId,fishId:nearFishId,betAmount:betAmt,cannonMultiplier:g.cannonMul||1});
       fireBullet(sp[0],sp[1],wx,wy);
       animateCannonFire(g.localSlot,wx,wy);
     });

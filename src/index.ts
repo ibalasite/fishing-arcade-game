@@ -120,10 +120,10 @@ async function main() {
       );
       const userId = userRes.rows[0].id;
 
-      // Ensure wallet exists with starter gold (idempotent)
+      // Ensure wallet exists with starter gold; if wallet has 0 gold, top up
       await pool.query(
         `INSERT INTO user_wallets(user_id, gold, diamond) VALUES($1, 10000, 0)
-         ON CONFLICT (user_id) DO NOTHING`,
+         ON CONFLICT (user_id) DO UPDATE SET gold = GREATEST(user_wallets.gold, 10000)`,
         [userId],
       );
 
