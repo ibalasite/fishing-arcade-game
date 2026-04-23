@@ -46,11 +46,11 @@ export class WalletService {
    * Used in GameRoom.onJoin to populate PlayerState.gold.
    */
   async getGold(userId: string): Promise<number> {
-    const row = await this._db.query<{ gold: number }>(
+    const row = await this._db.query<{ gold: string | number }>(
       'SELECT gold FROM user_wallets WHERE user_id=$1',
       [userId],
     );
-    return row.rows[0]?.gold ?? 0;
+    return Number(row.rows[0]?.gold ?? 0);
   }
 
   /**
