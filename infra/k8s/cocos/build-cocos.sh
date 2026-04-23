@@ -92,153 +92,162 @@ if d.get('launch', {}).get('launchScene') != 'db://assets/scenes/MainMenu.scene'
     log "launchScene verified: MainMenu.scene"
   fi
 
-  # Inject game controllers into bundle.js (CC3 CLI doesn't compile TS into bundles)
+  # Patch built scene JSONs: remove null component entries (avoids CC3 Error 3817)
+  local IMPORT_DIR="$CLIENT_DIR/build/web-desktop/assets/main/import"
+  if [ -d "$IMPORT_DIR" ]; then
+    log "Patching built scene JSONs to remove null components..."
+    IMPORT_DIR_PATH="$IMPORT_DIR" python3 << 'PYEOF'
+import os, json, glob
+
+import_dir = os.environ['IMPORT_DIR_PATH']
+patched = 0
+
+def remove_nulls(obj):
+    if isinstance(obj, list):
+        return [remove_nulls(item) for item in obj if item is not None]
+    if isinstance(obj, dict):
+        return {k: remove_nulls(v) for k, v in obj.items()}
+    return obj
+
+for path in glob.glob(f'{import_dir}/**/*.json', recursive=True):
+    with open(path) as f:
+        raw = f.read()
+    if 'null' not in raw:
+        continue
+    data = json.loads(raw)
+    fixed = remove_nulls(data)
+    if json.dumps(fixed) != json.dumps(data):
+        tmp = path + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(fixed, f, separators=(',', ':'))
+        os.replace(tmp, path)
+        patched += 1
+
+print(f'Patched {patched} scene file(s)')
+PYEOF
+    log "Scene JSON patching complete"
+  fi
+
+  # Inject game scene setup into bundle.js (director event approach — no ccclass needed)
   local BUNDLE_JS="$CLIENT_DIR/build/web-desktop/src/chunks/bundle.js"
-  if [ -f "$BUNDLE_JS" ] && ! grep -q "MainMenuController" "$BUNDLE_JS"; then
-    log "Injecting game controllers into bundle.js..."
+  if [ -f "$BUNDLE_JS" ] && ! grep -q "UITransformComponent" "$BUNDLE_JS"; then
+    log "Injecting game scene setup into bundle.js..."
     BUNDLE_JS_PATH="$BUNDLE_JS" python3 << 'PYEOF'
-import os, sys
-bundle_path = os.environ.get('BUNDLE_JS_PATH')
+import os
+bundle_path = os.environ['BUNDLE_JS_PATH']
 with open(bundle_path, 'r') as f:
     src = f.read()
 
-insert_marker = '\n\n} }; });'
-idx = src.rfind(insert_marker)
+# Strip any leftover old injection, keep only the base Babel helpers
+closing = '\n\n} }; });'
+close_idx = src.rfind(closing)
+base = src[:close_idx] if close_idx != -1 else src.rstrip()
 
-controllers = '''
+injection = r"""
 
-// ── Game Script Controllers (compiled for CC3 web-desktop) ──────────────────
-(function registerGameControllers() {
-  var _regAttempts = 0;
-  console.log('[bundle] execute() cc:', typeof cc, '_decorator:', typeof cc !== 'undefined' && !!cc._decorator, 'Component:', typeof cc !== 'undefined' && !!cc.Component);
+// ── Game Scene Setup (director event approach — no ccclass registration needed) ─
+(function setupGameScenes() {
+  if (typeof cc === 'undefined' || !cc.director) return;
 
-  function doRegister() {
-    _regAttempts++;
-    console.log('[bundle] doRegister #' + _regAttempts + ' cc:', typeof cc, '_dec:', typeof cc !== 'undefined' && !!cc._decorator, 'Comp:', typeof cc !== 'undefined' && !!cc.Component);
-    if (typeof cc === 'undefined' || !cc._decorator || !cc.Component) {
-      if (_regAttempts < 500) setTimeout(doRegister, 1);
-      return;
-    }
-    var ccclass   = cc._decorator.ccclass;
-    var Component = cc.Component;
-
-    function makeLabel(parent, text, fontSize, x, y) {
-      var node = new cc.Node(text);
-      node.layer = cc.Layers.Enum.UI_2D;
-      parent.addChild(node);
-      node.setPosition(x, y, 0);
-      var tf = node.addComponent(cc.UITransform);
-      tf.setContentSize(700, fontSize + 20);
-      var lbl = node.addComponent(cc.Label);
-      lbl.useSystemFont = true;
-      lbl.fontFamily    = 'Arial';
-      lbl.string        = text;
-      lbl.fontSize      = fontSize;
-      lbl.lineHeight    = fontSize + 4;
-      lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-      lbl.verticalAlign   = cc.Label.VerticalAlign.CENTER;
-      lbl.color = new cc.Color(255, 255, 255, 255);
-      return node;
-    }
-
-    var GNM = {
-      stateCallbacks: [],
-      room: null,
-      connectToRoom: function() {
-        return new Promise(function(resolve, reject) {
-          try {
-            var Cly = window.Colyseus;
-            if (!Cly) throw new Error('Colyseus not loaded');
-            var client = new Cly.Client('ws://localhost:3000');
-            client.joinOrCreate('fishing_room').then(function(room) {
-              GNM.room = room;
-              room.onStateChange(function(s) {
-                GNM.stateCallbacks.forEach(function(cb) { cb(s); });
-              });
-              resolve();
-            }).catch(reject);
-          } catch(e) { reject(e); }
-        });
-      },
-      onStateChange: function(cb) { GNM.stateCallbacks.push(cb); }
-    };
-
-    // Register by class name AND by scene asset UUID (cc.js.setClassId uses _idToClass registry)
-    var BootCls = ccclass('BootController')(class BootController extends Component {
-      start() { cc.director.loadScene('MainMenu'); }
-    });
-    cc.js._setClassId('dr7cEDBOSC6opU-KGVX_Cg', BootCls);
-
-    var MainMenuCls = ccclass('MainMenuController')(class MainMenuController extends Component {
-      start() {
-        var canvas = this.node.parent;
-        if (!canvas) return;
-        makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(cc.Label).isBold = true;
-        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
-        makeLabel(canvas, '\\u25b6  PLAY', 44, 0, 0).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('GameRoom'); });
-        makeLabel(canvas, 'SHOP', 36, 0, -80).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('Shop'); });
-        fetch('/api/v1/game/jackpot/pool')
-          .then(function(r) { return r.json(); })
-          .then(function(j) { jackpotLbl.string = 'Jackpot: ' + j.data.amount.toLocaleString(); })
-          .catch(function() {});
-      }
-    });
-    cc.js._setClassId('M4_wL54JQVGZvEK-vivrdQ', MainMenuCls);
-
-    var ShopCls = ccclass('ShopController')(class ShopController extends Component {
-      start() {
-        var canvas = this.node.parent;
-        if (!canvas) return;
-        makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(cc.Label).isBold = true;
-        makeLabel(canvas, '\\u2014 Coming Soon \\u2014', 32, 0, 120);
-        makeLabel(canvas, '\\u25c4  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
-      }
-    });
-    cc.js._setClassId('lDgeqMu6SGaOBJcO4ul45A', ShopCls);
-
-    var GameRoomCls = ccclass('GameRoomController')(class GameRoomController extends Component {
-      start() {
-        var canvas = this.node.parent;
-        if (!canvas) return;
-        makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(cc.Label).isBold = true;
-        var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
-        makeLabel(canvas, 'Gold: 0', 36, 0, 60);
-        var statusLbl = makeLabel(canvas, '\\u2014 Connecting\\u2026 \\u2014', 28, 0, -20).getComponent(cc.Label);
-        makeLabel(canvas, '\\u25c4  BACK', 40, 0, -120).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
-        GNM.connectToRoom()
-          .then(function() {
-            GNM.onStateChange(function(state) {
-              if (jackpotLbl && state.jackpotPool !== undefined) {
-                jackpotLbl.string = 'Jackpot: ' + Math.round(Number(state.jackpotPool)).toLocaleString();
-              }
-            });
-            statusLbl.string = '\\u2014 Connected \\u2014';
-          })
-          .catch(function() { statusLbl.string = '\\u2014 Server offline \\u2014'; });
-      }
-    });
-    cc.js._setClassId('fB5BpGMIRDGJ7OLiACc-Pw', GameRoomCls);
-
-    console.log('[bundle] controllers registered by name+UUID | MMC by ID:', cc.js.getClassById('M4_wL54JQVGZvEK-vivrdQ'));
+  function makeLabel(parent, text, fontSize, x, y) {
+    var node = new cc.Node(text);
+    node.layer = cc.Layers.Enum.UI_2D;
+    parent.addChild(node);
+    node.setPosition(x, y, 0);
+    var tf = node.addComponent(cc.UITransformComponent);
+    tf.setContentSize(700, fontSize + 20);
+    var lbl = node.addComponent(cc.Label);
+    lbl.useSystemFont = true;
+    lbl.fontFamily    = 'Arial';
+    lbl.string        = text;
+    lbl.fontSize      = fontSize;
+    lbl.lineHeight    = fontSize + 4;
+    lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+    lbl.verticalAlign   = cc.Label.VerticalAlign.CENTER;
+    lbl.color = new cc.Color(255, 255, 255, 255);
+    return node;
   }
-  doRegister();
+
+  var GNM = {
+    stateCallbacks: [],
+    room: null,
+    connectToRoom: function() {
+      return new Promise(function(resolve, reject) {
+        try {
+          var Cly = window.Colyseus;
+          if (!Cly) throw new Error('Colyseus not loaded');
+          var client = new Cly.Client('ws://localhost:3000');
+          client.joinOrCreate('fishing_room').then(function(room) {
+            GNM.room = room;
+            room.onStateChange(function(s) {
+              GNM.stateCallbacks.forEach(function(cb) { cb(s); });
+            });
+            resolve();
+          }).catch(reject);
+        } catch(e) { reject(e); }
+      });
+    },
+    onStateChange: function(cb) { GNM.stateCallbacks.push(cb); }
+  };
+
+  function setupMainMenu(canvas) {
+    makeLabel(canvas, 'Fishing Arcade', 64, 0, 220).getComponent(cc.Label).isBold = true;
+    var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+    makeLabel(canvas, '▶  PLAY', 44, 0, 0).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('GameRoom'); });
+    makeLabel(canvas, 'SHOP', 36, 0, -80).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('Shop'); });
+    fetch('/api/v1/game/jackpot/pool')
+      .then(function(r) { return r.json(); })
+      .then(function(j) { jackpotLbl.string = 'Jackpot: ' + j.data.amount.toLocaleString(); })
+      .catch(function() {});
+  }
+
+  function setupShop(canvas) {
+    makeLabel(canvas, 'SHOP', 64, 0, 220).getComponent(cc.Label).isBold = true;
+    makeLabel(canvas, '— Coming Soon —', 32, 0, 120);
+    makeLabel(canvas, '◄  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
+  }
+
+  function setupGameRoom(canvas) {
+    makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(cc.Label).isBold = true;
+    var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(cc.Label);
+    makeLabel(canvas, 'Gold: 0', 36, 0, 60);
+    var statusLbl = makeLabel(canvas, '— Connecting… —', 28, 0, -20).getComponent(cc.Label);
+    makeLabel(canvas, '◄  BACK', 40, 0, -120).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
+    GNM.connectToRoom()
+      .then(function() {
+        GNM.onStateChange(function(state) {
+          if (jackpotLbl && state.jackpotPool !== undefined) {
+            jackpotLbl.string = 'Jackpot: ' + Math.round(Number(state.jackpotPool)).toLocaleString();
+          }
+        });
+        statusLbl.string = '— Connected —';
+      })
+      .catch(function() { statusLbl.string = '— Server offline —'; });
+  }
+
+  cc.director.on('director_after_scene_launch', function(scene) {
+    if (!scene) scene = cc.director.getScene();
+    if (!scene) return;
+    var canvas = scene.getChildByName('Canvas');
+    if (!canvas) return;
+    var name = scene.name;
+    if (name === 'MainMenu') setupMainMenu(canvas);
+    else if (name === 'Shop') setupShop(canvas);
+    else if (name === 'GameRoom') setupGameRoom(canvas);
+  });
 })();
-'''
+"""
 
-if idx != -1 and insert_marker in src:
-    new_src = src[:idx] + controllers + src[idx:]
-else:
-    new_src = src.rstrip() + controllers
-
+new_src = base + injection + '\n\n} }; });'
 tmp = bundle_path + '.tmp'
 with open(tmp, 'w') as f:
     f.write(new_src)
 os.replace(tmp, bundle_path)
-print(f'Injected game controllers into bundle.js ({len(new_src)} bytes)')
+print(f'Game scene setup injected into bundle.js ({len(new_src)} bytes)')
 PYEOF
-    log "Game controllers injected into bundle.js"
+    log "Game scene setup injected into bundle.js"
   else
-    log "bundle.js already contains game controllers, skipping injection"
+    log "bundle.js already patched, skipping injection"
   fi
 }
 
@@ -413,6 +422,8 @@ deploy() {
   kubectl set image deployment/fishing-cocos \
     cocos="${REGISTRY_NODE}/fishing-cocos:${IMAGE_TAG}" \
     -n "$NAMESPACE"
+  # Force pod restart so the newly pushed image is always pulled (even with same tag)
+  kubectl rollout restart deployment/fishing-cocos -n "$NAMESPACE"
   kubectl rollout status deployment/fishing-cocos -n "$NAMESPACE" --timeout=2m
 
   local NODE_PORT
