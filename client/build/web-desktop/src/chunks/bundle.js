@@ -10,15 +10,14 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       setTimeout(doRegister, 20);
       return;
     }
-
-    var ccclass    = cc._decorator.ccclass;
-    var Component  = cc.Component;
-    var Label      = cc.Label;
-    var director   = cc.director;
-    var Node       = cc.Node;
+    var ccclass     = cc._decorator.ccclass;
+    var Component   = cc.Component;
+    var Label       = cc.Label;
+    var director    = cc.director;
+    var Node        = cc.Node;
     var UITransform = cc.UITransform;
-    var Color      = cc.Color;
-    var Layers     = cc.Layers;
+    var Color       = cc.Color;
+    var Layers      = cc.Layers;
 
     function makeLabel(parent, text, fontSize, x, y) {
       var node = new Node(text);
@@ -39,12 +38,9 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       return node;
     }
 
-    // Tiny GameNetworkManager (Colyseus loaded via CDN)
-    var _gnmInstance = null;
     var GNM = {
       stateCallbacks: [],
       room: null,
-      getInstance: function() { return GNM; },
       connectToRoom: function() {
         return new Promise(function(resolve, reject) {
           try {
@@ -64,12 +60,10 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       onStateChange: function(cb) { GNM.stateCallbacks.push(cb); }
     };
 
-    // BootController
     ccclass('BootController')(class BootController extends Component {
       start() { director.loadScene('MainMenu'); }
     });
 
-    // MainMenuController
     ccclass('MainMenuController')(class MainMenuController extends Component {
       start() {
         var canvas = this.node.parent;
@@ -78,7 +72,6 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
         var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(Label);
         makeLabel(canvas, '▶  PLAY', 44, 0, 0).on(Node.EventType.TOUCH_END, function() { director.loadScene('GameRoom'); });
         makeLabel(canvas, 'SHOP', 36, 0, -80).on(Node.EventType.TOUCH_END, function() { director.loadScene('Shop'); });
-        // fetch jackpot
         fetch('http://localhost:3000/api/v1/game/jackpot/pool')
           .then(function(r) { return r.json(); })
           .then(function(j) { jackpotLbl.string = 'Jackpot: ' + j.data.amount.toLocaleString(); })
@@ -86,7 +79,6 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       }
     });
 
-    // ShopController
     ccclass('ShopController')(class ShopController extends Component {
       start() {
         var canvas = this.node.parent;
@@ -97,18 +89,16 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       }
     });
 
-    // GameRoomController
     ccclass('GameRoomController')(class GameRoomController extends Component {
       start() {
         var canvas = this.node.parent;
         if (!canvas) return;
-        var self = this;
         makeLabel(canvas, 'GAME ROOM', 64, 0, 220).getComponent(Label).isBold = true;
         var jackpotLbl = makeLabel(canvas, 'Jackpot: ---', 40, 0, 120).getComponent(Label);
         makeLabel(canvas, 'Gold: 0', 36, 0, 60);
         var statusLbl = makeLabel(canvas, '— Connecting… —', 28, 0, -20).getComponent(Label);
         makeLabel(canvas, '◄  BACK', 40, 0, -120).on(Node.EventType.TOUCH_END, function() { director.loadScene('MainMenu'); });
-        GNM.connectToRoom('main')
+        GNM.connectToRoom()
           .then(function() {
             GNM.onStateChange(function(state) {
               if (jackpotLbl && state.jackpotPool !== undefined) {
