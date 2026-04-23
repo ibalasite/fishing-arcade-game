@@ -163,11 +163,13 @@ controllers = '''
       onStateChange: function(cb) { GNM.stateCallbacks.push(cb); }
     };
 
-    ccclass('BootController')(class BootController extends Component {
+    // Register by class name AND by scene asset UUID (cc.js.setClassId uses _idToClass registry)
+    var BootCls = ccclass('BootController')(class BootController extends Component {
       start() { cc.director.loadScene('MainMenu'); }
     });
+    cc.js.setClassId('dr7cEDBOSC6opU-KGVX_Cg', BootCls);
 
-    ccclass('MainMenuController')(class MainMenuController extends Component {
+    var MainMenuCls = ccclass('MainMenuController')(class MainMenuController extends Component {
       start() {
         var canvas = this.node.parent;
         if (!canvas) return;
@@ -181,8 +183,9 @@ controllers = '''
           .catch(function() {});
       }
     });
+    cc.js.setClassId('M4_wL54JQVGZvEK-vivrdQ', MainMenuCls);
 
-    ccclass('ShopController')(class ShopController extends Component {
+    var ShopCls = ccclass('ShopController')(class ShopController extends Component {
       start() {
         var canvas = this.node.parent;
         if (!canvas) return;
@@ -191,8 +194,9 @@ controllers = '''
         makeLabel(canvas, '\\u25c4  BACK', 40, 0, -100).on(cc.Node.EventType.TOUCH_END, function() { cc.director.loadScene('MainMenu'); });
       }
     });
+    cc.js.setClassId('lDgeqMu6SGaOBJcO4ul45A', ShopCls);
 
-    ccclass('GameRoomController')(class GameRoomController extends Component {
+    var GameRoomCls = ccclass('GameRoomController')(class GameRoomController extends Component {
       start() {
         var canvas = this.node.parent;
         if (!canvas) return;
@@ -213,8 +217,9 @@ controllers = '''
           .catch(function() { statusLbl.string = '\\u2014 Server offline \\u2014'; });
       }
     });
+    cc.js.setClassId('fB5BpGMIRDGJ7OLiACc-Pw', GameRoomCls);
 
-    console.log('[bundle] controllers registered: Boot/MainMenu/Shop/GameRoom | MMC:', cc.js.getClassByName('MainMenuController'));
+    console.log('[bundle] controllers registered by name+UUID | MMC by ID:', cc.js.getClassById ? cc.js.getClassById('M4_wL54JQVGZvEK-vivrdQ') : 'no getClassById');
   }
   doRegister();
 })();
