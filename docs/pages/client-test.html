@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>Fishing Arcade — WS Test Client</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; background: #0a0e1a; color: #e0e8ff; min-height: 100vh; padding: 20px; }
+  h1 { color: #4af; margin-bottom: 16px; font-size: 18px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1100px; }
+  .panel { background: #111827; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px; }
+  .panel h2 { font-size: 13px; color: #7aa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px; }
+  label { display: block; font-size: 12px; color: #8ab; margin-bottom: 4px; margin-top: 10px; }
+  input, select { width: 100%; background: #0d1520; border: 1px solid #1e3a5f; color: #e0e8ff; padding: 6px 8px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+  button { margin-top: 10px; padding: 7px 14px; border: none; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 13px; font-weight: bold; }
+  .btn-connect { background: #1a7a3a; color: #fff; }
+  .btn-disconnect { background: #7a1a1a; color: #fff; }
+  .btn-shoot { background: #1a4a8a; color: #fff; }
+  .btn-http { background: #3a2a7a; color: #fff; }
+  .btn-clear { background: #2a2a3a; color: #aaa; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #log { height: 340px; overflow-y: auto; font-size: 12px; line-height: 1.6; background: #080d16; padding: 10px; border-radius: 4px; border: 1px solid #1e3a5f; }
+  #state { height: 340px; overflow-y: auto; font-size: 12px; background: #080d16; padding: 10px; border-radius: 4px; border: 1px solid #1e3a5f; white-space: pre; }
+  .log-info  { color: #6cf; }
+  .log-ok    { color: #4f9; }
+  .log-warn  { color: #fa3; }
+  .log-error { color: #f55; }
+  .log-recv  { color: #cf6; }
+  .log-send  { color: #8af; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-left: 8px; }
+  .badge-on  { background: #1a7a3a; color: #4f9; }
+  .badge-off { background: #3a1a1a; color: #f55; }
+  #status-badge { vertical-align: middle; }
+  .row { display: flex; gap: 8px; align-items: flex-end; }
+  .row button { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>🎣 Fishing Arcade — WebSocket Test Client
+  <span class="badge badge-off" id="status-badge">OFFLINE</span>
+</h1>
+
+<div class="grid">
+  <!-- Connection panel -->
+  <div class="panel">
+    <h2>Connection</h2>
+    <label>Server URL</label>
+    <input id="serverUrl" value="ws://localhost:3000" />
+    <label>Room Type</label>
+    <input id="roomType" value="fishing_room" />
+    <label>JWT Token (optional)</label>
+    <input id="jwt" placeholder="Bearer eyJ..." />
+    <div class="row" style="margin-top:10px">
+      <button class="btn-connect" id="btnConnect">Connect</button>
+      <button class="btn-disconnect" id="btnDisconnect" disabled>Disconnect</button>
+      <button class="btn-clear" id="btnClear">Clear Log</button>
+    </div>
+
+    <h2 style="margin-top:20px">HTTP Endpoints</h2>
+    <label>Base URL</label>
+    <input id="httpBase" value="http://localhost:3000" />
+    <div class="row" style="margin-top:10px">
+      <button class="btn-http" onclick="httpGet('/health')">Health</button>
+      <button class="btn-http" onclick="httpGet('/ready')">Ready</button>
+      <button class="btn-http" onclick="httpGet('/api/v1/game/jackpot/pool')">Jackpot</button>
+    </div>
+
+    <h2 style="margin-top:20px">Send Message</h2>
+    <label>Message Type</label>
+    <select id="msgType">
+      <option value="shoot">shoot</option>
+      <option value="ping">ping</option>
+    </select>
+    <label>Bullet Type</label>
+    <select id="bulletType">
+      <option>normal</option>
+      <option>spread</option>
+      <option>laser</option>
+      <option>bomb</option>
+    </select>
+    <label>Target Fish ID</label>
+    <input id="fishId" value="fish-001" />
+    <div class="row" style="margin-top:10px">
+      <button class="btn-shoot" id="btnShoot" disabled>Send Message</button>
+    </div>
+  </div>
+
+  <!-- Log + State panel -->
+  <div class="panel">
+    <h2>Event Log</h2>
+    <div id="log"></div>
+    <h2 style="margin-top:16px">Room State</h2>
+    <div id="state">(not connected)</div>
+  </div>
+</div>
+
+<!-- Colyseus client SDK via CDN -->
+<script src="https://unpkg.com/colyseus.js@0.15.x/dist/colyseus.js"></script>
+<script>
+const log = document.getElementById('log');
+const stateDiv = document.getElementById('state');
+const badge = document.getElementById('status-badge');
+
+let client = null;
+let room = null;
+
+function addLog(cls, msg) {
+  const ts = new Date().toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = `[${ts}] ${msg}`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setBadge(online) {
+  badge.textContent = online ? 'ONLINE' : 'OFFLINE';
+  badge.className = 'badge ' + (online ? 'badge-on' : 'badge-off');
+}
+
+function updateState(state) {
+  try {
+    stateDiv.textContent = JSON.stringify(state, null, 2);
+  } catch {
+    stateDiv.textContent = String(state);
+  }
+}
+
+document.getElementById('btnConnect').onclick = async () => {
+  const url = document.getElementById('serverUrl').value.trim();
+  const roomType = document.getElementById('roomType').value.trim();
+  const jwt = document.getElementById('jwt').value.trim();
+
+  try {
+    addLog('log-info', `Connecting to ${url} / room: ${roomType} ...`);
+    client = new Colyseus.Client(url);
+
+    const opts = jwt ? { token: jwt } : {};
+    room = await client.joinOrCreate(roomType, opts);
+
+    addLog('log-ok', `✅ Joined room: ${room.id} (session: ${room.sessionId})`);
+    setBadge(true);
+    document.getElementById('btnConnect').disabled = true;
+    document.getElementById('btnDisconnect').disabled = false;
+    document.getElementById('btnShoot').disabled = false;
+
+    // State updates
+    room.onStateChange((state) => {
+      addLog('log-recv', `State changed`);
+      updateState(state.toJSON ? state.toJSON() : state);
+    });
+
+    // All messages
+    room.onMessage('*', (type, msg) => {
+      addLog('log-recv', `← msg [${type}]: ${JSON.stringify(msg)}`);
+    });
+
+    room.onLeave((code) => {
+      addLog('log-warn', `Left room (code ${code})`);
+      setBadge(false);
+      resetButtons();
+    });
+
+    room.onError((code, msg) => {
+      addLog('log-error', `Room error ${code}: ${msg}`);
+    });
+
+  } catch (err) {
+    addLog('log-error', `Connection failed: ${err.message || err}`);
+  }
+};
+
+document.getElementById('btnDisconnect').onclick = () => {
+  if (room) room.leave();
+};
+
+document.getElementById('btnShoot').onclick = () => {
+  if (!room) return;
+  const type = document.getElementById('msgType').value;
+  let payload;
+  if (type === 'shoot') {
+    payload = {
+      bulletType: document.getElementById('bulletType').value,
+      targetFishId: document.getElementById('fishId').value.trim(),
+    };
+  } else {
+    payload = {};
+  }
+  addLog('log-send', `→ send [${type}]: ${JSON.stringify(payload)}`);
+  room.send(type, payload);
+};
+
+document.getElementById('btnClear').onclick = () => { log.innerHTML = ''; };
+
+function resetButtons() {
+  document.getElementById('btnConnect').disabled = false;
+  document.getElementById('btnDisconnect').disabled = true;
+  document.getElementById('btnShoot').disabled = true;
+  room = null;
+  stateDiv.textContent = '(not connected)';
+}
+
+async function httpGet(path) {
+  const base = document.getElementById('httpBase').value.trim();
+  const url = base + path;
+  try {
+    addLog('log-info', `HTTP GET ${url}`);
+    const r = await fetch(url);
+    const json = await r.json();
+    addLog('log-ok', `HTTP ${r.status}: ${JSON.stringify(json)}`);
+  } catch (err) {
+    addLog('log-error', `HTTP error: ${err.message}`);
+  }
+}
+</script>
+</body>
+</html>

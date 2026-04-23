@@ -130,7 +130,7 @@ PYEOF
 
   # Inject game scene setup into bundle.js (director event approach — no ccclass needed)
   local BUNDLE_JS="$CLIENT_DIR/build/web-desktop/src/chunks/bundle.js"
-  if [ -f "$BUNDLE_JS" ] && ! grep -q "FishingArcadeGame_v2" "$BUNDLE_JS"; then
+  if [ -f "$BUNDLE_JS" ] && ! grep -q "FishingArcadeGame_v3" "$BUNDLE_JS"; then
     log "Injecting game scene setup into bundle.js..."
     BUNDLE_JS_PATH="$BUNDLE_JS" python3 << 'PYEOF'
 import os
@@ -138,15 +138,20 @@ bundle_path = os.environ['BUNDLE_JS_PATH']
 with open(bundle_path, 'r') as f:
     src = f.read()
 
-# Strip any leftover old injection, keep only the base Babel helpers
-closing = '\n\n} }; });'
-close_idx = src.rfind(closing)
-base = src[:close_idx] if close_idx != -1 else src.rstrip()
+# Strip any leftover old injection by finding the injection marker
+marker = '\n\n// ── FishingArcadeGame_v'
+marker_idx = src.find(marker)
+if marker_idx != -1:
+    base = src[:marker_idx]
+else:
+    closing = '\n\n} }; });'
+    close_idx = src.rfind(closing)
+    base = src[:close_idx] if close_idx != -1 else src.rstrip()
 
 injection = r"""
 
-// ── FishingArcadeGame_v2 — Full Game Implementation ───────────────────────────
-(function FishingArcadeGame_v2() {
+// ── FishingArcadeGame_v3 — Full Game Implementation ───────────────────────────
+(function FishingArcadeGame_v3() {
   if (typeof cc === 'undefined' || !cc.director) return;
   if (window._FAG_INIT) return;
   window._FAG_INIT = true;
@@ -161,8 +166,10 @@ injection = r"""
     room:null, localSlot:0, cannonMul:1,
     fishNodes:{}, fish:{}, bullets:[],
     hudRefs:null, fishLayer:null, bulletLayer:null,
+    aimLineGfx:null, cannonNodes:[], cannonStates:{},
     canvasRef:null, waitingOverlay:null,
-    disposed:true, _updateHandler:null, _jackpotPoll:null
+    disposed:true, _updateHandler:null, _jackpotPoll:null,
+    _prevJackpot:0, _jpRoller:null
   };
   window._g = g;
 
@@ -253,21 +260,98 @@ injection = r"""
     gfx.fillColor=col(220,50,50); gfx.rect(-70,-8,140*pct,16); gfx.fill();
   }
 
+  // ── Cannon with rotatable barrel ────────────────────────────────────────────
   function mkCannonNode(parent,slot,isLocal){
     var pos=SLOT_POS[slot];
     var n=new cc.Node('cannon_'+slot); n.layer=cc.Layers.Enum.UI_2D; parent.addChild(n);
     n.setPosition(pos[0],pos[1],0); n.addComponent(cc.UITransformComponent).setContentSize(130,130);
-    var gfx=n.addComponent(cc.Graphics);
-    gfx.fillColor=isLocal?col(255,200,0,230):col(80,120,180,200);
-    gfx.circle(0,0,30); gfx.fill();
-    gfx.strokeColor=col(255,255,255,180); gfx.lineWidth=3; gfx.circle(0,0,30); gfx.stroke();
-    var dx=-pos[0],dy=-pos[1],len=Math.sqrt(dx*dx+dy*dy)||1;
-    var nx_=dx/len,ny_=dy/len,ox=-ny_,oy=nx_;
-    gfx.fillColor=col(50,50,70,255);
-    gfx.moveTo(ox*8,oy*8); gfx.lineTo(nx_*52+ox*4,ny_*52+oy*4);
-    gfx.lineTo(nx_*52-ox*4,ny_*52-oy*4); gfx.lineTo(-ox*8,-oy*8); gfx.close(); gfx.fill();
+    // Base platform
+    var baseN=new cc.Node('base'); baseN.layer=cc.Layers.Enum.UI_2D; n.addChild(baseN);
+    baseN.addComponent(cc.UITransformComponent).setContentSize(80,80);
+    var bGfx=baseN.addComponent(cc.Graphics);
+    bGfx.fillColor=isLocal?col(255,200,0,230):col(80,120,180,200);
+    bGfx.circle(0,0,30); bGfx.fill();
+    bGfx.strokeColor=col(255,255,255,180); bGfx.lineWidth=3; bGfx.circle(0,0,30); bGfx.stroke();
+    // Rotatable barrel child node
+    var barrelN=new cc.Node('barrel'); barrelN.layer=cc.Layers.Enum.UI_2D; n.addChild(barrelN);
+    barrelN.addComponent(cc.UITransformComponent).setContentSize(80,20);
+    var rGfx=barrelN.addComponent(cc.Graphics);
+    rGfx.fillColor=col(50,50,70,255);
+    rGfx.rect(4,-7,50,14); rGfx.fill();
+    rGfx.strokeColor=col(90,90,130,200); rGfx.lineWidth=1;
+    rGfx.rect(4,-7,50,14); rGfx.stroke();
+    // Default barrel direction: toward screen center
+    var dx=-pos[0],dy=-pos[1];
+    barrelN.angle=Math.atan2(dy,dx)*180/Math.PI;
+    n._barrel=barrelN; n._pos=pos; n._slot=slot;
     mkLabel(n,'P'+(slot+1)+(isLocal?' (YOU)':''),17,0,-46,isLocal?col(255,220,0):col(180,180,200),140);
+    g.cannonStates[slot]='IDLE';
     return n;
+  }
+
+  // Rotate cannon barrel to face (toX, toY) world coords
+  function aimCannon(slot,toX,toY){
+    var cn=g.cannonNodes[slot]; if(!cn||!cn._barrel) return;
+    var pos=SLOT_POS[slot];
+    cn._barrel.angle=Math.atan2(toY-pos[1],toX-pos[0])*180/Math.PI;
+  }
+
+  // Muzzle flash at actual fire direction
+  function animateCannonFire(slot,toX,toY){
+    if(!g.bulletLayer||!g.cannonNodes[slot]) return;
+    var pos=SLOT_POS[slot];
+    var dx=toX-pos[0],dy=toY-pos[1],d=Math.sqrt(dx*dx+dy*dy)||1;
+    var tipX=pos[0]+dx/d*56,tipY=pos[1]+dy/d*56;
+    var flash=new cc.Node('flash'); flash.layer=cc.Layers.Enum.UI_2D;
+    g.bulletLayer.addChild(flash);
+    flash.setPosition(tipX,tipY,0);
+    flash.addComponent(cc.UITransformComponent).setContentSize(80,80);
+    var fg=flash.addComponent(cc.Graphics);
+    fg.fillColor=col(255,255,200,230); fg.circle(0,0,16); fg.fill();
+    fg.strokeColor=col(255,200,50,210); fg.lineWidth=4;
+    for(var ri=0;ri<8;ri++){
+      var a=ri*45*Math.PI/180;
+      fg.moveTo(Math.cos(a)*14,Math.sin(a)*14);
+      fg.lineTo(Math.cos(a)*30,Math.sin(a)*30);
+    }
+    fg.stroke();
+    g.cannonStates[slot]='FIRING';
+    setTimeout(function(){if(flash&&flash.parent)flash.destroy();g.cannonStates[slot]='COOLING';},150);
+    setTimeout(function(){g.cannonStates[slot]='IDLE';},380);
+  }
+
+  // ── Dashed aim line ──────────────────────────────────────────────────────────
+  function drawAimLine(fx,fy,tx,ty){
+    if(!g.aimLineGfx) return;
+    g.aimLineGfx.clear();
+    var dx=tx-fx,dy=ty-fy,d=Math.sqrt(dx*dx+dy*dy)||1;
+    var seg=22,gap=10,total=seg+gap,segs=Math.ceil(d/total);
+    g.aimLineGfx.strokeColor=col(255,255,180,130);
+    g.aimLineGfx.lineWidth=2;
+    for(var si=0;si<segs;si++){
+      var t0=si*total/d,t1=Math.min(1,(si*total+seg)/d);
+      g.aimLineGfx.moveTo(fx+dx*t0,fy+dy*t0);
+      g.aimLineGfx.lineTo(fx+dx*t1,fy+dy*t1);
+    }
+    g.aimLineGfx.stroke();
+  }
+  function clearAimLine(){if(g.aimLineGfx)g.aimLineGfx.clear();}
+
+  // ── Jackpot number roller (ease-in-out animation) ────────────────────────────
+  function rollJackpot(newVal){
+    if(!g.hudRefs) return;
+    var lbl=g.hudRefs.jackpotLbl;
+    var oldVal=g._prevJackpot;
+    g._prevJackpot=newVal;
+    if(Math.abs(newVal-oldVal)<5){lbl.string='JACKPOT: '+Math.round(newVal).toLocaleString();return;}
+    var start=Date.now(),dur=700,diff=newVal-oldVal;
+    if(g._jpRoller)clearInterval(g._jpRoller);
+    g._jpRoller=setInterval(function(){
+      var el=Date.now()-start;
+      if(el>=dur){lbl.string='JACKPOT: '+Math.round(newVal).toLocaleString();clearInterval(g._jpRoller);g._jpRoller=null;return;}
+      var t=el/dur; t=t<0.5?2*t*t:-1+(4-2*t)*t;
+      lbl.string='JACKPOT: '+Math.round(oldVal+diff*t).toLocaleString();
+    },33);
   }
 
   function fireBullet(fromX,fromY,toX,toY){
@@ -352,7 +436,7 @@ injection = r"""
           }
           if(!g.hudRefs) return;
           if(state.jackpotPool!==undefined)
-            g.hudRefs.jackpotLbl.string='JACKPOT: '+Math.round(Number(state.jackpotPool)).toLocaleString();
+            rollJackpot(Math.round(Number(state.jackpotPool)));
           if(state.roomState){
             g.hudRefs.stateLbl.string=state.roomState;
             if(state.roomState!=='WAITING'&&g.waitingOverlay)g.waitingOverlay.node.active=false;
@@ -396,12 +480,18 @@ injection = r"""
   };
 
   function setupGameRoom(canvas){
-    g.disposed=false; g.fishNodes={}; g.fish={}; g.bullets=[]; g.canvasRef=canvas;
+    g.disposed=false; g.fishNodes={}; g.fish={}; g.bullets=[];
+    g.canvasRef=canvas; g._prevJackpot=0; g.cannonStates={};
     buildOcean(canvas);
     g.fishLayer=new cc.Node('FishL'); g.fishLayer.layer=cc.Layers.Enum.UI_2D; canvas.addChild(g.fishLayer);
     g.fishLayer.addComponent(cc.UITransformComponent).setContentSize(1280,720);
     g.bulletLayer=new cc.Node('BltL'); g.bulletLayer.layer=cc.Layers.Enum.UI_2D; canvas.addChild(g.bulletLayer);
     g.bulletLayer.addComponent(cc.UITransformComponent).setContentSize(1280,720);
+    // Aim line layer (above bullets, below cannons)
+    var aimLayerN=new cc.Node('AimL'); aimLayerN.layer=cc.Layers.Enum.UI_2D; canvas.addChild(aimLayerN);
+    aimLayerN.addComponent(cc.UITransformComponent).setContentSize(1280,720);
+    g.aimLineGfx=aimLayerN.addComponent(cc.Graphics);
+    // Cannon layer
     var canL=new cc.Node('CanL'); canL.layer=cc.Layers.Enum.UI_2D; canvas.addChild(canL);
     canL.addComponent(cc.UITransformComponent).setContentSize(1280,720);
     g.cannonNodes=[];
@@ -413,11 +503,34 @@ injection = r"""
         g.disposed=true;
         if(g._updateHandler){cc.director.off('director_after_update',g._updateHandler);g._updateHandler=null;}
         if(g._jackpotPoll){clearInterval(g._jackpotPoll);g._jackpotPoll=null;}
+        if(g._jpRoller){clearInterval(g._jpRoller);g._jpRoller=null;}
         if(g.room){g.room.leave();g.room=null;}
         cc.director.loadScene('MainMenu');
       });
-    canvas.on(cc.Node.EventType.TOUCH_END,function(evt){
+    // Touch: aim line on drag, fire on release
+    var _aimActive=false;
+    canvas.on(cc.Node.EventType.TOUCH_START,function(evt){
       if(!g.room) return;
+      var loc=evt.getUILocation();
+      var wx=loc.x-640,wy=loc.y-360;
+      var sp=SLOT_POS[g.localSlot]||[0,0];
+      var dx=wx-sp[0],dy=wy-sp[1];
+      if(dx*dx+dy*dy<3600){_aimActive=false;return;}
+      _aimActive=true;
+      aimCannon(g.localSlot,wx,wy);
+      drawAimLine(sp[0],sp[1],wx,wy);
+    });
+    canvas.on(cc.Node.EventType.TOUCH_MOVE,function(evt){
+      if(!g.room||!_aimActive) return;
+      var loc=evt.getUILocation();
+      var wx=loc.x-640,wy=loc.y-360;
+      var sp=SLOT_POS[g.localSlot]||[0,0];
+      aimCannon(g.localSlot,wx,wy);
+      drawAimLine(sp[0],sp[1],wx,wy);
+    });
+    canvas.on(cc.Node.EventType.TOUCH_END,function(evt){
+      clearAimLine(); var wasAiming=_aimActive; _aimActive=false;
+      if(!g.room||!wasAiming) return;
       var loc=evt.getUILocation();
       var wx=loc.x-640,wy=loc.y-360;
       var sp=SLOT_POS[g.localSlot]||[0,0];
@@ -426,7 +539,10 @@ injection = r"""
       var angle=Math.atan2(dy,dx)*180/Math.PI;
       g.room.send('shoot',{angle:angle,cannonMul:g.cannonMul});
       fireBullet(sp[0],sp[1],wx,wy);
+      animateCannonFire(g.localSlot,wx,wy);
     });
+    canvas.on(cc.Node.EventType.TOUCH_CANCEL,function(){clearAimLine();_aimActive=false;});
+    // Frame update: fish movement + bullet movement
     var upd=function(){
       if(g.disposed) return;
       var now=Date.now();
@@ -447,10 +563,11 @@ injection = r"""
       g.bullets=alive;
     };
     cc.director.on('director_after_update',upd); g._updateHandler=upd;
+    // Jackpot poll fallback (in case server WebSocket doesn't push updates)
     g._jackpotPoll=setInterval(function(){
       if(g.disposed){clearInterval(g._jackpotPoll);return;}
       fetch(SERVER+'/api/v1/game/jackpot/pool').then(function(r){return r.json();})
-        .then(function(j){if(j.data&&g.hudRefs)g.hudRefs.jackpotLbl.string='JACKPOT: '+j.data.amount.toLocaleString();})
+        .then(function(j){if(j.data&&g.hudRefs)rollJackpot(j.data.amount);})
         .catch(function(){});
     },5000);
     var connLbl=mkLabel(canvas,'Connecting to server...',26,0,0,col(180,200,255,200),450);
@@ -466,6 +583,7 @@ injection = r"""
     g.disposed=true;
     if(g._updateHandler){cc.director.off('director_after_update',g._updateHandler);g._updateHandler=null;}
     if(g._jackpotPoll){clearInterval(g._jackpotPoll);g._jackpotPoll=null;}
+    if(g._jpRoller){clearInterval(g._jpRoller);g._jpRoller=null;}
     if(g.room){try{g.room.leave();}catch(e){}g.room=null;}
     buildOcean(canvas);
     var tl=mkLabel(canvas,'FISHING ARCADE',70,0,230,col(255,215,50),800);

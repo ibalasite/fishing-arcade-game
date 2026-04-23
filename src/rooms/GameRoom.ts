@@ -14,6 +14,7 @@ import http from 'http';
 import { Room, Client } from '@colyseus/core';
 import { GameState, PlayerState, BulletState } from '../schema/GameState';
 import { RTPEngine, RTPConfig } from '../engine/RTPEngine';
+import { FishSpawner } from '../engine/FishSpawner';
 import { JackpotManager } from '../engine/JackpotManager';
 import { WalletService } from '../services/WalletService';
 import { db } from '../utils/db';
@@ -84,14 +85,10 @@ export class GameRoom extends Room<GameState> {
   maxClients = 4; // Phase 1 cap; Phase 2 will raise to 6
 
   private _rtpEngine!: RTPEngine;
+  private _fishSpawner!: FishSpawner;
   private _jackpotManager!: JackpotManager;
   private _walletService!: WalletService;
   private _tickInterval!: ReturnType<typeof setInterval>;
-
-  // TODO(EDD §2.2): Integrate FishSpawner (src/engine/FishSpawner.ts) for
-  // continuous wave scheduling of normal/elite/boss fish. Currently fish spawning
-  // is not implemented — FishSpawner is a Phase-1 gap (tracked as ALIGN-GAP-3).
-  // FishSpawner should call this._spawnBoss() for boss fish and manage wave timers.
 
   /**
    * Guard against post-dispose tick callbacks.
@@ -138,6 +135,30 @@ export class GameRoom extends Room<GameState> {
     this._rtpEngine = new RTPEngine(RTP_CONFIG);
     this._walletService = new WalletService(db);
     this._jackpotManager = await JackpotManager.getInstance();
+
+    this._fishSpawner = new FishSpawner(
+      this.state.fish,
+      (fish) => {
+        // Boss spawn → transition room state and set HP display
+        if (fish.fishType === 'boss') {
+          this.state.activeBossHp    = fish.hp;
+          this.state.activeBossMaxHp = fish.maxHp;
+          this.state.roomState = 'BOSS_FIGHT';
+          this.broadcast('boss_spawned', { fishId: fish.fishId });
+        }
+      },
+      (fishId, escaped) => {
+        if (escaped) {
+          this.broadcast('fish_escaped', { fishId });
+          // If the escaped fish was a boss, reset room state
+          if (this.state.activeBossHp > 0) {
+            this.state.activeBossHp    = 0;
+            this.state.activeBossMaxHp = 0;
+            this.state.roomState = 'PLAYING';
+          }
+        }
+      },
+    );
 
     // Register message handlers in onCreate — do NOT override onMessage base method
     this.onMessage<ShootMessage>('shoot', this._handleShoot.bind(this));
@@ -219,8 +240,9 @@ export class GameRoom extends Room<GameState> {
   // NOTE: Do NOT override onMessage(). Use this.onMessage(type, cb) in onCreate() only.
 
   async onDispose(): Promise<void> {
-    this._disposed = true; // prevents in-flight tick from writing state after dispose begins
+    this._disposed = true;
     clearInterval(this._tickInterval);
+    this._fishSpawner.dispose();
 
     // Clear boss escape timers to prevent post-dispose callbacks
     this._bossEscapeTimers.forEach(t => clearTimeout(t));
@@ -295,11 +317,19 @@ export class GameRoom extends Room<GameState> {
   // ---------------------------------------------------------------------------
 
   private _tick(): void {
-    if (this._disposed) return; // dispose guard
+    if (this._disposed) return;
     if (this.state.roomState !== 'PLAYING' && this.state.roomState !== 'BOSS_FIGHT') return;
+
+    // Advance fish spawner (removes escaped fish from schema)
+    this._fishSpawner.tick();
 
     // Refresh RTP indicator on HUD
     this.state.rtpNumerator = Math.round(this._rtpEngine.currentRtp * 100);
+
+    // Mirror jackpot pool into state (fire-and-forget; non-blocking)
+    this._jackpotManager.getPool().then(amount => {
+      if (!this._disposed) this.state.jackpotPool = amount;
+    }).catch(() => { /* ignore redis errors in tick */ });
   }
 
   // ---------------------------------------------------------------------------
@@ -349,7 +379,8 @@ export class GameRoom extends Room<GameState> {
       clearTimeout(timer);
       this._bossEscapeTimers.delete(fishId);
     }
-    this.state.activeBossHp = 0;
+    this._fishSpawner.bossKilled(fishId);
+    this.state.activeBossHp    = 0;
     this.state.activeBossMaxHp = 0;
     this.state.roomState = 'PLAYING';
   }
@@ -462,6 +493,7 @@ export class GameRoom extends Room<GameState> {
 
   private _transitionToPlaying(): void {
     this.state.roomState = 'PLAYING';
+    this._fishSpawner.start();
   }
 
   private _assignSlot(): number {

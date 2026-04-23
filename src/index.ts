@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'crypto';
 import http from 'http';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
@@ -10,6 +11,8 @@ import { GameRoom } from './rooms/GameRoom';
 import { db } from './utils/db';
 import { JackpotManager } from './engine/JackpotManager';
 import { DbClient, QueryResult } from './utils/db';
+import { signJwt } from './utils/auth';
+import { encrypt, hmac } from './utils/crypto';
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
@@ -90,7 +93,51 @@ async function main() {
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Auth endpoints
+  // ---------------------------------------------------------------------------
+
+  // Guest login — creates (or finds) a guest user and returns a JWT token.
+  // Gives 10 000 gold on first join for immediate play.
+  app.post('/api/v1/auth/guest', async (req: Request, res: Response) => {
+    try {
+      const nickname = (String(req.body?.nickname ?? 'Guest')).slice(0, 50).trim() || 'Guest';
+      const deviceId = String(req.body?.deviceId ?? '').slice(0, 64) || `guest-${Date.now()}`;
+
+      const guestEmail   = `guest+${deviceId}@fishing.local`;
+      const encEmail     = Buffer.from(encrypt(guestEmail), 'base64');
+      const emailHashHex = hmac(guestEmail, process.env.HMAC_SECRET_KEY ?? '');
+      const emailHashBuf = Buffer.from(emailHashHex, 'hex');
+      const pwdHash      = crypto.createHash('sha256').update('guest-no-password').digest('hex');
+
+      // Upsert by email_hash (unique index)
+      const userRes = await pool.query<{ id: string }>(
+        `INSERT INTO users(nickname, email, email_hash, password_hash, deletion_status, created_at, updated_at)
+         VALUES($1, $2, $3, $4, 'active', NOW(), NOW())
+         ON CONFLICT (email_hash) DO UPDATE SET nickname=EXCLUDED.nickname, updated_at=NOW()
+         RETURNING id`,
+        [nickname, encEmail, emailHashBuf, pwdHash],
+      );
+      const userId = userRes.rows[0].id;
+
+      // Ensure wallet exists with starter gold (idempotent)
+      await pool.query(
+        `INSERT INTO user_wallets(user_id, gold, diamond) VALUES($1, 10000, 0)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId],
+      );
+
+      const token = signJwt({ userId, nickname }, '7d');
+      res.json({ data: { token, userId, nickname } });
+    } catch (err) {
+      console.error('[Auth] guest login error:', err);
+      res.status(500).json({ error: { code: 'AUTH_ERROR', message: String(err) } });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
   // Jackpot pool endpoint (read-only, no auth required for local testing)
+  // ---------------------------------------------------------------------------
   app.get('/api/v1/game/jackpot/pool', async (_req: Request, res: Response) => {
     try {
       const raw = await redis.get('game:jackpot:pool');

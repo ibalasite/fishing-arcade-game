@@ -153,6 +153,12 @@ export class JackpotManager {
    * (e.g., a minimal mock that omits the method), contributions are skipped
    * and a warning is emitted so the misconfiguration is visible in logs.
    */
+  /** Returns the current jackpot pool amount (gold). */
+  async getPool(): Promise<number> {
+    const raw = await this._redis.get(POOL_KEY);
+    return raw ? Math.round(parseFloat(raw)) : 10_000;
+  }
+
   async contribute(betAmount: number): Promise<void> {
     if (!this._redis.incrbyfloat) {
       console.warn('[JackpotManager] incrbyfloat unavailable — jackpot contribution skipped');

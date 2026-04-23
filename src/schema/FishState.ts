@@ -61,4 +61,12 @@ export class FishState extends Schema {
   /** Fish movement speed along the Bezier path (world units per second). */
   @type('float32')
   speed: number = 1.0;
+
+  /** Unix timestamp (ms) when this fish was spawned. Clients use this for Bezier interpolation. */
+  @type('float64')
+  startTimeMs: number = 0;
+
+  /** Total path duration in ms. When elapsed >= durationMs the server removes the fish. */
+  @type('float64')
+  durationMs: number = 10000;
 }
