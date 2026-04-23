@@ -2,7 +2,7 @@ import 'dotenv/config';
 import http from 'http';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { Server } from '@colyseus/core';
+import { Server, matchMaker } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { Pool } from 'pg';
 import Redis from 'ioredis';
@@ -75,6 +75,7 @@ async function main() {
       ? process.env.CORS_ORIGINS.split(',')
       : ['http://localhost:30090', 'http://localhost:8080'],
     methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'cache-control'],
   }));
   app.use(express.json());
 
@@ -102,9 +103,24 @@ async function main() {
 
   // --- HTTP + Colyseus ---
   const httpServer = http.createServer(app);
-  const gameServer = new Server({
-    transport: new WebSocketTransport({ server: httpServer }),
-  });
+  const corsOptions = {
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',')
+      : ['http://localhost:30090', 'http://localhost:8080'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'cache-control'],
+  };
+  // Colyseus handles OPTIONS at the raw HTTP level via DEFAULT_CORS_HEADERS —
+  // Express cors middleware doesn't reach it. Override the header directly.
+  (matchMaker.controller as Record<string, unknown>)['DEFAULT_CORS_HEADERS'] = {
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, cache-control',
+    'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Max-Age': '2592000',
+  };
+  const transport = new WebSocketTransport({ server: httpServer });
+  const gameServer = new Server({ transport });
 
   gameServer.define('fishing_room', GameRoom);
 
