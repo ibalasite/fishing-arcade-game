@@ -130,7 +130,7 @@ PYEOF
 
   # Inject game scene setup into bundle.js (director event approach — no ccclass needed)
   local BUNDLE_JS="$CLIENT_DIR/build/web-desktop/src/chunks/bundle.js"
-  if [ -f "$BUNDLE_JS" ] && ! grep -q "FishingArcadeGame_v3" "$BUNDLE_JS"; then
+  if [ -f "$BUNDLE_JS" ] && ! grep -q "FishingArcadeGame_v4" "$BUNDLE_JS"; then
     log "Injecting game scene setup into bundle.js..."
     BUNDLE_JS_PATH="$BUNDLE_JS" python3 << 'PYEOF'
 import os
@@ -150,8 +150,8 @@ else:
 
 injection = r"""
 
-// ── FishingArcadeGame_v3 — Full Game Implementation ───────────────────────────
-(function FishingArcadeGame_v3() {
+// ── FishingArcadeGame_v4 — Target Lock + Hit FX + SFX + Gold Deduct ──────────
+(function FishingArcadeGame_v4() {
   if (typeof cc === 'undefined' || !cc.director) return;
   if (window._FAG_INIT) return;
   window._FAG_INIT = true;
@@ -169,7 +169,9 @@ injection = r"""
     aimLineGfx:null, cannonNodes:[], cannonStates:{},
     canvasRef:null, waitingOverlay:null,
     disposed:true, _updateHandler:null, _jackpotPoll:null,
-    _prevJackpot:0, _jpRoller:null
+    _prevJackpot:0, _jpRoller:null,
+    targetFishId:null, lockRingGfx:null,
+    audioCtx:null, lastShotFishId:null
   };
   window._g = g;
 
@@ -260,19 +262,16 @@ injection = r"""
     gfx.fillColor=col(220,50,50); gfx.rect(-70,-8,140*pct,16); gfx.fill();
   }
 
-  // ── Cannon with rotatable barrel ────────────────────────────────────────────
   function mkCannonNode(parent,slot,isLocal){
     var pos=SLOT_POS[slot];
     var n=new cc.Node('cannon_'+slot); n.layer=cc.Layers.Enum.UI_2D; parent.addChild(n);
     n.setPosition(pos[0],pos[1],0); n.addComponent(cc.UITransformComponent).setContentSize(130,130);
-    // Base platform
     var baseN=new cc.Node('base'); baseN.layer=cc.Layers.Enum.UI_2D; n.addChild(baseN);
     baseN.addComponent(cc.UITransformComponent).setContentSize(80,80);
     var bGfx=baseN.addComponent(cc.Graphics);
     bGfx.fillColor=isLocal?col(255,200,0,230):col(80,120,180,200);
     bGfx.circle(0,0,30); bGfx.fill();
     bGfx.strokeColor=col(255,255,255,180); bGfx.lineWidth=3; bGfx.circle(0,0,30); bGfx.stroke();
-    // Rotatable barrel child node
     var barrelN=new cc.Node('barrel'); barrelN.layer=cc.Layers.Enum.UI_2D; n.addChild(barrelN);
     barrelN.addComponent(cc.UITransformComponent).setContentSize(80,20);
     var rGfx=barrelN.addComponent(cc.Graphics);
@@ -280,7 +279,6 @@ injection = r"""
     rGfx.rect(4,-7,50,14); rGfx.fill();
     rGfx.strokeColor=col(90,90,130,200); rGfx.lineWidth=1;
     rGfx.rect(4,-7,50,14); rGfx.stroke();
-    // Default barrel direction: toward screen center
     var dx=-pos[0],dy=-pos[1];
     barrelN.angle=Math.atan2(dy,dx)*180/Math.PI;
     n._barrel=barrelN; n._pos=pos; n._slot=slot;
@@ -289,14 +287,12 @@ injection = r"""
     return n;
   }
 
-  // Rotate cannon barrel to face (toX, toY) world coords
   function aimCannon(slot,toX,toY){
     var cn=g.cannonNodes[slot]; if(!cn||!cn._barrel) return;
     var pos=SLOT_POS[slot];
     cn._barrel.angle=Math.atan2(toY-pos[1],toX-pos[0])*180/Math.PI;
   }
 
-  // Muzzle flash at actual fire direction
   function animateCannonFire(slot,toX,toY){
     if(!g.bulletLayer||!g.cannonNodes[slot]) return;
     var pos=SLOT_POS[slot];
@@ -320,7 +316,6 @@ injection = r"""
     setTimeout(function(){g.cannonStates[slot]='IDLE';},380);
   }
 
-  // ── Dashed aim line ──────────────────────────────────────────────────────────
   function drawAimLine(fx,fy,tx,ty){
     if(!g.aimLineGfx) return;
     g.aimLineGfx.clear();
@@ -337,7 +332,6 @@ injection = r"""
   }
   function clearAimLine(){if(g.aimLineGfx)g.aimLineGfx.clear();}
 
-  // ── Jackpot number roller (ease-in-out animation) ────────────────────────────
   function rollJackpot(newVal){
     if(!g.hudRefs) return;
     var lbl=g.hudRefs.jackpotLbl;
@@ -361,6 +355,119 @@ injection = r"""
     var gfx=n.addComponent(cc.Graphics); gfx.fillColor=col(255,255,100); gfx.circle(0,0,5); gfx.fill();
     var dx=toX-fromX,dy=toY-fromY,d=Math.sqrt(dx*dx+dy*dy)||1,spd=900;
     g.bullets.push({n:n,sx:fromX,sy:fromY,vx:dx/d*spd,vy:dy/d*spd,t0:Date.now(),life:d/spd*1000});
+  }
+
+  // ── NEW: Web Audio SFX ────────────────────────────────────────────────────────
+  function initAudio(){
+    if(g.audioCtx) return;
+    try{g.audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+  }
+
+  function playShootSfx(){
+    try{
+      var ctx=g.audioCtx; if(!ctx) return;
+      if(ctx.state==='suspended') ctx.resume();
+      var osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type='sawtooth';
+      osc.frequency.setValueAtTime(700,ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120,ctx.currentTime+0.09);
+      gain.gain.setValueAtTime(0.22,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.1);
+      osc.start(); osc.stop(ctx.currentTime+0.1);
+    }catch(e){}
+  }
+
+  function playHitSfx(){
+    try{
+      var ctx=g.audioCtx; if(!ctx) return;
+      if(ctx.state==='suspended') ctx.resume();
+      var sz=Math.floor(ctx.sampleRate*0.18);
+      var buf=ctx.createBuffer(1,sz,ctx.sampleRate);
+      var dat=buf.getChannelData(0);
+      for(var i=0;i<sz;i++) dat[i]=(Math.random()*2-1)*Math.pow(1-i/sz,1.5);
+      var src=ctx.createBufferSource(); src.buffer=buf;
+      var gain=ctx.createGain();
+      gain.gain.setValueAtTime(0.45,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.18);
+      var filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=1100;
+      src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+      src.start(); src.stop(ctx.currentTime+0.18);
+    }catch(e){}
+  }
+
+  // ── NEW: Hit explosion effect ─────────────────────────────────────────────────
+  function spawnHitEffect(x,y,big){
+    if(!g.bulletLayer) return;
+    var n=new cc.Node('hit'); n.layer=cc.Layers.Enum.UI_2D; g.bulletLayer.addChild(n);
+    n.setPosition(x,y,0); n.addComponent(cc.UITransformComponent).setContentSize(220,220);
+    var gfx=n.addComponent(cc.Graphics);
+    var start=Date.now(),dur=big?580:320,maxR=big?72:36;
+    var iv=setInterval(function(){
+      var el=Date.now()-start;
+      if(el>=dur||!n.parent){clearInterval(iv);if(n.parent)n.destroy();return;}
+      var t=el/dur,ease=1-(1-t)*(1-t);
+      var r1=maxR*ease,alp=Math.round(255*(1-t));
+      gfx.clear();
+      gfx.fillColor=col(255,180+Math.round(75*(1-t)),30,Math.round(alp*0.55));
+      gfx.circle(0,0,r1); gfx.fill();
+      gfx.fillColor=col(255,255,220,Math.round(alp*0.9));
+      gfx.circle(0,0,r1*0.42); gfx.fill();
+      gfx.strokeColor=col(255,130,40,alp);
+      gfx.lineWidth=big?5:3;
+      gfx.circle(0,0,r1+7); gfx.stroke();
+    },16);
+  }
+
+  // ── NEW: Floating gold deduction text ────────────────────────────────────────
+  function spawnGoldDeduct(x,y,amount){
+    if(!g.canvasRef) return;
+    var n=mkLabel(g.canvasRef,'-'+amount.toLocaleString(),28,x,y,col(255,80,80),180);
+    var lbl=n.getComponent(cc.Label);
+    var start=Date.now(),dur=900;
+    var iv=setInterval(function(){
+      var el=Date.now()-start;
+      if(el>=dur||!n.parent){clearInterval(iv);if(n.parent)n.destroy();return;}
+      var t=el/dur;
+      n.setPosition(x,y+55*t,0);
+      if(lbl) lbl.color=col(255,80,80,Math.round(255*(1-t)));
+    },16);
+  }
+
+  // ── NEW: Auto-lock biggest alive fish ────────────────────────────────────────
+  function autoLockBiggestFish(){
+    var bestId=null,bestScore=-1;
+    Object.keys(g.fish).forEach(function(fid){
+      var fd=g.fish[fid]; if(!fd||!fd.alive) return;
+      var score=(fd.rewardMultiplier||1)+(fd.fishType==='boss'?100:fd.fishType==='elite'?10:0);
+      if(score>bestScore){bestScore=score;bestId=fid;}
+    });
+    g.targetFishId=bestId;
+  }
+
+  // ── NEW: Draw pulsing lock ring (called every frame in update loop) ──────────
+  function drawLockRing(){
+    if(!g.lockRingGfx) return;
+    g.lockRingGfx.clear();
+    if(!g.targetFishId) return;
+    var fn_=g.fishNodes[g.targetFishId],fd=g.fish[g.targetFishId];
+    if(!fn_||!fd||!fd.alive){g.targetFishId=null;return;}
+    var pos=fn_.getPosition();
+    var baseR=fd.fishType==='boss'?122:fd.fishType==='elite'?70:52;
+    var pulse=0.6+0.4*Math.sin(Date.now()/180);
+    var alp=Math.round(220*pulse);
+    g.lockRingGfx.strokeColor=col(255,60,60,alp);
+    g.lockRingGfx.lineWidth=3.5;
+    g.lockRingGfx.circle(pos.x,pos.y,baseR+12); g.lockRingGfx.stroke();
+    var br=baseR+12,bl=15;
+    var corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
+    g.lockRingGfx.lineWidth=4;
+    g.lockRingGfx.strokeColor=col(255,110,110,240);
+    for(var ci=0;ci<4;ci++){
+      var cx=pos.x+corners[ci][0]*br,cy=pos.y+corners[ci][1]*br;
+      g.lockRingGfx.moveTo(cx,cy); g.lockRingGfx.lineTo(cx-corners[ci][0]*bl,cy); g.lockRingGfx.stroke();
+      g.lockRingGfx.moveTo(cx,cy); g.lockRingGfx.lineTo(cx,cy-corners[ci][1]*bl); g.lockRingGfx.stroke();
+    }
   }
 
   function buildHUD(canvas){
@@ -431,6 +538,7 @@ injection = r"""
                 if(nd&&nd.parent)nd.destroy();
                 if(g.fishNodes)delete g.fishNodes[key];
                 if(g.fish)delete g.fish[key];
+                if(g.targetFishId===key){g.targetFishId=null;autoLockBiggestFish();}
               });
             }
           }
@@ -454,12 +562,22 @@ injection = r"""
         });
         room.onMessage('shoot_result',function(m){
           if(m.gold!==undefined&&g.hudRefs){g.gold=m.gold;g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();}
+          if(m.hit&&g.lastShotFishId){
+            var hfd=g.fish[g.lastShotFishId];
+            if(hfd) spawnHitEffect(hfd.posX||0,hfd.posY||0,false);
+            playHitSfx();
+          }
         });
         room.onMessage('fish_killed',function(m){
-          if(!m.reward||!g.canvasRef) return;
-          g.gold+=m.reward; if(g.hudRefs)g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();
-          var fx=mkLabel(g.canvasRef,'+'+m.reward,38,(Math.random()-.5)*300,(Math.random()-.5)*150,col(255,240,50),180);
-          setTimeout(function(){if(fx&&fx.parent)fx.destroy();},1200);
+          var reward=m.payout||m.reward||0;
+          if(reward&&g.canvasRef){
+            var fx=mkLabel(g.canvasRef,'+'+reward,38,(Math.random()-.5)*300,(Math.random()-.5)*150,col(255,240,50),180);
+            setTimeout(function(){if(fx&&fx.parent)fx.destroy();},1200);
+          }
+          var kfd=g.fish[m.fishId];
+          if(kfd) spawnHitEffect(kfd.posX||0,kfd.posY||0,true);
+          playHitSfx();
+          if(g.targetFishId===m.fishId){g.targetFishId=null;setTimeout(autoLockBiggestFish,150);}
         });
         room.onMessage('jackpot_won',function(m){
           if(!g.canvasRef) return;
@@ -481,16 +599,18 @@ injection = r"""
   function setupGameRoom(canvas){
     g.disposed=false; g.fishNodes={}; g.fish={}; g.bullets=[];
     g.canvasRef=canvas; g._prevJackpot=0; g.cannonStates={};
+    g.targetFishId=null; g.lastShotFishId=null; g.lockRingGfx=null;
     buildOcean(canvas);
     g.fishLayer=new cc.Node('FishL'); g.fishLayer.layer=cc.Layers.Enum.UI_2D; canvas.addChild(g.fishLayer);
     g.fishLayer.addComponent(cc.UITransformComponent).setContentSize(1280,720);
     g.bulletLayer=new cc.Node('BltL'); g.bulletLayer.layer=cc.Layers.Enum.UI_2D; canvas.addChild(g.bulletLayer);
     g.bulletLayer.addComponent(cc.UITransformComponent).setContentSize(1280,720);
-    // Aim line layer (above bullets, below cannons)
+    var lockLayerN=new cc.Node('LockL'); lockLayerN.layer=cc.Layers.Enum.UI_2D; canvas.addChild(lockLayerN);
+    lockLayerN.addComponent(cc.UITransformComponent).setContentSize(1280,720);
+    g.lockRingGfx=lockLayerN.addComponent(cc.Graphics);
     var aimLayerN=new cc.Node('AimL'); aimLayerN.layer=cc.Layers.Enum.UI_2D; canvas.addChild(aimLayerN);
     aimLayerN.addComponent(cc.UITransformComponent).setContentSize(1280,720);
     g.aimLineGfx=aimLayerN.addComponent(cc.Graphics);
-    // Cannon layer
     var canL=new cc.Node('CanL'); canL.layer=cc.Layers.Enum.UI_2D; canvas.addChild(canL);
     canL.addComponent(cc.UITransformComponent).setContentSize(1280,720);
     g.cannonNodes=[];
@@ -499,16 +619,16 @@ injection = r"""
     g.waitingOverlay=mkWaitOverlay(canvas);
     mkBtn(canvas,'BACK',22,-570,315,col(40,40,80,200),col(220,220,220),110,40)
       .on(cc.Node.EventType.TOUCH_END,function(){
-        g.disposed=true;
+        g.disposed=true; g.targetFishId=null; g.lockRingGfx=null;
         if(g._updateHandler){cc.director.off('director_after_update',g._updateHandler);g._updateHandler=null;}
         if(g._jackpotPoll){clearInterval(g._jackpotPoll);g._jackpotPoll=null;}
         if(g._jpRoller){clearInterval(g._jpRoller);g._jpRoller=null;}
         if(g.room){g.room.leave();g.room=null;}
         cc.director.loadScene('MainMenu');
       });
-    // Touch: aim line on drag, fire on release
     var _aimActive=false;
     canvas.on(cc.Node.EventType.TOUCH_START,function(evt){
+      initAudio();
       if(!g.room) return;
       var loc=evt.getUILocation();
       var wx=loc.x-640,wy=loc.y-360;
@@ -535,17 +655,32 @@ injection = r"""
       var sp=SLOT_POS[g.localSlot]||[0,0];
       var dx=wx-sp[0],dy=wy-sp[1];
       if(dx*dx+dy*dy<3600) return;
-      var angle=Math.atan2(dy,dx)*180/Math.PI;
       var nearFishId=null,nearDist=Infinity;
-      if(g.fish){Object.keys(g.fish).forEach(function(fid){var fd=g.fish[fid];if(!fd||!fd.alive)return;var fdx=(fd.posX||0)-wx,fdy=(fd.posY||0)-wy;var d=fdx*fdx+fdy*fdy;if(d<nearDist){nearDist=d;nearFishId=fid;}});}
+      if(g.fish){Object.keys(g.fish).forEach(function(fid){
+        var fd=g.fish[fid]; if(!fd||!fd.alive) return;
+        var fdx=(fd.posX||0)-wx,fdy=(fd.posY||0)-wy;
+        var d=fdx*fdx+fdy*fdy;
+        if(d<nearDist){nearDist=d;nearFishId=fid;}
+      });}
+      if(nearFishId) g.targetFishId=nearFishId;
+      var fireTarget=g.targetFishId;
+      if(!fireTarget) return;
+      var tfd=g.fish[fireTarget];
+      var toX=tfd?(tfd.posX||0):wx, toY=tfd?(tfd.posY||0):wy;
+      aimCannon(g.localSlot,toX,toY);
       var bId='b'+Date.now()+Math.random().toString(36).slice(2,7);
-      var betAmt=Math.max(1,(g.cannonMul||1))*100;
-      if(nearFishId)g.room.send('shoot',{bulletId:bId,fishId:nearFishId,betAmount:betAmt,cannonMultiplier:g.cannonMul||1});
-      fireBullet(sp[0],sp[1],wx,wy);
-      animateCannonFire(g.localSlot,wx,wy);
+      var betAmt=Math.max(1,g.cannonMul||1)*100;
+      g.lastShotFishId=fireTarget;
+      g.room.send('shoot',{bulletId:bId,fishId:fireTarget,betAmount:betAmt,cannonMultiplier:g.cannonMul||1});
+      fireBullet(sp[0],sp[1],toX,toY);
+      animateCannonFire(g.localSlot,toX,toY);
+      playShootSfx();
+      var prevGold=g.gold;
+      g.gold=Math.max(0,g.gold-betAmt);
+      if(g.gold!==prevGold&&g.hudRefs)g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();
+      spawnGoldDeduct(sp[0]+20,sp[1]+30,betAmt);
     });
     canvas.on(cc.Node.EventType.TOUCH_CANCEL,function(){clearAimLine();_aimActive=false;});
-    // Frame update: fish movement + bullet movement
     var upd=function(){
       if(g.disposed) return;
       var now=Date.now();
@@ -564,9 +699,9 @@ injection = r"""
         var s=el/1000; b.n.setPosition(b.sx+b.vx*s,b.sy+b.vy*s,0); alive.push(b);
       }
       g.bullets=alive;
+      drawLockRing();
     };
     cc.director.on('director_after_update',upd); g._updateHandler=upd;
-    // Jackpot poll fallback (in case server WebSocket doesn't push updates)
     g._jackpotPoll=setInterval(function(){
       if(g.disposed){clearInterval(g._jackpotPoll);return;}
       fetch(SERVER+'/api/v1/game/jackpot/pool').then(function(r){return r.json();})
@@ -636,6 +771,7 @@ injection = r"""
     else if(nm==='GameRoom')setupGameRoom(cv);
   });
 })();
+
 """
 
 new_src = base + injection + '\n\n} }; });'
