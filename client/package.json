@@ -1,0 +1,13 @@
+{
+  "name": "fishing-arcade-game-client",
+  "version": "1.0.0",
+  "description": "Fishing Arcade Game — Cocos Creator 3.8.7 web client",
+  "engines": {
+    "cocos-creator": "3.8.0"
+  },
+  "dependencies": {},
+  "creator": {
+    "version": "3.8.7"
+  },
+  "uuid": "3c9b0720-dc40-4836-b9a2-a3a1d8775dcb"
+}
