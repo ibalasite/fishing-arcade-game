@@ -164,6 +164,7 @@ export class GameRoom extends Room<GameState> {
     this.onMessage<ShootMessage>('shoot', this._handleShoot.bind(this));
     this.onMessage<SetMultiplierMessage>('set_multiplier', this._handleSetMultiplier.bind(this));
     this.onMessage<unknown>('start_game', this._handleStartGame.bind(this));
+    this.onMessage<unknown>('reload_gold', this._handleReloadGold.bind(this));
 
     // 20Hz state tick
     this._tickInterval = setInterval(() => this._tick(), TICK_INTERVAL_MS);
@@ -287,6 +288,14 @@ export class GameRoom extends Room<GameState> {
     }).finally(() => {
       bullets.delete(bulletId);
     });
+  }
+
+  async _handleReloadGold(client: Client, _data: unknown): Promise<void> {
+    if (!this._checkRateLimit(client.sessionId, 'reload_gold', 5)) return;
+    const player = this.state.players.get(client.sessionId);
+    if (!player) return;
+    const userId = (client.auth as JwtPayload).userId;
+    player.gold = await this._walletService.getGold(userId);
   }
 
   _handleSetMultiplier(client: Client, data: SetMultiplierMessage): void {

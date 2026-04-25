@@ -740,6 +740,8 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
                 g.gold=j.data.gold;
                 if(g.hudRefs)g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();
               }
+              // Sync room state — topup only updates DB, room state player.gold is stale
+              if(g.room) g.room.send('reload_gold',{});
               hideTopupOverlay();
               if(g.autoFireCb) startAutoFire();
             }).catch(function(){
