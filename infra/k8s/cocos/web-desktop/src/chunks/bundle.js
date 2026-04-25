@@ -490,6 +490,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
         room.onMessage('boss_spawned',function(){if(g.hudRefs)g.hudRefs.stateLbl.string='BOSS FIGHT!';});
         room.onMessage('fish_escaped',function(){});
         room.onLeave(function(code){
+          g.room=null; // clear ref so startAutoFire guard stops the interval
           if(g.disposed||code===4000) return;
           var d=NET._delays[Math.min(NET._retries++,NET._delays.length-1)];
           setTimeout(function(){if(!g.disposed)NET.connect(cbOk,cbErr);},d);
