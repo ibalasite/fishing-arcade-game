@@ -17,7 +17,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 
   var g = {
     token:null, userId:null, nickname:'Guest', gold:0,
-    room:null, localSlot:-1, cannonMul:1,
+    room:null, localSlot:-1, cannonMul:1, autoFireCb:false,
     fishNodes:{}, fish:{}, bullets:[],
     hudRefs:null, fishLayer:null, bulletLayer:null,
     aimLineGfx:null, cannonNodes:[], cannonStates:{},
@@ -371,6 +371,21 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     return{node:ov,slbl:slbl};
   }
 
+  // autoLockBest lives in outer scope so NET.connect's onRemove can call it
+  function autoLockBest(){
+    var bestReward=-1, tied=[];
+    if(g.fishNodes){
+      Object.keys(g.fishNodes).forEach(function(fid){
+        var fd=g.fish[fid]; if(!fd||!fd.alive) return;
+        var fn_=g.fishNodes[fid]; if(!fn_||!fn_.parent) return;
+        var r=fd.rewardMultiplier||1;
+        if(r>bestReward){bestReward=r;tied=[fid];}
+        else if(r===bestReward){tied.push(fid);}
+      });
+    }
+    if(tied.length>0) g.targetFishId=tied[Math.floor(Math.random()*tied.length)];
+  }
+
   var NET={
     _retries:0, _delays:[1000,2000,4000],
     auth:function(){
@@ -410,7 +425,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
                 // When auto-fire is on and the locked fish is gone, auto-lock the next biggest
                 if(g.targetFishId===key){
                   g.targetFishId=null;
-                  if(_autoFireCb) autoLockBest();
+                  if(g.autoFireCb) autoLockBest();
                 }
               });
             }
@@ -519,31 +534,17 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 
     // ── v5: Long-press lock / short-tap shoot / auto-fire ──────────────────────
     var _pressTimer=null, _pressStart=null, _pressMoved=false;
-    var _autoFireIv=null, _autoFireCb=false;
+    var _autoFireIv=null;
+    g.autoFireCb=false; // reset each time GameRoom scene loads
 
     function stopAutoFire(){
       if(_autoFireIv){clearInterval(_autoFireIv);_autoFireIv=null;}
     }
 
-    // Pick the alive fish with highest rewardMultiplier; ties broken randomly
-    function autoLockBest(){
-      var bestReward=-1, tied=[];
-      if(g.fishNodes){
-        Object.keys(g.fishNodes).forEach(function(fid){
-          var fd=g.fish[fid]; if(!fd||!fd.alive) return;
-          var fn_=g.fishNodes[fid]; if(!fn_||!fn_.parent) return;
-          var r=fd.rewardMultiplier||1;
-          if(r>bestReward){bestReward=r;tied=[fid];}
-          else if(r===bestReward){tied.push(fid);}
-        });
-      }
-      if(tied.length>0) g.targetFishId=tied[Math.floor(Math.random()*tied.length)];
-    }
-
     function startAutoFire(){
       if(_autoFireIv) return;
       _autoFireIv=setInterval(function(){
-        if(!g.room||g.disposed||!_autoFireCb){stopAutoFire();return;}
+        if(!g.room||g.disposed||!g.autoFireCb){stopAutoFire();return;}
         // If no lock, auto-pick the biggest fish first
         if(!g.targetFishId||!g.fish[g.targetFishId]||!g.fish[g.targetFishId].alive){
           autoLockBest();
@@ -554,6 +555,8 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 
     function doShootAtLocked(){
       if(!g.room||g.disposed) return;
+      var betAmt=Math.max(1,g.cannonMul||1)*100;
+      if(g.gold<betAmt){showTopupOverlay();return;}
       var tfd=g.targetFishId&&g.fish[g.targetFishId];
       if(!tfd||!tfd.alive){g.targetFishId=null;stopAutoFire();return;}
       var sp=SLOT_POS[g.localSlot]||[0,0];
@@ -562,7 +565,6 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       var toX=_tfp?_tfp.x:(tfd.posX||0),toY=_tfp?_tfp.y:(tfd.posY||0);
       aimCannon(g.localSlot,toX,toY);
       var bId='b'+Date.now()+Math.random().toString(36).slice(2,7);
-      var betAmt=Math.max(1,g.cannonMul||1)*100;
       g.lastShotFishId=g.targetFishId;
       g.room.send('shoot',{bulletId:bId,fishId:g.targetFishId,betAmount:betAmt,cannonMultiplier:g.cannonMul||1});
       fireBullet(sp[0],sp[1],toX,toY);
@@ -576,6 +578,8 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 
     function doShootAtPos(wx,wy){
       if(!g.room||g.disposed) return;
+      var betAmt=Math.max(1,g.cannonMul||1)*100;
+      if(g.gold<betAmt){showTopupOverlay();return;}
       var sp=SLOT_POS[g.localSlot]||[0,0];
       var fireTarget=g.targetFishId&&g.fish[g.targetFishId]&&g.fish[g.targetFishId].alive
         ?g.targetFishId:null;
@@ -606,7 +610,6 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       if(!fireTarget) return;
       aimCannon(g.localSlot,toX,toY);
       var bId='b'+Date.now()+Math.random().toString(36).slice(2,7);
-      var betAmt=Math.max(1,g.cannonMul||1)*100;
       g.lastShotFishId=fireTarget;
       g.room.send('shoot',{bulletId:bId,fishId:fireTarget,betAmount:betAmt,cannonMultiplier:g.cannonMul||1});
       fireBullet(sp[0],sp[1],toX,toY);
@@ -637,7 +640,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       } else {
         // Lock this fish (or switch lock from another)
         g.targetFishId=nearFishId;
-        if(_autoFireCb) startAutoFire();
+        if(g.autoFireCb) startAutoFire();
       }
     }
 
@@ -651,7 +654,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       cbGfx.clear();
       cbGfx.strokeColor=col(200,200,255,220); cbGfx.lineWidth=2;
       cbGfx.rect(-58,-10,20,20); cbGfx.stroke();
-      if(_autoFireCb){
+      if(g.autoFireCb){
         cbGfx.fillColor=col(80,200,80,230); cbGfx.rect(-57,-9,18,18); cbGfx.fill();
         cbGfx.strokeColor=col(255,255,255,255); cbGfx.lineWidth=2.5;
         cbGfx.moveTo(-54,-1); cbGfx.lineTo(-50,6); cbGfx.lineTo(-41,-6); cbGfx.stroke();
@@ -660,10 +663,83 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     mkLabel(cbNode,'連發',17,32,0,col(220,230,255),70);
     redrawCb();
     cbNode.on(cc.Node.EventType.TOUCH_END,function(){
-      _autoFireCb=!_autoFireCb; redrawCb();
-      if(_autoFireCb&&g.targetFishId) startAutoFire();
-      else if(!_autoFireCb) stopAutoFire();
+      g.autoFireCb=!g.autoFireCb; redrawCb();
+      if(g.autoFireCb&&g.targetFishId) startAutoFire();
+      else if(!g.autoFireCb) stopAutoFire();
     });
+
+    // ── Topup overlay — shown when gold runs out, closed after purchase ────────
+    var _topupOverlay=null;
+
+    function hideTopupOverlay(){
+      if(_topupOverlay&&_topupOverlay.parent){_topupOverlay.destroy();_topupOverlay=null;}
+    }
+
+    function showTopupOverlay(){
+      if(_topupOverlay) return;
+      stopAutoFire();
+
+      var ov=new cc.Node('topup_ov'); ov.layer=cc.Layers.Enum.UI_2D; canvas.addChild(ov);
+      ov.setPosition(0,0,0);
+      ov.addComponent(cc.UITransformComponent).setContentSize(1280,720);
+      var bgG=ov.addComponent(cc.Graphics);
+      bgG.fillColor=col(0,0,0,185); bgG.rect(-640,-360,1280,720); bgG.fill();
+      _topupOverlay=ov;
+
+      // panel
+      var pn=new cc.Node('pn'); pn.layer=cc.Layers.Enum.UI_2D; ov.addChild(pn);
+      pn.setPosition(0,0,0);
+      pn.addComponent(cc.UITransformComponent).setContentSize(460,400);
+      var png_=pn.addComponent(cc.Graphics);
+      png_.fillColor=col(15,25,55,245); png_.roundRect(-230,-200,460,400,20); png_.fill();
+      png_.strokeColor=col(90,130,255,200); png_.lineWidth=2; png_.roundRect(-230,-200,460,400,20); png_.stroke();
+
+      mkLabel(pn,'金幣不足',32,0,152,col(255,215,50),420);
+      mkLabel(pn,'請儲值繼續遊戲',17,0,110,col(170,195,255),420);
+      mkLabel(pn,'目前餘額：'+g.gold.toLocaleString()+' Gold',15,0,76,col(140,165,210),420);
+
+      // package buttons
+      var PKGS=[['＋ 10,000 金幣',10000,col(40,100,210,230)],
+                ['＋ 50,000 金幣',50000,col(50,130,60,230)],
+                ['＋ 100,000 金幣',100000,col(150,60,180,230)]];
+      PKGS.forEach(function(pk,i){
+        var btn=new cc.Node('pk'+i); btn.layer=cc.Layers.Enum.UI_2D; pn.addChild(btn);
+        btn.setPosition(0,18-i*72,0);
+        btn.addComponent(cc.UITransformComponent).setContentSize(370,56);
+        var bgg=btn.addComponent(cc.Graphics);
+        bgg.fillColor=pk[2]; bgg.roundRect(-185,-28,370,56,12); bgg.fill();
+        mkLabel(btn,pk[0],19,0,0,col(255,255,255),350);
+        (function(amount){
+          btn.on(cc.Node.EventType.TOUCH_END,function(){
+            if(!g.token) return;
+            fetch(SERVER+'/api/v1/game/topup',{
+              method:'POST',
+              headers:{'Content-Type':'application/json','Authorization':'Bearer '+g.token},
+              body:JSON.stringify({amount:amount})
+            }).then(function(r){return r.json();}).then(function(j){
+              if(j.data&&j.data.gold!==undefined){
+                g.gold=j.data.gold;
+                if(g.hudRefs)g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();
+              }
+              hideTopupOverlay();
+              if(g.autoFireCb) startAutoFire();
+            }).catch(function(){hideTopupOverlay();});
+          });
+        })(pk[1]);
+      });
+
+      // cancel
+      var cx=new cc.Node('cx'); cx.layer=cc.Layers.Enum.UI_2D; pn.addChild(cx);
+      cx.setPosition(0,-168,0);
+      cx.addComponent(cc.UITransformComponent).setContentSize(200,44);
+      var cxg=cx.addComponent(cc.Graphics);
+      cxg.fillColor=col(70,70,90,180); cxg.roundRect(-100,-22,200,44,10); cxg.fill();
+      mkLabel(cx,'取消',16,0,0,col(180,180,205),180);
+      cx.on(cc.Node.EventType.TOUCH_END,function(){
+        hideTopupOverlay();
+        if(g.autoFireCb) startAutoFire();
+      });
+    }
 
     // ── Touch handlers (v5) ───────────────────────────────────────────────────
     canvas.on(cc.Node.EventType.TOUCH_START,function(evt){

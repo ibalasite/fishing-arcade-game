@@ -65,14 +65,13 @@ export class FishSpawner {
   // ---------------------------------------------------------------------------
 
   start(): void {
-    // Seed with a full initial wave so screen is never empty from the start
-    for (let i = 0; i < 8; i++) this._spawnNormal();
+    // Fill to maxNormal immediately so screen is full from the first frame
+    this._refillNormal();
     for (let i = 0; i < 3; i++) this._spawnElite();
 
+    // Interval is a safety-net top-up (primary fill happens in _removeFish)
     this._normalTimer = setInterval(() => {
-      if (!this._disposed && this._normalCount < this._cfg.maxNormal) {
-        this._spawnNormal();
-      }
+      if (!this._disposed) this._refillNormal();
     }, this._cfg.normalIntervalMs);
 
     this._eliteTimer = setInterval(() => {
@@ -222,8 +221,8 @@ export class FishSpawner {
   // ---------------------------------------------------------------------------
 
   private _refillNormal(): void {
-    const MIN_NORMAL = 8;
-    while (!this._disposed && this._normalCount < MIN_NORMAL) this._spawnNormal();
+    // Always fill to maxNormal so the screen is never sparse
+    while (!this._disposed && this._normalCount < this._cfg.maxNormal) this._spawnNormal();
   }
 
   private _removeFish(fishId: string, escaped: boolean): void {

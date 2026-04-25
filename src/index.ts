@@ -11,7 +11,7 @@ import { GameRoom } from './rooms/GameRoom';
 import { db } from './utils/db';
 import { JackpotManager } from './engine/JackpotManager';
 import { DbClient, QueryResult } from './utils/db';
-import { signJwt } from './utils/auth';
+import { signJwt, verifyJwt } from './utils/auth';
 import { encrypt, hmac } from './utils/crypto';
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
@@ -145,6 +145,36 @@ async function main() {
       res.json({ data: { amount } });
     } catch (err) {
       res.status(500).json({ error: { code: 'JACKPOT_ERROR', message: String(err) } });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Gold top-up endpoint — JWT required, fixed package amounts only
+  // ---------------------------------------------------------------------------
+  const TOPUP_PACKAGES = new Set([10000, 50000, 100000]);
+
+  app.post('/api/v1/game/topup', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: { code: 'UNAUTHORIZED' } });
+      }
+      const payload = verifyJwt(authHeader.slice(7)) as { userId: string };
+      const amount = Number(req.body?.amount ?? 10000);
+      if (!TOPUP_PACKAGES.has(amount)) {
+        return res.status(400).json({ error: { code: 'INVALID_AMOUNT' } });
+      }
+      const result = await pool.query<{ gold: number }>(
+        `UPDATE user_wallets SET gold = gold + $1 WHERE user_id = $2 RETURNING gold`,
+        [amount, payload.userId],
+      );
+      if (!result.rows[0]) {
+        return res.status(404).json({ error: { code: 'WALLET_NOT_FOUND' } });
+      }
+      res.json({ data: { gold: result.rows[0].gold, added: amount } });
+    } catch (err) {
+      console.error('[Topup] error:', err);
+      res.status(500).json({ error: { code: 'TOPUP_ERROR', message: String(err) } });
     }
   });
 
