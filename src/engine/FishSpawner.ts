@@ -8,23 +8,19 @@ export type SpawnCallback   = (fish: FishState) => void;
 export type DespawnCallback = (fishId: string, escaped: boolean) => void;
 
 interface SpawnerConfig {
-  maxNormal:          number;
-  maxElite:           number;
-  normalIntervalMs:   number;
-  eliteIntervalMs:    number;
-  bossIntervalMs:     number;
-  eliteSpawnChance:   number;
-  screenW:            number;
-  screenH:            number;
+  maxNormal:       number;
+  normalIntervalMs: number;
+  bossIntervalMs:  number;
+  eliteThreshold:  number; // spawn elite when alive normals <= this value
+  screenW:         number;
+  screenH:         number;
 }
 
 const DEFAULT_CONFIG: SpawnerConfig = {
   maxNormal:        15,
-  maxElite:          5,
   normalIntervalMs: 1_500,
-  eliteIntervalMs:  8_000,
   bossIntervalMs:   60_000,
-  eliteSpawnChance:  0.70,
+  eliteThreshold:   2,   // spawn elite when ≤ 2 normal fish remain
   screenW:          1280,
   screenH:           720,
 };
@@ -34,19 +30,17 @@ const DEFAULT_CONFIG: SpawnerConfig = {
 // ---------------------------------------------------------------------------
 
 export class FishSpawner {
-  private _cfg:         SpawnerConfig;
-  private _fishMap:     MapSchema<FishState>;
-  private _onSpawn:     SpawnCallback;
-  private _onDespawn:   DespawnCallback;
+  private _cfg:        SpawnerConfig;
+  private _fishMap:    MapSchema<FishState>;
+  private _onSpawn:    SpawnCallback;
+  private _onDespawn:  DespawnCallback;
 
   private _normalTimer: ReturnType<typeof setInterval> | null = null;
-  private _eliteTimer:  ReturnType<typeof setInterval> | null = null;
   private _bossTimer:   ReturnType<typeof setInterval> | null = null;
   private _disposed     = false;
 
-  private _normalCount  = 0;
-  private _eliteCount   = 0;
-  private _bossActive   = false;
+  // Only bossActive needs explicit tracking — boss is managed externally via bossKilled()
+  private _bossActive = false;
 
   constructor(
     fishMap:   MapSchema<FishState>,
@@ -66,22 +60,14 @@ export class FishSpawner {
 
   start(): void {
     // Initial fill: spread fish across the full path so screen is populated immediately.
-    // Without pre-aging, all 15 fish start off-screen (t=0) and take seconds to enter view.
     this._refillNormal(true);
-    // Pre-age elite fish to mid-path so they appear on-screen right away
-    for (let i = 0; i < 3; i++) this._spawnElite(5_000 + Math.random() * 20_000);
+    // Pre-age 1 elite so players have an immediate high-value target.
+    this._spawnElite(5_000 + Math.random() * 15_000);
 
-    // Interval is a safety-net top-up (primary fill happens in _removeFish)
+    // Safety-net top-up (primary fill happens in tick + _removeFish)
     this._normalTimer = setInterval(() => {
       if (!this._disposed) this._refillNormal();
     }, this._cfg.normalIntervalMs);
-
-    this._eliteTimer = setInterval(() => {
-      if (!this._disposed && this._eliteCount < this._cfg.maxElite &&
-          Math.random() < this._cfg.eliteSpawnChance) {
-        this._spawnElite();
-      }
-    }, this._cfg.eliteIntervalMs);
 
     this._bossTimer = setInterval(() => {
       if (!this._disposed && !this._bossActive) this._spawnBoss();
@@ -89,7 +75,7 @@ export class FishSpawner {
   }
 
   /**
-   * Called every game tick (50 ms). Removes fish whose duration has elapsed.
+   * Called every game tick (50 ms). Removes escaped fish and triggers elite spawn.
    */
   tick(): void {
     if (this._disposed) return;
@@ -103,14 +89,23 @@ export class FishSpawner {
 
     for (const id of escaped) this._removeFish(id, true);
 
-    // Guarantee minimum floor every tick
+    // Always maintain normal fish floor
     this._refillNormal();
+
+    // Threshold trigger: when normals run low and no elite is on screen, spawn one.
+    // This creates the game loop: normals → low count → elite → killed → normals refill → repeat.
+    if (!this._bossActive) {
+      const aliveNormal = this._countAlive('normal');
+      const aliveElite  = this._countAlive('elite');
+      if (aliveNormal <= this._cfg.eliteThreshold && aliveElite === 0) {
+        this._spawnElite();
+      }
+    }
   }
 
   dispose(): void {
     this._disposed = true;
     if (this._normalTimer) clearInterval(this._normalTimer);
-    if (this._eliteTimer)  clearInterval(this._eliteTimer);
     if (this._bossTimer)   clearInterval(this._bossTimer);
   }
 
@@ -118,6 +113,18 @@ export class FishSpawner {
   bossKilled(fishId: string): void {
     this._bossActive = false;
     this._fishMap.delete(fishId);
+    // Refill normals after boss clears the screen
+    this._refillNormal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Live count — counts directly from _fishMap to stay in sync with external kills
+  // ---------------------------------------------------------------------------
+
+  private _countAlive(type: 'normal' | 'elite' | 'boss'): number {
+    let n = 0;
+    this._fishMap.forEach(f => { if (f.alive && f.fishType === type) n++; });
+    return n;
   }
 
   // ---------------------------------------------------------------------------
@@ -126,25 +133,23 @@ export class FishSpawner {
 
   private _spawnNormal(preAgeMs = 0): void {
     const duration = 22_000 + Math.random() * 13_000; // 22-35s
-    const speed    = 180   + Math.random() * 80;    // px/s
+    const speed    = 180   + Math.random() * 80;
     const fish     = this._create('normal', 1, 1, speed, duration, preAgeMs);
     this._fishMap.set(fish.fishId, fish);
     this._onSpawn(fish);
-    this._normalCount++;
   }
 
   private _spawnElite(preAgeMs = 0): void {
     const duration = 30_000 + Math.random() * 20_000; // 30-50s
     const speed    = 140    + Math.random() * 60;
-    const reward   = 2 + Math.floor(Math.random() * 4); // 2-5
+    const reward   = 2 + Math.floor(Math.random() * 4); // 2-5×
     const fish     = this._create('elite', 1, reward, speed, duration, preAgeMs);
     this._fishMap.set(fish.fishId, fish);
     this._onSpawn(fish);
-    this._eliteCount++;
   }
 
   private _spawnBoss(): void {
-    const hp   = 10 + Math.floor(Math.random() * 11); // 10-20
+    const hp   = 10 + Math.floor(Math.random() * 11); // 10-20 HP
     const fish = this._create('boss', hp, 20, 80, 60_000);
     this._bossActive = true;
     this._fishMap.set(fish.fishId, fish);
@@ -159,19 +164,19 @@ export class FishSpawner {
     duration: number,
     preAgeMs  = 0,
   ): FishState {
-    const fish         = new FishState();
-    fish.fishId        = crypto.randomUUID();
-    fish.fishType      = type;
-    fish.hp            = hp;
-    fish.maxHp         = hp;
-    fish.alive         = true;
+    const fish            = new FishState();
+    fish.fishId           = crypto.randomUUID();
+    fish.fishType         = type;
+    fish.hp               = hp;
+    fish.maxHp            = hp;
+    fish.alive            = true;
     fish.rewardMultiplier = reward;
-    fish.speed         = speed;
+    fish.speed            = speed;
     // Clamp preAge to 80% of duration so fish never arrive already-expired
-    fish.startTimeMs   = Date.now() - Math.min(preAgeMs, duration * 0.80);
-    fish.durationMs    = duration;
+    fish.startTimeMs      = Date.now() - Math.min(preAgeMs, duration * 0.80);
+    fish.durationMs       = duration;
 
-    const path = this._genPath(type);
+    const path    = this._genPath(type);
     fish.pathData = JSON.stringify(path);
     fish.posX     = path[0].x;
     fish.posY     = path[0].y;
@@ -190,9 +195,8 @@ export class FishSpawner {
 
     const sides: Array<'left' | 'right' | 'top' | 'bottom'> = ['left', 'right', 'top', 'bottom'];
     const entrySide = sides[Math.floor(Math.random() * 4)];
-    // Pick an exit side that isn't the entry side
-    const exits = sides.filter(s => s !== entrySide);
-    const exitSide = exits[Math.floor(Math.random() * 3)];
+    const exits     = sides.filter(s => s !== entrySide);
+    const exitSide  = exits[Math.floor(Math.random() * 3)];
 
     const edgePt = (side: string): BezierPoint => {
       switch (side) {
@@ -207,7 +211,6 @@ export class FishSpawner {
     const p0 = edgePt(entrySide);
     const p3 = edgePt(exitSide);
 
-    // Control points pull the path through the visible area
     const p1: BezierPoint = {
       x: p0.x * 0.25 + rng(-hw * 0.7, hw * 0.7),
       y: p0.y * 0.25 + rng(-hh * 0.7, hh * 0.7),
@@ -221,18 +224,14 @@ export class FishSpawner {
   }
 
   // ---------------------------------------------------------------------------
-  // Internal remove
+  // Internal remove (escaped fish only — killed fish are removed by GameRoom)
   // ---------------------------------------------------------------------------
 
   private _refillNormal(initialFill = false): void {
-    while (!this._disposed && this._normalCount < this._cfg.maxNormal) {
-      // initialFill: spread fish randomly across their full path range so all
-      // stages of traversal are represented from the very first frame.
-      // Replacement fish: pre-age 3-10s so they enter the visible area quickly
-      // rather than appearing at the off-screen entry edge.
+    while (!this._disposed && this._countAlive('normal') < this._cfg.maxNormal) {
       const preAge = initialFill
-        ? Math.random() * 22_000          // 0–22s: covers the full normal path
-        : 3_000 + Math.random() * 7_000;  // 3–10s: enters screen within seconds
+        ? Math.random() * 22_000          // 0–22s: spread across full path on startup
+        : 3_000 + Math.random() * 7_000;  // 3–10s: enters visible area quickly
       this._spawnNormal(preAge);
     }
   }
@@ -241,14 +240,11 @@ export class FishSpawner {
     const fish = this._fishMap.get(fishId);
     if (!fish) return;
 
-    if (fish.fishType === 'normal') this._normalCount = Math.max(0, this._normalCount - 1);
-    else if (fish.fishType === 'elite') this._eliteCount = Math.max(0, this._eliteCount - 1);
-    else if (fish.fishType === 'boss')  this._bossActive = false;
+    if (fish.fishType === 'boss') this._bossActive = false;
 
     this._fishMap.delete(fishId);
     this._onDespawn(fishId, escaped);
 
-    // Immediately replace to avoid empty screen — don't wait for next tick
     this._refillNormal();
   }
 }
