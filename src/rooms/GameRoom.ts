@@ -420,6 +420,10 @@ export class GameRoom extends Room<GameState> {
       return;
     }
 
+    // Broadcast the shot immediately so OTHER clients render bullet + cannon anim.
+    // Use { except: client } so the shooter doesn't get an echo (they already fired locally).
+    this.broadcast('player_shot', { slotIndex: player.slotIndex, fishId }, { except: client });
+
     // 3. Debit bet amount (atomic, via WalletService)
     await this._walletService.debitGold(userId, betAmount);
     player.gold -= betAmount;

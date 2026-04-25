@@ -489,6 +489,19 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
         });
         room.onMessage('boss_spawned',function(){if(g.hudRefs)g.hudRefs.stateLbl.string='BOSS FIGHT!';});
         room.onMessage('fish_escaped',function(){});
+        // Other players' shots — render bullet + cannon anim from their slot
+        room.onMessage('player_shot',function(m){
+          var slotIdx=m.slotIndex;
+          if(slotIdx===g.localSlot||slotIdx<0||slotIdx>3) return;
+          var sp=SLOT_POS[slotIdx]||[0,0];
+          var fn_=g.fishNodes&&g.fishNodes[m.fishId];
+          var fp=fn_&&fn_.parent?fn_.getPosition():null;
+          var fd=g.fish&&g.fish[m.fishId];
+          var toX=fp?fp.x:(fd?fd.posX||0:0);
+          var toY=fp?fp.y:(fd?fd.posY||0:0);
+          fireBullet(sp[0],sp[1],toX,toY);
+          animateCannonFire(slotIdx,toX,toY);
+        });
         room.onLeave(function(code){
           g.room=null; // clear ref so startAutoFire guard stops the interval
           if(g.disposed||code===4000) return;
