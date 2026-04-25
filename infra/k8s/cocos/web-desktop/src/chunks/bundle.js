@@ -684,9 +684,11 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
 
     // ── Topup overlay — shown when gold runs out, closed after purchase ────────
     var _topupOverlay=null;
+    var _topupPending=false;
 
     function hideTopupOverlay(){
       if(_topupOverlay&&_topupOverlay.parent){_topupOverlay.destroy();_topupOverlay=null;}
+      _topupPending=false;
     }
 
     function showTopupOverlay(){
@@ -723,9 +725,12 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
         var bgg=btn.addComponent(cc.Graphics);
         bgg.fillColor=pk[2]; bgg.roundRect(-185,-28,370,56,12); bgg.fill();
         mkLabel(btn,pk[0],19,0,0,col(255,255,255),350);
-        (function(amount){
+        (function(amount,btnNode,btnGfx,origColor){
           btn.on(cc.Node.EventType.TOUCH_END,function(){
-            if(!g.token) return;
+            if(!g.token||_topupPending) return;
+            _topupPending=true;
+            // dim button to show processing
+            btnGfx.fillColor=col(60,60,80,180); btnGfx.roundRect(-185,-28,370,56,12); btnGfx.fill();
             fetch(SERVER+'/api/v1/game/topup',{
               method:'POST',
               headers:{'Content-Type':'application/json','Authorization':'Bearer '+g.token},
@@ -737,9 +742,13 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
               }
               hideTopupOverlay();
               if(g.autoFireCb) startAutoFire();
-            }).catch(function(){hideTopupOverlay();});
+            }).catch(function(){
+              _topupPending=false;
+              // restore button color on error
+              btnGfx.fillColor=origColor; btnGfx.roundRect(-185,-28,370,56,12); btnGfx.fill();
+            });
           });
-        })(pk[1]);
+        })(pk[1],btn,bgg,pk[2]);
       });
 
       // cancel
