@@ -441,7 +441,9 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
             state.players.forEach(function(p){
               cnt++;
               if(g.room&&p.playerId===g.room.sessionId){
-                if(p.slotIndex!==undefined&&p.slotIndex!==g.localSlot){
+                // Only assign slot once (on initial join); never overwrite a valid slot
+                // Subsequent state changes (reload_gold, shot deductions) must not move the cannon
+                if(p.slotIndex!==undefined&&g.localSlot===-1){
                   g.localSlot=p.slotIndex;
                   updateCannonHighlight(g.localSlot);
                 }
