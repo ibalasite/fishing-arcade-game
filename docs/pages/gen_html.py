@@ -12,6 +12,8 @@ PAGES_DIR = Path(__file__).parent
 PAGES = [
     ("index.html", "Home", None),
     ("brd.html", "BRD", "BRD.md"),
+    ("prd.html", "PRD", "PRD.md"),
+    ("pdd.html", "PDD", "PDD.md"),
     ("edd.html", "EDD", "EDD.md"),
     ("api.html", "API Reference", "API.md"),
     ("arch.html", "Architecture", "ARCH.md"),
@@ -25,6 +27,8 @@ PAGES = [
 NAV_ITEMS = [
     ("index.html", "Home", "🏠", "main"),
     ("brd.html", "BRD", "📋", "main"),
+    ("prd.html", "PRD", "📝", "main"),
+    ("pdd.html", "PDD", "🎨", "main"),
     ("edd.html", "EDD", "⚙️", "main"),
     ("api.html", "API Reference", "🔌", "main"),
     ("arch.html", "Architecture", "🏗️", "main"),

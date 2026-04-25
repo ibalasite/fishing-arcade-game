@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDD — Fishing Arcade Game Docs</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <button class="sidebar-toggle" aria-label="Toggle navigation">☰</button>
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🎣</span>
+        <span class="logo-title">Fishing Arcade Game</span>
+        <span class="logo-subtitle">Technical Documentation</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Documentation</div>
+<a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+<a href="brd.html" class="nav-item"><span class="nav-icon">📋</span>BRD</a>
+<a href="prd.html" class="nav-item"><span class="nav-icon">📝</span>PRD</a>
+<a href="pdd.html" class="nav-item active"><span class="nav-icon">🎨</span>PDD</a>
+<a href="edd.html" class="nav-item"><span class="nav-icon">⚙️</span>EDD</a>
+<a href="api.html" class="nav-item"><span class="nav-icon">🔌</span>API Reference</a>
+<a href="arch.html" class="nav-item"><span class="nav-icon">🏗️</span>Architecture</a>
+<a href="schema.html" class="nav-item"><span class="nav-icon">🗄️</span>Database Schema</a>
+<a href="test-plan.html" class="nav-item"><span class="nav-icon">✅</span>Test Plan</a>
+<a href="diagrams.html" class="nav-item"><span class="nav-icon">📊</span>Diagrams</a>
+<div class="nav-section-label" style="margin-top:1rem">Reports</div>
+<a href="alignment.html" class="nav-item"><span class="nav-icon">🎯</span>Alignment Report</a>
+<a href="smoke-test.html" class="nav-item"><span class="nav-icon">🔍</span>Smoke Test</a>
+      </nav>
+      <div class="sidebar-footer">
+        v1.0 · TypeScript + Colyseus
+      </div>
+    </aside>
+
+    <div class="main">
+
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="breadcrumb"><a href="index.html">Home</a><span>›</span><span>PDD</span></div>
+      <div class="page-title-row">
+        <h1 class="page-title">PDD</h1>
+      </div>
+    </div>
+  </header>
+      <main class="content">
+        <div class="toc-panel"><h4>Contents</h4><ul class="toc-list">
+<li><a href="#document-control">Document Control</a></li>
+<li><a href="#1-設計原則與視覺方向">§1 設計原則與視覺方向</a></li>
+<li class="toc-h3"><a href="#11-整體風格定義">§1.1 整體風格定義</a></li>
+<li class="toc-h3"><a href="#12-色彩系統">§1.2 色彩系統</a></li>
+<li class="toc-h3"><a href="#13-字體系統">§1.3 字體系統</a></li>
+<li class="toc-h3"><a href="#14-cocos-creator-4x-場景結構">§1.4 Cocos Creator 4.x 場景結構</a></li>
+<li><a href="#2-核心遊戲畫面設計">§2 核心遊戲畫面設計</a></li>
+<li class="toc-h3"><a href="#21-主畫面main-menu">§2.1 主畫面（Main Menu）</a></li>
+<li class="toc-h3"><a href="#22-遊戲房間畫面game-room">§2.2 遊戲房間畫面（Game Room）</a></li>
+<li class="toc-h3"><a href="#22a-等待大廳覆蓋層waitinglobbyoverlay-f9">§2.2a 等待大廳覆蓋層（WaitingLobbyOverlay）— F9</a></li>
+<li class="toc-h3"><a href="#22b-網路斷線重連覆蓋層networkreconnectoverlay-f8">§2.2b 網路斷線重連覆蓋層（NetworkReconnectOverlay）— F8</a></li>
+<li class="toc-h3"><a href="#23-商城畫面shop">§2.3 商城畫面（Shop）</a></li>
+<li class="toc-h3"><a href="#24-設定-隱私畫面settings-privacy">§2.4 設定 / 隱私畫面（Settings / Privacy）</a></li>
+<li><a href="#3-關鍵-ui-組件規格">§3 關鍵 UI 組件規格</a></li>
+<li class="toc-h3"><a href="#31-砲台組件cannoncomponent">§3.1 砲台組件（CannonComponent）</a></li>
+<li class="toc-h3"><a href="#32-魚類組件fishcomponent3-種">§3.2 魚類組件（FishComponent，3 種）</a></li>
+<li class="toc-h3"><a href="#33-jackpot-池顯示組件jackpotdisplaycomponent">§3.3 Jackpot 池顯示組件（JackpotDisplayComponent）</a></li>
+<li class="toc-h3"><a href="#34-隱私同意彈窗privacyconsentmodal">§3.4 隱私同意彈窗（PrivacyConsentModal）</a></li>
+<li class="toc-h3"><a href="#35-jackpot-機率揭示-modaljackpotoddsmodal-f17">§3.5 Jackpot 機率揭示 Modal（JackpotOddsModal）— F17</a></li>
+<li class="toc-h3"><a href="#36-金幣不足提示-toastcoininsufficienttoast-f18">§3.6 金幣不足提示 Toast（CoinInsufficientToast）— F18</a></li>
+<li><a href="#4-響應式與裝置適配">§4 響應式與裝置適配</a></li>
+<li class="toc-h3"><a href="#41-safe-area-處理">§4.1 Safe Area 處理</a></li>
+<li class="toc-h3"><a href="#42-橫屏鎖定設計">§4.2 橫屏鎖定設計</a></li>
+<li class="toc-h3"><a href="#43-2gb-ram-中端機型優化策略">§4.3 2GB RAM 中端機型優化策略</a></li>
+<li><a href="#5-無障礙設計a11y">§5 無障礙設計（A11y）</a></li>
+<li class="toc-h3"><a href="#51-prd-75-無障礙需求對應">§5.1 PRD §7.5 無障礙需求對應</a></li>
+<li><a href="#6-設計審查檢查清單">§6 設計審查檢查清單</a></li>
+<li class="toc-h3"><a href="#61-privacy-by-design-審查對應-prd-17-隱私設計">§6.1 Privacy by Design 審查（對應 PRD §17 隱私設計）</a></li>
+<li class="toc-h3"><a href="#62-wcag-21-level-a-審查">§6.2 WCAG 2.1 Level A 審查</a></li>
+<li class="toc-h3"><a href="#63-anti-template-設計審查對應全局設計質量標準">§6.3 Anti-Template 設計審查（對應全局設計質量標準）</a></li>
+<li><a href="#7-設計資產規格design-assets-specification">§7 設計資產規格（Design Assets Specification）</a></li>
+<li class="toc-h3"><a href="#71-美術外包交付清單">§7.1 美術外包交付清單</a></li>
+<li class="toc-h3"><a href="#72-cocos-creator-4x-資源命名規範">§7.2 Cocos Creator 4.x 資源命名規範</a></li>
+<li><a href="#8-動畫規格總表">§8 動畫規格總表</a></li>
+</ul></div>
+        <h1 id="product-design-document-fishing-arcade-game">Product Design Document — Fishing Arcade Game</h1>
+<!-- Document Control -->
+<!-- DOC-ID: PDD-FISHING-ARCADE-GAME-20260422 -->
+<!-- Parent: PRD-FISHING-ARCADE-GAME-20260422 / BRD-FISHING-ARCADE-GAME-20260421 -->
+<!-- Downstream: EDD.md -->
+<!-- Generated by: /devsop-gen-pdd (Full-Auto) -->
+<hr>
+<h2 id="document-control">Document Control</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>欄位</th><th>內容</th></tr></thead>
+<tbody>
+<tr><td><strong>專案名稱</strong></td><td>fishing-arcade-game</td></tr>
+<tr><td><strong>文件版本</strong></td><td>v1.5</td></tr>
+<tr><td><strong>狀態</strong></td><td>APPROVED</td></tr>
+<tr><td><strong>作者</strong></td><td>tobala（由 /devsop-gen-pdd 自動生成）</td></tr>
+<tr><td><strong>建立日期</strong></td><td>2026-04-22</td></tr>
+<tr><td><strong>最後更新</strong></td><td>2026-04-22</td></tr>
+<tr><td><strong>上游文件</strong></td><td>PRD-FISHING-ARCADE-GAME-20260422（docs/PRD.md）</td></tr>
+<tr><td><strong>上游文件</strong></td><td>BRD-FISHING-ARCADE-GAME-20260421（docs/BRD.md）</td></tr>
+<tr><td><strong>下游文件</strong></td><td>EDD.md（工程設計文件）</td></tr>
+<tr><td><strong>審核狀態</strong></td><td>待 /devsop-pdd-review 審查</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="1-設計原則與視覺方向">§1 設計原則與視覺方向</h2>
+<h3 id="11-整體風格定義">§1.1 整體風格定義</h3>
+<p><strong>風格定位：海洋電玩街機（Ocean Neon Arcade）</strong></p>
+<p>融合深海水族館的沉浸氛圍與亞洲電玩街機的霓虹張力，目標是讓玩家啟動 App 的第一眼就喚起「站在街機廳前、投幣準備開戰」的記憶感，同時兼具手機端的精緻品質。</p>
+<p><strong>四個核心設計關鍵字：</strong></p>
+<ol>
+<li><strong>深海沉浸（Deep Ocean Immersion）</strong>：深邃藍黑的海底背景，光線從水面折射而下，魚群在玻璃質感的水中層次游動。</li>
+<li><strong>霓虹爽感（Neon Punch）</strong>：砲台射擊、命中特效、Jackpot 引爆均使用飽和霓虹色系，形成強烈的視覺快感。</li>
+<li><strong>即時競技張力（Real-Time Arena）</strong>：HUD 設計強調「誰在做什麼」的即時感知，多人存在感顯而易見。</li>
+<li><strong>亞洲街機質感（Asian Arcade Heritage）</strong>：金色光效、繁體中文粗體、倍率數字字體選用等細節致敬實體街機廳視覺語言。</li>
+</ol>
+<p><strong>風格方向參照（Style Direction）</strong>：Neo-brutalism × Glassmorphism × Arcade Neon，選擇這三者的混合而非任一單一方向，理由是：</p>
+<ul>
+<li>Neo-brutalism 帶來倍率數字的粗壯視覺衝擊</li>
+<li>Glassmorphism 實現水下深度感（半透明 HUD 覆蓋海底場景）</li>
+<li>Arcade Neon 提供核心情感張力（霓虹光暈、爆炸特效）</li>
+</ul>
+<hr>
+<h3 id="12-色彩系統">§1.2 色彩系統</h3>
+<h4 id="主色primary">主色（Primary）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>名稱</th><th>HEX</th><th>Oklch</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>海洋深藍 Abyss Blue</td><td><code>#0B2447</code></td><td><code>oklch(18% 0.11 250)</code></td><td>背景第二層、卡片底面</td></tr>
+<tr><td>珊瑚霓虹橘 Neon Coral</td><td><code>#FF6B2B</code></td><td><code>oklch(68% 0.22 35)</code></td><td>主要 CTA 按鈕（快速配對）、發射按鈕</td></tr>
+<tr><td>電光金 Arc Gold</td><td><code>#FFD700</code></td><td><code>oklch(88% 0.20 90)</code></td><td>金幣圖示、Jackpot 數字、VIP 標誌</td></tr>
+</tbody></table></div>
+<h4 id="輔色secondary">輔色（Secondary）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>名稱</th><th>HEX</th><th>Oklch</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>霓虹綠 Neon Lime</td><td><code>#39FF14</code></td><td><code>oklch(88% 0.28 140)</code></td><td>命中特效粒子、RTP 指示、「命中！」文字</td></tr>
+<tr><td>深紫暗影 Shadow Purple</td><td><code>#1A0533</code></td><td><code>oklch(10% 0.12 310)</code></td><td>Boss 魚出現時全場暗化 overlay</td></tr>
+<tr><td>玻璃白 Glass White</td><td><code>rgba(255,255,255,0.12)</code></td><td>—</td><td>Glassmorphism HUD 背景</td></tr>
+</tbody></table></div>
+<h4 id="背景色background">背景色（Background）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>名稱</th><th>HEX</th><th>Oklch</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>主選單底色</td><td><code>#071630</code></td><td><code>oklch(12% 0.08 250)</code></td><td>主畫面、商城、設定頁背景</td></tr>
+<tr><td>對話框底色</td><td><code>rgba(11,36,71,0.95)</code></td><td>—</td><td>彈窗 / Modal 底色</td></tr>
+</tbody></table></div>
+<h4 id="告警色alert-status">告警色（Alert / Status）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>名稱</th><th>HEX</th><th>Oklch</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>警告琥珀 Amber</td><td><code>#FF9500</code></td><td><code>oklch(72% 0.20 55)</code></td><td>砲台冷卻倒計時、網路延遲警示</td></tr>
+<tr><td>成功翠綠 Success Green</td><td><code>#34C759</code></td><td><code>oklch(72% 0.18 150)</code></td><td>支付成功、命中大魚、任務完成</td></tr>
+<tr><td>資訊藍 Info Blue</td><td><code>#007AFF</code></td><td><code>oklch(55% 0.20 265)</code></td><td>Jackpot 說明連結、PDPA 隱私說明連結</td></tr>
+</tbody></table></div>
+<h4 id="色彩對比度合規確認wcag-21">色彩對比度合規確認（WCAG 2.1）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>前景</th><th>背景</th><th>對比度比例</th><th>WCAG 等級</th></tr></thead>
+<tbody>
+<tr><td>玻璃白文字（HUD）</td><td>玻璃白底 <code>rgba(255,255,255,0.12)</code> 覆蓋 <code>#050D1A</code></td><td>8.7:1</td><td>AAA</td></tr>
+<tr><td>霓虹橘 <code>#FF6B2B</code></td><td>深海藍黑 <code>#050D1A</code></td><td>5.1:1</td><td>AA</td></tr>
+<tr><td>白色 <code>#FFFFFF</code></td><td>危機紅 <code>#FF2D55</code></td><td>4.6:1</td><td>AA</td></tr>
+<tr><td>白色 <code>#FFFFFF</code></td><td>對話框底 <code>#0B2447 95%</code></td><td>12.8:1</td><td>AAA</td></tr>
+</tbody></table></div>
+<p><em>注意：遊戲場景中動態光效（粒子、閃爍）不計入靜態對比度計算；靜態 UI 元素（按鈕標籤、金幣數量、HP 條）必須維持上表標準。</em></p>
+<hr>
+<h3 id="13-字體系統">§1.3 字體系統</h3>
+<h4 id="遊戲標題字體logo-title">遊戲標題字體（Logo / Title）</h4>
+<ul>
+<li><strong>字體</strong>：Noto Sans TC ExtraBold（900 weight）+ 霓虹光效後處理</li>
+<li><strong>場景</strong>：App 啟動畫面、主畫面遊戲名稱</li>
+<li><strong>字級</strong>：<code>clamp(2.5rem, 8vw, 5rem)</code>（適配手機到平板）</li>
+<li><strong>光效</strong>：<code>text-shadow: 0 0 12px #00F5FF, 0 0 24px #00F5FF80</code>（Cocos 實作：LabelComponent + 後處理）</li>
+<li><strong>備援</strong>：系統字體不支援時降級為 Noto Sans TC Bold</li>
+</ul>
+<h4 id="ui-標籤字體button-hud-labels">UI 標籤字體（Button / HUD Labels）</h4>
+<ul>
+<li><strong>字體</strong>：Noto Sans TC Medium（500 weight）</li>
+<li><strong>場景</strong>：按鈕文字、HUD 玩家名稱、房間 ID、選單項目</li>
+<li><strong>字級</strong>：<code>14sp–18sp</code>（Cocos Creator sp 單位，自動適配螢幕密度）</li>
+<li><strong>顏色規則</strong>：亮色場景 <code>#FFFFFF</code>，深色場景 <code>#E0E8FF</code></li>
+</ul>
+<h4 id="數字顯示字體numbers-currency">數字顯示字體（Numbers / Currency）</h4>
+<ul>
+<li><strong>字體</strong>：Orbitron Bold（英數專用）或 Noto Sans TC Bold（含中文數字）</li>
+<li><strong>場景</strong>：金幣餘額、鑽石數量、Jackpot 累積金額、倍率顯示、砲台冷卻倒數</li>
+<li><strong>字級</strong>：金幣/鑽石 <code>20sp</code>，Jackpot 主數字 <code>clamp(28sp, 5vw, 48sp)</code>，倍率小標 <code>12sp</code></li>
+<li><strong>特效</strong>：Jackpot 數字採滾動動畫（NumberRoller 組件，詳見 §3.3）；金幣增加時使用 +N 浮動文字動畫</li>
+</ul>
+<h4 id="說明文字字體body-privacy-legal">說明文字字體（Body / Privacy / Legal）</h4>
+<ul>
+<li><strong>字體</strong>：Noto Sans TC Regular（400 weight）</li>
+<li><strong>場景</strong>：隱私政策彈窗、帳號刪除說明、Jackpot 機率揭示、系統提示</li>
+<li><strong>字級</strong>：<code>12sp–14sp</code></li>
+<li><strong>行距</strong>：1.6（符合 WCAG 可讀性建議）</li>
+<li><strong>顏色</strong>：<code>#C8D6E5</code>（低對比正文）；必要法規說明升級為 <code>#FFFFFF</code></li>
+</ul>
+<hr>
+<h3 id="14-cocos-creator-4x-場景結構">§1.4 Cocos Creator 4.x 場景結構</h3>
+<h4 id="全局場景架構">全局場景架構</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">RootScene（根場景）
+├── Canvas（適配根節點，FitHeight / FixedWidth 策略）
+│   ├── Camera（主相機，ClearColor = #050D1A，掛載 PostProcess 組件）
+│   │   └── [PostProcess 組件直接掛在 Camera 節點，非子節點；CC4.x API]
+│   ├── UILayer（純 UI，RenderOrder = 100）
+│   │   ├── HUDNode（遊戲房間 HUD）
+│   │   ├── MenuOverlay（主選單覆蓋層）
+│   │   └── ModalStack（彈窗堆疊管理器）
+│   ├── GameLayer（遊戲核心，RenderOrder = 50）
+│   │   ├── SeabedBg（海底背景，TiledMap 或 Sprite）
+│   │   ├── FishPool（魚群物件池，ObjectPool）
+│   │   ├── BulletPool（子彈物件池，ObjectPool）
+│   │   └── CannonSlots（砲台容器，4 子節點）
+│   ├── EffectLayer（特效，RenderOrder = 75）
+│   │   ├── ParticleSystem（粒子系統節點；CC4.x API，掛 ParticleSystem 組件）
+│   │   ├── JackpotEffect（Jackpot 全屏特效）
+│   │   └── HitEffects（命中爆炸特效物件池）
+│   └── SafeAreaAdapter（安全區域適配節點）
+│       ├── TopInset（劉海 / 打孔屏上方留白）
+│       ├── BottomInset（Home Bar 下方留白）
+│       ├── LeftInset（iPad 左側安全距離 / Android 橫屏打孔屏）
+│       └── RightInset（iPad 右側安全距離 / Android 橫屏打孔屏）
+└── PersistentNodes（建立於 Boot.scene，以 director.addPersistRootNode() 標記，跨場景保留；F-R2-13）
+    ├── AudioManager（音效管理器）
+    ├── NetworkManager（WebSocket 連接管理）
+    └── DataManager（玩家資料快取）</code></pre></div>
+<h4 id="場景切換策略">場景切換策略</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>畫面</th><th>場景檔案</th><th>切換方式</th></tr></thead>
+<tbody>
+<tr><td>主畫面（Main Menu）</td><td><code>scenes/MainMenu.scene</code></td><td><code>director.loadScene()</code></td></tr>
+<tr><td>遊戲房間（Game Room）</td><td><code>scenes/GameRoom.scene</code></td><td><code>director.loadScene()</code> + Loading 過場</td></tr>
+<tr><td>商城（Shop）</td><td><code>scenes/Shop.scene</code></td><td><code>director.loadScene()</code></td></tr>
+<tr><td>設定（Settings）</td><td>Prefab overlay 疊加</td><td><code>ModalStack.push()</code></td></tr>
+<tr><td>隱私同意彈窗</td><td>Prefab overlay</td><td><code>ModalStack.push()</code>（優先級最高，阻塞所有互動）</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="2-核心遊戲畫面設計">§2 核心遊戲畫面設計</h2>
+<h3 id="21-主畫面main-menu">§2.1 主畫面（Main Menu）</h3>
+<h4 id="211-佈局規格">§2.1.1 佈局規格</h4>
+<p><strong>螢幕比例</strong>：鎖橫屏（Landscape），目標 16:9 至 21:9 均能良好顯示。</p>
+<p><strong>版面分區（從上至下、從左至右）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌─────────────────────────────────────────────────────────────┐
+│  ← Safe Area Top Inset（iOS 劉海 / Android 打孔屏保護）       │
+│                                                             │
+│  [Logo 區]           [玩家資訊區]                            │
+│  FISHING             ♦ 1,250 鑽石    ● 25,000 金幣          │
+│  ARCADE              [玩家暱稱]      [設定 ⚙] [客服 💬]      │
+│  GAME                                                       │
+│ ─────────────────────────────────────────────────────────── │
+│                                                             │
+│    ╔══════════════════════════════╗                         │
+│    ║   JACKPOT 即時累積池          ║                         │
+│    ║   💰 2,485,320 金幣          ║                         │  
+│    ║   [動態滾動數字動畫]          ║                         │
+│    ╚══════════════════════════════╝                         │
+│                                                             │
+│         ┌────────────────────────────┐                      │
+│         │   ▶ 快速配對               │                      │
+│         │   （霓虹橘主 CTA 按鈕）    │                      │
+│         └────────────────────────────┘                      │
+│                                                             │
+│  [🏪 商城]    [📊 排行]    [🎁 每日任務]    [👤 個人檔案]  │
+│                                                             │
+│  ← Safe Area Bottom Inset（Home Bar 保護）                   │
+└─────────────────────────────────────────────────────────────┘</code></pre></div>
+<h4 id="212-關鍵元素設計規格">§2.1.2 關鍵元素設計規格</h4>
+<p><strong>「快速配對」CTA 按鈕：</strong></p>
+<ul>
+<li>尺寸：<code>min-width: 240px</code>，高度 <code>60px</code></li>
+<li>背景：霓虹橘 <code>#FF6B2B</code>，圓角 <code>12px</code></li>
+<li>外框光暈：<code>box-shadow</code> 模擬（Cocos 採用 Sprite 底圖 + BloomEffect）</li>
+<li>文字：Noto Sans TC Bold，<code>20sp</code>，白色</li>
+<li>動畫：Idle 狀態下輕微脈搏縮放（scale 1.0 ↔ 1.03，週期 2s，ease-in-out）</li>
+<li>Hover/Pressed（觸碰）：亮度提升 20%，scale 0.97</li>
+<li><strong>Reduce Motion</strong>：<code>isReduceMotionEnabled() === true</code> 時停用 idle 脈搏動畫，保持 scale 1.0 靜態（F8）</li>
+</ul>
+<p><strong>Jackpot 池顯示區：</strong></p>
+<ul>
+<li>背景：Glassmorphism 面板（<code>rgba(0,245,255,0.08)</code> + <code>1px solid rgba(0,245,255,0.3)</code>）</li>
+<li>數字字體：Orbitron Bold，<code>clamp(28sp, 4vw, 48sp)</code>，電光金 <code>#FFD700</code></li>
+<li>動畫：每次累積更新觸發 NumberRoller 動畫（0.3s ease-out）</li>
+<li>標題文字：「JACKPOT」，Noto Sans TC ExtraBold，Neon Cyan 色，字間距 4px</li>
+</ul>
+<p><strong>玩家金幣 / 鑽石顯示：</strong></p>
+<ul>
+<li>位置：右上角，Safe Area 下方</li>
+<li>金幣圖示：金色圓形，尺寸 <code>24px × 24px</code></li>
+<li>鑽石圖示：藍色多面體，尺寸 <code>24px × 24px</code></li>
+<li>數字：Orbitron Bold，<code>16sp</code>，電光金 / 霓虹青色</li>
+<li>更新動畫：數字變動時 +N 浮動文字上升淡出（0.5s）</li>
+</ul>
+<h4 id="213-cocos-creator-節點結構">§2.1.3 Cocos Creator 節點結構</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">MainMenu（Scene Root）
+├── Canvas
+│   ├── SafeAreaAdapter
+│   ├── Background（海底靜態背景 Sprite）
+│   │   └── AmbientParticles（背景氣泡粒子，Loop）
+│   ├── UILayer
+│   │   ├── TopBar（水平 Layout）
+│   │   │   ├── Logo（LabelComponent / Sprite）
+│   │   │   └── PlayerInfo（水平 Layout）
+│   │   │       ├── DiamondDisplay（Sprite + Label）
+│   │   │       ├── CoinDisplay（Sprite + Label）
+│   │   │       ├── SettingsBtn（Button）
+│   │   │       └── SupportBtn（Button）
+│   │   ├── JackpotPanel（Prefab: JackpotDisplay）
+│   │   │   ├── PanelBackground（Sprite，Glassmorphism 底圖）
+│   │   │   ├── JackpotLabel（Label, "JACKPOT"）
+│   │   │   └── NumberRoller（自定義 NumberRoller 組件）
+│   │   ├── QuickMatchBtn（Button，Prefab: PrimaryButton）
+│   │   └── BottomNav（水平 Layout）
+│   │       ├── ShopBtn（Button + Label）
+│   │       ├── RankBtn（Button + Label）
+│   │       ├── DailyBtn（Button + Label）
+│   │       └── ProfileBtn（Button + Label）
+│   └── ModalStack（Prefab: ModalManager，常駐）
+└── PersistentNodes（已在 Boot.scene 建立，跨場景保留）</code></pre></div>
+<hr>
+<h3 id="22-遊戲房間畫面game-room">§2.2 遊戲房間畫面（Game Room）</h3>
+<h4 id="221-佈局規格">§2.2.1 佈局規格</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌──────────────────────────────────────────────────────────────────┐
+│  [Safe Area Top]                                                  │
+│  ┌──────────────┐                              ┌──────────────┐  │
+│  │ P3 砲台（左上） │   ┌────────────────┐      │ P4 砲台（右上） │  │
+│  │ [玩家名] [幣值]│   │  JACKPOT POOL  │      │ [玩家名] [幣值]│  │
+│  └──────────────┘   │  💰 2,485,320   │      └──────────────┘  │
+│                     └────────────────┘                           │
+│  ─────────────────── 魚群遊戲區域 ──────────────────────────────── │
+│                                                                   │
+│          🐟 🐟 🐠 🐟 ★精英魚★  🐟 🐟 👾BOSS👾 🐟 🐟           │
+│                                                                   │
+│              [子彈軌跡 + 命中特效]                                  │
+│                                                                   │
+│  ─────────────────────────────────────────────────────────────── │
+│  ┌──────────────┐   [HUD 底部資訊條]           ┌──────────────┐  │
+│  │ P1 砲台（左下） │   房間ID: #A4B2  ● 4人在線   │ P2 砲台（右下） │  │
+│  │ [你的名] [幣值]│   RTP: ■■■■■□□□□□ 87%     │ [玩家名] [幣值]│  │
+│  │ [倍率選] [射擊]│                             │ [倍率選] [射擊]│  │
+│  └──────────────┘                              └──────────────┘  │
+│  [Safe Area Bottom]                                               │
+└──────────────────────────────────────────────────────────────────┘</code></pre></div>
+<h4 id="222-海底背景設計">§2.2.2 海底背景設計</h4>
+<p><strong>背景層次（由後至前）：</strong></p>
+<ol>
+<li><strong>Layer 0 — 深海底部</strong>：漸層色，<code>#050D1A</code> → <code>#0B2447</code>（垂直漸層）</li>
+<li><strong>Layer 1 — 珊瑚礁裝飾</strong>：靜態 Sprite，左下/右下角，低飽和度（不搶焦點）</li>
+<li><strong>Layer 2 — 中景水草</strong>：緩慢擺動動畫（SkeletonAnimation，幅度小）</li>
+<li><strong>Layer 3 — 光線射入效果</strong>：粒子系統（自上而下，白色半透明光柱，低不透明度 0.15）</li>
+<li><strong>Layer 4 — 前景氣泡</strong>：粒子系統（隨機上升小氣泡，loop）</li>
+</ol>
+<p><strong>背景動畫規格：</strong></p>
+<ul>
+<li>全部使用 compositor-friendly 屬性（<code>transform</code> / <code>opacity</code>）</li>
+<li>水草擺動週期：4-6s（隨機化，避免同步感）</li>
+<li>光線粒子：生命週期 8s，spawn rate 2/s，透明度 0→0.15→0</li>
+</ul>
+<h4 id="223-砲台位置設計">§2.2.3 砲台位置設計</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>位置</th><th>槽位</th><th>旋轉方向</th><th>預設分配</th></tr></thead>
+<tbody>
+<tr><td>右下（P2）</td><td>其他玩家</td><td>朝左上 45°</td><td>玩家2</td></tr>
+<tr><td>左上（P3）</td><td>其他玩家</td><td>朝右下 45°</td><td>玩家3</td></tr>
+<tr><td>右上（P4）</td><td>其他玩家</td><td>朝左下 45°</td><td>玩家4</td></tr>
+</tbody></table></div>
+<p><strong>砲台 UI 元素（詳細規格見 §3.1）：</strong></p>
+<ul>
+<li>砲台本體 Sprite（含動畫：idle / charging / firing / cooling）</li>
+<li>玩家名稱標籤（上方）</li>
+<li>金幣餘額標籤</li>
+<li>倍率選擇器（僅本機玩家可操作；其他玩家顯示只讀）</li>
+<li>發射按鈕（僅本機玩家）</li>
+</ul>
+<h4 id="224-hud-設計規格">§2.2.4 HUD 設計規格</h4>
+<p><strong>頂部 HUD（Jackpot 池區）：</strong></p>
+<ul>
+<li>位置：畫面頂部正中，Safe Area 下方</li>
+<li>寬度：40% 畫面寬，最小 200px</li>
+<li>樣式：Glassmorphism 小面板</li>
+</ul>
+<p><strong>底部 HUD 資訊條：</strong></p>
+<ul>
+<li>高度：<code>32px</code>（包含 Safe Area Bottom）</li>
+<li>背景：<code>rgba(5,13,26,0.85)</code></li>
+<li>元素：房間 ID、在線人數、RTP 指示條（即時顯示當前房間 RTP 範圍）</li>
+<li>RTP 指示：10 格進度條，<code>■</code> 表示已分配配額，顏色：Neon Lime</li>
+</ul>
+<h4 id="225-魚群視覺差異化設計">§2.2.5 魚群視覺差異化設計</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>魚種</th><th>尺寸</th><th>動畫規格</th><th>視覺特徵</th><th>倍率標示</th></tr></thead>
+<tbody>
+<tr><td>精英魚（Elite Fish）</td><td>M（約 160×120px 渲染尺寸）</td><td>SkeletonAnimation 30fps，游泳 + 出現特效</td><td>半透明金色光暈 + 霓虹邊框，眼睛發光</td><td>頭上顯示倍率標籤（<code>2-5x</code>，Orbitron Bold）</td></tr>
+<tr><td>Boss 魚（Boss Fish）</td><td>XL（約 320×240px 渲染尺寸）</td><td>SkeletonAnimation 30fps，震撼出現動畫</td><td>深紅/暗紫色系，全身粒子特效，眼睛強烈發光</td><td>HP 條顯示於 Boss 魚正上方；全場廣播 Banner</td></tr>
+</tbody></table></div>
+<p><strong>Boss 魚 HP 條設計：</strong></p>
+<ul>
+<li>寬度：等同 Boss 魚渲染寬度（320px）</li>
+<li>高度：12px</li>
+<li>顏色：HP > 50% → Neon Lime；HP 25-50% → Amber；HP < 25% → Crisis Red</li>
+<li>動畫：受擊時 HP 條閃爍 0.1s</li>
+</ul>
+<p><strong>全場廣播 Banner（Boss 出現時）：</strong></p>
+<ul>
+<li>位置：畫面上方 40% 位置，全寬橫幅</li>
+<li>背景：深紫暗影 <code>#1A0533</code>，半透明</li>
+<li>文字：「⚠ BOSS 魚出現！搶先捕獲贏大獎！」</li>
+<li>動畫：從上方滑入（0.3s ease-out），5 秒後自動淡出</li>
+</ul>
+<h4 id="226-cocos-creator-節點結構">§2.2.6 Cocos Creator 節點結構</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">GameRoom（Scene Root）
+├── Canvas
+│   ├── SafeAreaAdapter
+│   ├── GameLayer（RenderOrder = 50）
+│   │   ├── SeabedBackground
+│   │   │   ├── DeepLayer（Sprite，靜態漸層）
+│   │   │   ├── CoralLayer（Sprite，靜態裝飾）
+│   │   │   ├── SeaweedLayer（SkeletonAnimation，擺動）
+│   │   │   ├── LightRaysParticle（ParticleSystem）
+│   │   │   └── BubbleParticle（ParticleSystem）
+│   │   ├── FishPool（Node，ObjectPool 管理）
+│   │   │   ├── NormalFish_Template（Prefab: NormalFish）
+│   │   │   ├── EliteFish_Template（Prefab: EliteFish）
+│   │   │   └── BossFish_Template（Prefab: BossFish）
+│   │   ├── BulletPool（Node，ObjectPool 管理）
+│   │   │   └── Bullet_Template（Prefab: Bullet）
+│   │   └── CannonSlots（Node）
+│   │       ├── Slot_P1（左下，CannonComponent 腳本）
+│   │       ├── Slot_P2（右下，CannonComponent 腳本）
+│   │       ├── Slot_P3（左上，CannonComponent 腳本）
+│   │       └── Slot_P4（右上，CannonComponent 腳本）
+│   ├── EffectLayer（RenderOrder = 75）
+│   │   ├── HitEffects（物件池）
+│   │   ├── CoinEffect（+N 浮動文字）
+│   │   └── JackpotEffect（Prefab: JackpotFullScreen）
+│   └── UILayer（RenderOrder = 100）
+│       ├── TopHUD
+│       │   ├── JackpotPanel（Prefab: JackpotDisplay，小版）
+│       │   └── BossAnnouncement（隱藏，Boss 出現時顯示）
+│       ├── BottomHUD
+│       │   ├── RoomInfo（Label: 房間 ID + 人數）
+│       │   └── RTPIndicator（進度條組件）
+│       └── CannonHUDs（每個砲台的 UI 覆蓋）
+│           ├── CannonHUD_P1（玩家名、金幣、倍率選擇、射擊按鈕）
+│           ├── CannonHUD_P2（玩家名、金幣，只讀）
+│           ├── CannonHUD_P3（玩家名、金幣，只讀）
+│           └── CannonHUD_P4（玩家名、金幣，只讀）</code></pre></div>
+<hr>
+<h3 id="22a-等待大廳覆蓋層waitinglobbyoverlay-f9">§2.2a 等待大廳覆蓋層（WaitingLobbyOverlay）— F9</h3>
+<p><strong>觸發條件</strong>：玩家點擊「快速配對」後，Colyseus 配對尚未湊滿 4 人時顯示。</p>
+<p><strong>設計規格：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌───────────────────────────────────────────────────┐
+│                                                   │
+│           🎣 搜尋對手中...                         │
+│                                                   │
+│   ●──────────────────── ○ ○ ○    1 / 4 人已加入   │
+│                                                   │
+│   [動態海浪 Loading 動畫，Neon Cyan，週期 1.2s]    │
+│                                                   │
+│   預估等待：&lt; 30 秒                                │
+│                                                   │
+│         [取消配對]（Crisis Red 邊框按鈕）          │
+│                                                   │
+└───────────────────────────────────────────────────┘</code></pre></div>
+<ul>
+<li><strong>底層</strong>：全屏半透明 <code>rgba(5,13,26,0.90)</code>，不可穿透點擊</li>
+<li><strong>面板</strong>：居中，寬度 80%，圓角 <code>20px</code>，邊框 <code>1px solid rgba(0,245,255,0.3)</code></li>
+<li><strong>進度圖示</strong>：4 個玩家槽位圖示（●=已入場，○=等待），當有玩家加入時，○ 以 0.3s bounce 動畫切換為 ●（Neon Cyan 填充）</li>
+<li><strong>Loading 動畫</strong>：三條水平海浪線（Neon Cyan），交替上下 offset（不使用旋轉 spinner，符合街機風格）</li>
+<li><strong>等待超過 15s 時</strong>：新增提示「人數不足時將以 AI 補位」（Amber 色）</li>
+<li><strong>F-R2-08 Reduce Motion</strong>：若 <code>isReduceMotionEnabled() === true</code>，停用海浪 Loading 動畫，改顯示靜態「搜尋中…」文字；slot 切換動畫改為直接替換圖示（無 bounce）</li>
+<li><strong>F-R2-09 無障礙標籤規格</strong>：</li>
+</ul>
+<div class="table-wrapper"><table>
+<thead><tr><th>元素</th><th>accessibilityLabel</th><th>accessibilityHint</th></tr></thead>
+<tbody>
+<tr><td>玩家槽位（等待 ○）</td><td>「第 N 位玩家：等待中」</td><td>—</td></tr>
+<tr><td>[取消配對] 按鈕</td><td>「取消配對按鈕」</td><td>「點擊後返回主畫面」</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="22b-網路斷線重連覆蓋層networkreconnectoverlay-f8">§2.2b 網路斷線重連覆蓋層（NetworkReconnectOverlay）— F8</h3>
+<p><strong>觸發條件</strong>：WebSocket 連線中斷（NetworkManager 偵測到 <code>close</code> 事件），自動顯示。</p>
+<p><strong>設計規格：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌───────────────────────────────────────────────────┐
+│                                                   │
+│        ⚠ 網路連線中斷                              │
+│                                                   │
+│   正在重新連線...（第 1 / 3 次嘗試）               │
+│                                                   │
+│   ████████░░░░░░░░  45%                           │
+│   （重連進度條，Crisis Red → Amber → Success Green）│
+│                                                   │
+│   [立即重試]    [返回主畫面]                        │
+│                                                   │
+└───────────────────────────────────────────────────┘</code></pre></div>
+<ul>
+<li><strong>底層</strong>：全屏 <code>rgba(5,13,26,0.95)</code>，阻斷所有遊戲互動（遊戲在後台暫停計時）</li>
+<li><strong>面板</strong>：居中，寬度 70%，圓角 <code>20px</code>，Crisis Red 邊框（<code>2px solid #FF2D55</code>）</li>
+<li><strong>重連策略</strong>：指數退避，最多 3 次（1s → 2s → 4s）；3 次失敗後進度條凍結於 100% Crisis Red，顯示「重連失敗」</li>
+<li><strong>進度條顏色</strong>：重連中 → Crisis Red；最後一次嘗試中 → Amber；成功 → Success Green（0.3s transition）</li>
+<li><strong>成功後</strong>：覆蓋層以 <code>opacity 1→0</code>（0.5s）淡出，遊戲狀態由服務器同步恢復</li>
+<li><strong>[返回主畫面] 按鈕</strong>：僅在重連失敗後啟用（重連中為灰色 disabled）</li>
+<li><strong>F-R2-08 Reduce Motion</strong>：若 <code>isReduceMotionEnabled() === true</code>，停用進度條顏色 transition，直接以 Crisis Red 靜態顯示重連狀態</li>
+<li><strong>F-R2-09 + F-R2-10 無障礙標籤規格</strong>：</li>
+</ul>
+<div class="table-wrapper"><table>
+<thead><tr><th>元素</th><th>accessibilityLabel</th><th>accessibilityHint</th></tr></thead>
+<tbody>
+<tr><td>[返回主畫面] 按鈕（可用）</td><td>「返回主畫面按鈕」</td><td>「放棄重連，返回主畫面」</td></tr>
+<tr><td>[返回主畫面] 按鈕（F-R2-10 disabled 狀態）</td><td>「返回主畫面按鈕，目前不可用」</td><td>「請等待重連完成，或重試失敗後可返回」</td></tr>
+</tbody></table></div>
+<blockquote><p>F-R2-10 fix：disabled 狀態的 [返回主畫面] 按鈕保留在無障礙樹中（<code>Button.interactable = false</code> 但節點 <code>active = true</code>），讓 VoiceOver/TalkBack 使用者可發現此選項，並透過 hint 得知原因。</p></blockquote>
+<hr>
+<h3 id="23-商城畫面shop">§2.3 商城畫面（Shop）</h3>
+<h4 id="231-佈局規格">§2.3.1 佈局規格</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌──────────────────────────────────────────────────────────────┐
+│  ← [返回]    💎 商城         ♦ 1,250 鑽石  ● 25,000 金幣   │
+│ ─────────────────────────────────────────────────────────── │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  [Tab: 鑽石套餐]    [Tab: 砲台道具]    [Tab: 特惠組合]  │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+│  === 鑽石套餐 Tab ===                                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐         │
+│  │ ♦ 100 鑽石   │ │ ♦ 600 鑽石   │ │ ♦ 1,250 鑽石  │         │
+│  │ TWD 30      │ │ TWD 150      │ │ TWD 300      │         │
+│  │ [立即購買]   │ │ [立即購買]   │ │ 🔥最暢銷      │         │
+│  │             │ │             │ │ [立即購買]   │         │
+│  └──────────────┘ └──────────────┘ └──────────────┘         │
+│                                                              │
+│  === 砲台道具 Tab ===                                         │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ 🔫 高倍砲台 × 10x      ⚠ Jackpot 觸發機率: 1:50,000    │   │
+│  │ 效果：下注金額 ×10 倍（限時 10 分鐘）                    │   │
+│  │ 費用：♦ 200 鑽石              [購買 10x 砲台]           │   │
+│  ├──────────────────────────────────────────────────────┤   │
+│  │ 🔫 高倍砲台 × 50x      ⚠ Jackpot 觸發機率: 1:10,000    │   │
+│  │ 效果：下注金額 ×50 倍（限時 5 分鐘）                     │   │
+│  │ 費用：♦ 800 鑽石              [購買 50x 砲台]           │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+│  📋 [查看完整 Jackpot 機率說明]（連結至機率揭示頁）            │
+└──────────────────────────────────────────────────────────────┘</code></pre></div>
+<h4 id="232-鑽石套餐展示規格f15-anti-template-強化">§2.3.2 鑽石套餐展示規格（F15 Anti-Template 強化）</h4>
+<p><strong>視覺層級差異化策略（非平等卡片網格）：</strong></p>
+<p>三個套餐採用「不對稱層級」而非等寬等高的模板卡片網格：</p>
+<ul>
+<li><strong>小套餐（TWD 30）</strong>：標準高度，淡化處理（透明度 80%），引導視線向右</li>
+<li><strong>中套餐（TWD 150）</strong>：標準高度，適中強調（金邊框 1.5px）</li>
+<li><strong>旗艦套餐（TWD 300）</strong>：高度比其他卡片<strong>多 32px</strong>（突出陳列），加熱橘「🔥最暢銷」徽章，全寬發光邊框（Neon Coral + Bloom 光暈），購買按鈕使用動態脈搏動畫</li>
+</ul>
+<p><strong>套餐卡片（Diamond Package Card）：</strong></p>
+<ul>
+<li>旗艦套餐尺寸：<code>180px × 232px</code>；標準套餐：<code>160px × 200px</code>；圓角 <code>16px</code></li>
+<li>旗艦套餐背景：Glassmorphism（<code>rgba(255,107,43,0.12)</code> + <code>2px solid #FF6B2B</code>）+ 外層 Neon Coral 光暈</li>
+<li>標準套餐背景：Glassmorphism（<code>rgba(0,245,255,0.06)</code> + <code>1px solid rgba(0,245,255,0.25)</code>）</li>
+<li>鑽石圖示：旗艦套餐 <code>64px</code>（旋轉 + 強光暈脈搏）；標準套餐 <code>48px</code>（微旋轉）；<strong>Reduce Motion 時停用旋轉和脈搏動畫（F8）</strong></li>
+<li>金額顯示：Orbitron Bold，旗艦 <code>28sp</code>；標準 <code>24sp</code>；電光金</li>
+<li>台幣價格：Noto Sans TC Regular，<code>14sp</code>，<code>#C8D6E5</code></li>
+<li>暢銷標籤：熱橘底色 + 「🔥最暢銷」，絕對定位於卡片右上角，旗艦套餐專用</li>
+<li>購買按鈕：旗艦套餐霓虹橘 + 脈搏縮放（1.0↔1.03，1.5s）；標準套餐靜態橘色；高度 <code>44px</code></li>
+</ul>
+<p><strong>Jackpot 機率揭示入口（合規必需）：</strong></p>
+<ul>
+<li>每個砲台道具旁顯示 <code>⚠ Jackpot 觸發機率: 1:X,XXX</code>（格式由 PM 於開發月 1 確認）</li>
+<li>底部「查看完整 Jackpot 機率說明」連結，點擊打開機率揭示 Modal</li>
+<li>機率說明 Modal 內容：觸發條件、機率計算說明、RTP 範圍（符合 App Store 政策）</li>
+</ul>
+<hr>
+<h3 id="24-設定-隱私畫面settings-privacy">§2.4 設定 / 隱私畫面（Settings / Privacy）</h3>
+<h4 id="241-佈局結構">§2.4.1 佈局結構</h4>
+<p><strong>ASCII 線框稿（F16 fix）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌───────────────────────────────────────────────────────────┐
+│  ← [返回]    ⚙ 設定                    ♦ 1,250  ● 25,000 │
+│ ─────────────────────────────────────────────────────── ─ │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  👤 個人資料                                          ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  暱稱：FishMaster_99                   [✏ 編輯]      ║  │
+│  ║  Email：fish***@example.com           [✉ 更改]      ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  🎮 遊戲設定                                          ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  音效           ●────────────────  [  ON  ]         ║  │
+│  ║  背景音樂        ●────────────────  [  ON  ]         ║  │
+│  ║  語言            繁體中文            [  &gt;  ]         ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  🔒 隱私設定                                          ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  行銷推播通知    ●────────────────  [ OFF  ]         ║  │
+│  ║  查看隱私政策                         [  &gt;  ]         ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ╔══════════════════════════════════════════════════════╗  │
+│  ║  ℹ 其他                                              ║  │
+│  ╠══════════════════════════════════════════════════════╣  │
+│  ║  客服聯繫                              [  &gt;  ]        ║  │
+│  ║  Jackpot 機率說明（法規揭示）          [  &gt;  ]        ║  │
+│  ║  版本資訊  v1.0.0 (Build 100)                        ║  │
+│  ╚══════════════════════════════════════════════════════╝  │
+│                                                           │
+│  ─────────────────────────────────────────────────────── │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │  ⚠ 刪除帳號         （Crisis Red 空心按鈕）           │  │
+│  └─────────────────────────────────────────────────────┘  │
+│  [Safe Area Bottom]                                       │
+└───────────────────────────────────────────────────────────┘</code></pre></div>
+<p><strong>分區樹狀結構（F-R2-07 fix：與 ASCII 線框一致）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">設定主頁（ScrollView）
+├── 個人資料卡片
+│   ├── 暱稱顯示 + [✏ 編輯] 按鈕（→ US-PRIV-003）
+│   └── Email 顯示 + [✉ 更改] 按鈕（→ US-PRIV-003）
+├── 遊戲設定卡片
+│   ├── 音效開關（Toggle）
+│   ├── 音樂開關（Toggle）
+│   └── 語言選擇（Picker → 子彈窗）
+├── 隱私設定卡片（→ US-PRIV-004）
+│   ├── 行銷推播通知（Toggle，可撤回）
+│   └── 查看隱私政策（連結至完整文件）
+├── 其他卡片
+│   ├── 客服聯繫（→ WebView 或 Email）
+│   ├── Jackpot 機率說明（→ JackpotOddsModal）
+│   └── 版本資訊（靜態文字，不可互動）
+│
+└── [危險區域分隔線 + 額外間距 24px]
+    └── [⚠ 刪除帳號]（Crisis Red 空心按鈕，獨立於所有卡片之外）
+        （→ US-PRIV-002；視覺上與上方設定項明確分離，防止誤觸）</code></pre></div>
+<h4 id="242-個人資料編輯介面us-priv-003">§2.4.2 個人資料編輯介面（US-PRIV-003）</h4>
+<p><strong>暱稱編輯：</strong></p>
+<ul>
+<li>進入方式：設定頁 → 「暱稱」列 → 點擊 [編輯]</li>
+<li>彈窗內容：文字輸入框（最長 50 字元，實時字數計數）、[取消] [儲存] 按鈕</li>
+<li>儲存後：立即刷新所有 UI 中的玩家名稱顯示，Colyseus 廣播更新</li>
+</ul>
+<p><strong>Email 更改：</strong></p>
+<ul>
+<li>進入方式：設定頁 → 「Email」列 → 點擊 [更改]</li>
+<li>彈窗內容：新 Email 輸入框、即時格式驗證（<code>^[^\s@]+@[^\s@]+\.[^\s@]+$</code>）、[取消] [發送確認信] 按鈕</li>
+<li>狀態提示：「確認信已發送至 [新Email]，請於 24 小時內點擊確認」</li>
+</ul>
+<h4 id="243-隱私設定介面us-priv-004">§2.4.3 隱私設定介面（US-PRIV-004）</h4>
+<p><strong>行銷通知同意 Toggle：</strong></p>
+<ul>
+<li>狀態 ON（已同意）：Toggle 顯示 Neon Cyan 色，標籤「行銷推播：已開啟」</li>
+<li>狀態 OFF（已撤回）：Toggle 顯示灰色，標籤「行銷推播：已關閉」</li>
+<li>關閉動作：顯示確認對話框「確定撤回行銷通知同意？撤回後不影響遊戲功能，但您將不再收到優惠推播通知。」→ [確認撤回] [取消]</li>
+<li>撤回後：資料庫記錄 <code>revoked<em>at</code>，Firebase <code>marketing</em>*</code> 事件停止上報</li>
+</ul>
+<p><strong>隱私政策連結：</strong></p>
+<ul>
+<li>以資訊藍 <code>#007AFF</code> 顯示，具下劃線</li>
+<li>開啟系統 WebView 顯示完整隱私政策（或站內 ScrollView）</li>
+</ul>
+<h4 id="244-帳號刪除介面us-priv-002">§2.4.4 帳號刪除介面（US-PRIV-002）</h4>
+<p><strong>刪除入口按鈕：</strong></p>
+<ul>
+<li>樣式：危機紅 <code>#FF2D55</code>，空心（border-only）按鈕，文字「刪除帳號」</li>
+<li>位置：設定頁底部，與其他設定項有明顯視覺分隔（8px 分隔線 + 額外 16px 間距）</li>
+</ul>
+<p><strong>確認對話框流程（兩步驟確認）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">步驟 1：說明頁
+┌──────────────────────────────────────────────┐
+│  ⚠ 帳號刪除說明                               │
+│                                              │
+│  刪除帳號後：                                 │
+│  • 30 天後永久刪除，期間可取消                  │
+│  • 遊戲資料（金幣、鑽石）將無法恢復              │
+│  • 付費紀錄依台灣稅法保留 7 年                  │
+│  • 刪除後無法以相同 Email 重新申請              │
+│                                              │
+│  確認要刪除？請輸入「DELETE」確認：             │
+│  [______________________]                    │
+│                                              │
+│  [取消]           [確認刪除]（輸入正確後啟用）  │
+└──────────────────────────────────────────────┘
+
+步驟 2：申請完成提示
+┌──────────────────────────────────────────────┐
+│  ✓ 刪除申請已提交                             │
+│                                              │
+│  您的帳號將於 30 天後永久刪除。                 │
+│  期間您仍可正常登入遊戲，並可在設定頁取消刪除。  │
+│                                              │
+│  [確定，返回遊戲]                             │
+└──────────────────────────────────────────────┘</code></pre></div>
+<hr>
+<h2 id="3-關鍵-ui-組件規格">§3 關鍵 UI 組件規格</h2>
+<h3 id="31-砲台組件cannoncomponent">§3.1 砲台組件（CannonComponent）</h3>
+<h4 id="311-狀態定義">§3.1.1 狀態定義</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>狀態</th><th>描述</th><th>視覺表現</th><th>持續條件</th></tr></thead>
+<tbody>
+<tr><td><code>charging</code></td><td>蓄力（高倍率砲台按住蓄力）</td><td>砲管振動；砲口光暈擴大；能量條從 0 充到 100%</td><td>按住發射按鈕期間</td></tr>
+<tr><td><code>firing</code></td><td>發射</td><td>砲管後坐力動畫（向後移動 8px，0.05s）；砲彈射出；螢幕輕震（幅度小，iOS 允許的觸覺反饋）</td><td>射擊動作期間（約 0.1s）</td></tr>
+<tr><td><code>cooling</code></td><td>冷卻</td><td>砲管發熱紅色光暈；倒數計時條；無法射擊（按鈕 disabled 樣式）</td><td>高倍率砲台射擊後冷卻期間</td></tr>
+</tbody></table></div>
+<h4 id="312-視覺反饋規格">§3.1.2 視覺反饋規格</h4>
+<p><strong>瞄準線（Aim Line）：</strong></p>
+<ul>
+<li>類型：點狀虛線，從砲口延伸至魚群區域</li>
+<li>顏色：Neon Cyan，透明度 0.6</li>
+<li>長度：跟隨玩家手指 / 滑動方向動態調整</li>
+<li>末端：瞄準十字（<code>+</code>形，發光效果）</li>
+<li>渲染方式：Cocos Creator <code>Graphics</code> 組件動態繪製（每幀更新）</li>
+</ul>
+<p><strong>砲彈軌跡：</strong></p>
+<ul>
+<li>砲彈 Sprite：8×8px 亮橘圓形發光體</li>
+<li>軌跡殘影：每 2 幀生成一個漸隱圓點（opacity 0.8 → 0，0.1s）</li>
+<li>飛行速度：視砲台倍率調整（基礎 1x：900px/s；100x：1500px/s）</li>
+</ul>
+<p><strong>命中特效：</strong></p>
+<ul>
+<li>普通魚命中：粒子爆炸（金色 + 藍色，20 粒子，0.3s）+ +N 金幣浮動文字</li>
+<li>精英魚命中：較大粒子爆炸（金色 + 青色，40 粒子，0.5s）+ 螢幕輕震（0.1s）</li>
+<li>Boss 魚命中：強烈粒子爆炸（多色，80 粒子，0.8s）+ 螢幕震動（0.2s）+ HP 條閃爍</li>
+</ul>
+<h4 id="313-倍率選擇器設計">§3.1.3 倍率選擇器設計</h4>
+<ul>
+<li>外觀：水平滾輪式選擇器（Scroll Wheel）</li>
+<li>可選倍率：1x、5x、10x、20x、50x、100x（MVP；數值由數值設計確認）</li>
+<li>當前選中：放大 + 高亮（電光金），鄰近選項縮小半透明</li>
+<li>切換動畫：水平平滑滾動（0.15s ease-out）</li>
+<li>費用即時顯示：「每次費用：XXX 金幣」（小標籤，即時更新）</li>
+</ul>
+<h4 id="314-cocos-creator-腳本設計">§3.1.4 Cocos Creator 腳本設計</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// components/cannon/CannonComponent.ts
+enum CannonState { IDLE, CHARGING, FIRING, COOLING }
+
+@ccclass('CannonComponent')
+export class CannonComponent extends Component {
+    @property(Node) cannonBarrel: Node = null;
+    @property(Node) muzzleLight: Node = null;
+    @property(Graphics) aimLine: Graphics = null;
+    @property(Label) multiplierLabel: Label = null;
+    @property(ProgressBar) cooldownBar: ProgressBar = null;
+
+    private _state: CannonState = CannonState.IDLE;
+    private _multiplier: number = 1;
+    private _isLocalPlayer: boolean = false;
+
+    // 狀態轉換（純粹 UI，射擊結果由服務器決定）
+    public setFiringState(): void { /* 播放後坐力動畫，0.1s 後回到 IDLE */ }
+    public setCoolingState(duration: number): void { /* 啟動冷卻倒計時 */ }
+    public updateAimLine(targetPos: Vec3): void { /* 更新瞄準線方向 */ }
+    public setMultiplier(value: number): void { /* 更新倍率顯示 */ }
+}</code></pre></div>
+<hr>
+<h3 id="32-魚類組件fishcomponent3-種">§3.2 魚類組件（FishComponent，3 種）</h3>
+<h4 id="321-普通魚normalfish">§3.2.1 普通魚（NormalFish）</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// components/fish/NormalFish.ts — 輕量設計（ObjectPool 大量使用）
+
+// F5 fix: NormalFishServerData 型別定義（完整欄位定義詳見 EDD 網路協議章節）
+interface NormalFishServerData {
+    fishId: string;         // 伺服器唯一 ID，用於命中判定
+    fishType: string;       // 魚種類型（如 'normal_01'）
+    path: Vec3[];           // Bezier 路徑控制點（服務器決定）
+    speed: number;          // 游動速度（px/s）
+    rewardMultiplier: number; // 捕獲倍率
+}
+
+@ccclass('NormalFish')
+export class NormalFish extends Component {
+    @property(sp.Skeleton) skeleton: sp.Skeleton = null;
+    @property(Label) multiplierLabel: Label = null;  // 通常不顯示
+
+    // 路徑跟隨動畫（Bezier 曲線，服務器決定路徑點）
+    public initWithServerData(data: NormalFishServerData): void {}
+    public onCaught(): void { /* 播放捕獲特效後回收至 Pool */ }
+}</code></pre></div>
+<ul>
+<li>動畫剪輯：<code>swim_loop</code>（30fps，永久循環）</li>
+<li>Spine 骨骼動畫文件：<code>fish_normal.skel</code>（S 尺寸圖集）</li>
+<li>ObjectPool 預先暖身：20 個</li>
+</ul>
+<h4 id="322-精英魚elitefish">§3.2.2 精英魚（EliteFish）</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// components/fish/EliteFish.ts
+@ccclass('EliteFish')
+export class EliteFish extends Component {
+    @property(sp.Skeleton) skeleton: sp.Skeleton = null;
+    @property(ProgressBar) hpBar: ProgressBar = null;
+    @property(Label) hpLabel: Label = null;          // F9 fix: WCAG 1.4.1 — HP% 文字標示，非唯一靠顏色傳達
+    @property(Label) multiplierLabel: Label = null;
+    @property(ParticleSystem) glowParticle: ParticleSystem = null;  // F5 fix: CC4.x 使用 ParticleSystem，非 CC3.x 的 ParticleSystem2D
+
+    public updateHP(current: number, max: number): void {
+        // 更新 HP 條，顏色依 HP% 動態切換（F9 fix：同步更新文字百分比）
+        const ratio = current / max;
+        this.hpBar.progress = ratio;
+        this.hpLabel.string = `${Math.round(ratio * 100)}%`;  // WCAG 1.4.1: 顏色+數字雙重指示
+        // ratio &gt; 0.5: Neon Lime; 0.25-0.5: Amber; &lt;0.25: Crisis Red
+    }
+    public onAppear(): void { /* 出現特效：縮放從 0.5→1.0，0.3s bounce */ }
+    public onCaught(): void { /* 捕獲特效，回收至 Pool */ }
+}</code></pre></div>
+<ul>
+<li>動畫剪輯：<code>swim_loop</code>、<code>hurt</code>（受擊）、<code>caught</code>（捕獲）</li>
+<li>HP 條：顯示於精英魚正上方，跟隨魚位置移動</li>
+<li>倍率標籤：右上角小徽章（<code>2x</code> / <code>3x</code> / <code>5x</code>），Orbitron Bold 12sp</li>
+</ul>
+<h4 id="323-boss-魚bossfish">§3.2.3 Boss 魚（BossFish）</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// components/fish/BossFish.ts
+@ccclass('BossFish')
+export class BossFish extends Component {
+    @property(sp.Skeleton) skeleton: sp.Skeleton = null;
+    @property(ProgressBar) hpBar: ProgressBar = null;
+    @property(Label) hpLabel: Label = null;          // F9 fix: WCAG 1.4.1 — Boss HP% 文字標示
+    @property(ParticleSystem) bodyParticle: ParticleSystem = null;  // F6 fix: CC4.x 使用 ParticleSystem
+    @property(Node) auraEffect: Node = null;
+
+    public onAppear(): void {
+        // 1. 全場暗化（深紫 overlay 0→0.7 opacity，0.5s）
+        // 2. 全局廣播 Banner 滑入
+        // 3. Boss 從畫面外游入（2s 進場動畫）
+        // 4. 進場特效（震動 + 粒子爆炸）
+    }
+    public onDamaged(hpRatio: number): void {
+        // F2 fix: 明確更新 hpBar + hpLabel（WCAG 1.4.1，顏色+數字雙重指示）
+        // F3 note: BossFish 服務器傳入 hpRatio（0.0–1.0）；EliteFish 傳入 current/max（絕對值）——
+        //          兩者對應不同的 Colyseus Schema 欄位（詳見 EDD 網路協議章節）
+        this.hpBar.progress = hpRatio;
+        this.hpLabel.string = `${Math.round(hpRatio * 100)}%`;
+        // 顏色切換由 EDD 以 tween 或 Material override 實作（Neon Lime / Amber / Crisis Red）
+        // 受擊動畫：播放 Spine 'hurt' clip（0.2s）
+    }
+    public onKilled(killerName: string): void {
+        // 全屏死亡爆炸特效（2s）
+        // 廣播 "[killerName] 擊殺 Boss！"
+    }
+    public onEscape(): void { /* Boss 逃脫動畫：游出畫面 */ }
+}</code></pre></div>
+<ul>
+<li>動畫剪輯：<code>enter</code>（進場）、<code>swim_loop</code>、<code>hurt</code>（受擊震動）、<code>die</code>（死亡爆炸）、<code>escape</code>（逃跑）</li>
+<li>全局 HP 條：顯示於畫面頂部（全寬，高 20px），視覺優先級最高</li>
+<li>ObjectPool 預先暖身：3 個</li>
+</ul>
+<hr>
+<h3 id="33-jackpot-池顯示組件jackpotdisplaycomponent">§3.3 Jackpot 池顯示組件（JackpotDisplayComponent）</h3>
+<h4 id="331-numberroller-滾動數字動畫">§3.3.1 NumberRoller 滾動數字動畫</h4>
+<p><strong>技術實作（Cocos Creator 4.x）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// components/ui/NumberRoller.ts
+@ccclass('NumberRoller')
+export class NumberRoller extends Component {
+    @property(Label) displayLabel: Label = null;
+    @property public duration: number = 0.3;  // 滾動動畫時長（秒）
+
+    // F3 fix: CC4.x tween 只能動畫化 public 屬性，private `_currentValue` 會被忽略
+    public currentValue: number = 0;
+    private _targetValue: number = 0;
+    private _tween: Tween&lt;this&gt; = null;
+
+    public updateValue(newValue: number): void {
+        if (this._tween) { this._tween.stop(); }
+        this._targetValue = newValue;
+
+        // 使用 tween 動畫化 public currentValue，onUpdate 每幀同步 Label
+        this._tween = tween(this)
+            .to(this.duration, { currentValue: newValue }, {
+                easing: 'cubicOut',
+                onUpdate: () =&gt; {
+                    // 格式化為帶千位分隔符的字串
+                    this.displayLabel.string =
+                        Math.floor(this.currentValue).toLocaleString('zh-TW');
+                }
+            })
+            .start();
+    }
+}</code></pre></div>
+<p><strong>Jackpot 數字動畫規格：</strong></p>
+<ul>
+<li>每次更新（服務器廣播累積金額）：0.3s ease-out 滾動到新值</li>
+<li>字體：Orbitron Bold，電光金 <code>#FFD700</code></li>
+<li>外框：霓虹青色 border（1.5px 發光邊框）</li>
+<li>閒置動畫：每 5s 輕微放大縮小脈搏（scale 1.0 ↔ 1.02）；<strong>Reduce Motion 時停用（F8）</strong></li>
+</ul>
+<h4 id="332-jackpot-觸發特效規格">§3.3.2 Jackpot 觸發特效規格</h4>
+<p><strong>觸發動畫流程（共 4 秒）：</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>時間軸</th><th>效果</th></tr></thead>
+<tbody>
+<tr><td>0.1s</td><td>全屏震動（水平 ±10px，頻率 20Hz，持續 0.8s；iOS 觸覺反饋 Heavy Impact）</td></tr>
+<tr><td>0.3s</td><td>粒子爆炸從畫面中心向四周（500 粒子，金色 + 青色，1.5s 生命週期）</td></tr>
+<tr><td>0.5s</td><td>Jackpot 大字幕從下方飛入（「JACKPOT！」Orbitron ExtraBold 80sp，電光金 + Neon Cyan 交替閃爍）</td></tr>
+<tr><td>1.0s</td><td>得獎玩家名稱顯示（「恭喜 [玩家名] 贏得 X,XXX 金幣！」）</td></tr>
+<tr><td>2.5s</td><td>金幣雨粒子（從上至下，100 個金幣圖示粒子，3s 生命週期）</td></tr>
+<tr><td>4.0s</td><td>所有特效漸出，Jackpot 池重置動畫（數字快速歸零 → 種子金額）</td></tr>
+</tbody></table></div>
+<p><strong>WCAG 閃爍合規說明：</strong></p>
+<ul>
+<li>全屏閃白僅發生 1 次（0.0-0.1s），不超過每秒 3 次，符合 WCAG 2.1 §2.3.1</li>
+<li>頻率 20Hz 震動不屬視覺閃爍，不計入閃爍次數</li>
+<li>若玩家啟用裝置「減少動態效果（Reduce Motion）」，震動強度降低 50%，粒子數量減半</li>
+</ul>
+<hr>
+<h3 id="34-隱私同意彈窗privacyconsentmodal">§3.4 隱私同意彈窗（PrivacyConsentModal）</h3>
+<h4 id="341-彈窗設計規格">§3.4.1 彈窗設計規格</h4>
+<p><strong>外觀：</strong></p>
+<ul>
+<li>觸發時機：App 首次啟動，阻塞所有其他 UI 互動</li>
+<li>尺寸：寬度 90% 螢幕寬（最大 480px），高度自適應內容</li>
+<li>背景遮罩：全屏半透明黑 <code>rgba(0,0,0,0.85)</code>（不可點擊穿透）</li>
+<li>彈窗底色：<code>#0B2447</code>，圓角 <code>20px</code>，<code>1px solid rgba(0,245,255,0.3)</code> 邊框</li>
+</ul>
+<p><strong>內容結構：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌──────────────────────────────────────────┐
+│  🔒 隱私政策同意                           │
+│                                          │
+│  《Fishing Arcade Game》在提供服務前，需   │
+│  要您同意我們的隱私政策。                   │
+│                                          │
+│  我們收集的資料：                          │
+│  • 帳號資訊（Email、暱稱）               │
+│  • 遊戲行為記錄（用於改善遊戲體驗）         │
+│  • 付費紀錄（依台灣稅法保留 7 年）          │
+│                                          │
+│  您的權利（台灣個人資料保護法）：            │
+│  • 查詢、更正、刪除您的個人資料             │
+│  • 隨時撤回行銷通知同意                   │
+│                                          │
+│  [📋 查看完整隱私政策]（連結，資訊藍色）    │
+│                                          │
+│  ┌──────────────────────────────────┐   │
+│  │  ✓ 我已閱讀並同意隱私政策           │  │
+│  └──────────────────────────────────┘   │
+│                                          │
+│  隱私政策版本：v1.0（2026-04-22）         │  ← F-R2-11 fix
+│  （12sp，#C8D6E5，由後台動態注入版本號）   │
+│                                          │
+│  [不同意，關閉 App]    [同意並繼續遊戲]  │
+└──────────────────────────────────────────┘</code></pre></div>
+<p><strong>按鈕規格：</strong></p>
+<ul>
+<li>「同意並繼續遊戲」：霓虹橘主色，寬度 50% 彈窗寬，高度 <code>52px</code>，圓角 <code>12px</code></li>
+<li>「不同意，關閉 App」：邊框式按鈕（Crisis Red 邊框），較小（高度 <code>44px</code>）</li>
+<li>兩按鈕下方留白：Safe Area Bottom + 16px</li>
+</ul>
+<h4 id="342-wcag-21-level-a-合規實作">§3.4.2 WCAG 2.1 Level A 合規實作</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>合規項目</th><th>具體實作</th></tr></thead>
+<tbody>
+<tr><td><strong>對比度 ≥ 3:1</strong>（UI 組件）</td><td>按鈕邊框顏色與背景對比：霓虹橘在深藍底：5.1:1（符合 AA）</td></tr>
+<tr><td><strong>無閃爍</strong>（WCAG 2.3.1）</td><td>彈窗不含任何閃爍元素；出現動畫為漸顯（opacity 0→1，0.3s）</td></tr>
+<tr><td><strong>鍵盤 / 輔助技術可操作</strong></td><td>所有按鈕設定 <code>accessibilityLabel</code>；焦點順序：同意 checkbox → 查看政策 → 同意按鈕 → 不同意按鈕</td></tr>
+<tr><td><strong>文字可調整大小</strong></td><td>使用 Cocos <code>Label</code> 的 <code>sp</code> 單位，跟隨裝置字體大小設定縮放（限幅 80%-150%）</td></tr>
+<tr><td><strong>替代文字（Alt Text）</strong></td><td>圖示元素（鎖定圖示、勾選框）設定 <code>accessibilityLabel</code>（如「已同意勾選框，已勾選」）</td></tr>
+<tr><td><strong>顏色非唯一資訊載體</strong></td><td>同意狀態不僅靠顏色區分，同時顯示「✓」勾選符號 + 文字說明</td></tr>
+</tbody></table></div>
+<hr>
+<h3 id="35-jackpot-機率揭示-modaljackpotoddsmodal-f17">§3.5 Jackpot 機率揭示 Modal（JackpotOddsModal）— F17</h3>
+<p><strong>觸發方式</strong>：</p>
+<ul>
+<li>商城頁砲台道具旁的「⚠ 查看 Jackpot 觸發機率」連結</li>
+<li>設定頁「Jackpot 機率說明（法規揭示）」選項</li>
+<li>App Store 審查要求：機率資訊必須在購買前可存取</li>
+</ul>
+<p><strong>設計規格：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">┌──────────────────────────────────────────────┐
+│  📊 Jackpot 機率說明                           │
+│                                              │
+│  ─────────────────────────────────────────── │
+│  砲台倍率   Jackpot 觸發機率   期望單次 RTP    │
+│  ────────   ──────────────   ────────────── │
+│    1x       1 : 500,000       92%            │
+│   10x       1 :  50,000       93%            │
+│   50x       1 :  10,000       95%            │
+│  100x       1 :   5,000       95%            │
+│  ─────────────────────────────────────────── │
+│                                              │
+│  整體 RTP（所有下注加權平均）：92% – 96%        │
+│                                              │
+│  📋 Jackpot 池觸發條件：                      │
+│  • 每次有效下注均有機率觸發                    │
+│  • 高倍率砲台提升觸發機率，但不保證中獎          │
+│  • Jackpot 池由所有房間玩家共同累積              │
+│                                              │
+│  最後更新：2026-04-22（由開發月 1 確認最終值）  │
+│  [📋 完整隱私與機率說明文件]（資訊藍連結）      │
+│                                              │
+│              [知道了，關閉]                   │
+└──────────────────────────────────────────────┘</code></pre></div>
+<ul>
+<li><strong>觸發方式</strong>：<code>ModalStack.push('JackpotOddsModal')</code>（優先級低於 PrivacyConsentModal）</li>
+<li><strong>表格樣式</strong>：Glassmorphism 底，表頭 Neon Cyan，數字 Orbitron Bold 電光金</li>
+<li><strong>合規說明</strong>：最後一行「最後更新」日期由後台動態注入；若日期距今超過 90 天，顯示 Amber 警示</li>
+<li><strong>[知道了，關閉] 按鈕</strong>：霓虹橘，高度 <code>48px</code>，全寬</li>
+<li><strong>F-R2-12 無障礙讀取順序規格</strong>：Cocos Creator Label 節點的無障礙樹讀取順序不保證與視覺行列一致；實作時每個表格<strong>行（row）</strong>包裝在一個父容器節點，並設定該節點的複合 <code>accessibilityLabel</code>，例如：</li>
+</ul>
+<p>``<code>typescript setAccessibilityLabel(row1Node, '砲台倍率 1 倍，Jackpot 觸發機率 1 比 500,000，期望 RTP 92%'); setAccessibilityLabel(row2Node, '砲台倍率 10 倍，Jackpot 觸發機率 1 比 50,000，期望 RTP 93%'); setAccessibilityLabel(row3Node, '砲台倍率 50 倍，Jackpot 觸發機率 1 比 10,000，期望 RTP 95%'); setAccessibilityLabel(row4Node, '砲台倍率 100 倍，Jackpot 觸發機率 1 比 5,000，期望 RTP 95%'); </code>`<code> 個別 Label 子節點需從無障礙樹排除，確保螢幕報讀器以整行為單位朗讀。使用公開的 CC4.x API（Round 5 F4 fix，取代私有屬性路徑）： </code>`<code>typescript // 對每個 Label 子節點設定 contentSize 為 (0,0) 使其不響應點擊，並在原生端排除可及性 childLabel.getComponent(UITransform).setContentSize(0, 0); // 同時透過 AccessibilityHelper 標記為不可存取（原生端實作：isAccessibilityElement = NO / setImportantForAccessibility(IMPORTANT<em>FOR</em>ACCESSIBILITY_NO)） setAccessibilityLabel(childLabel.node, '', '');  // 空字串 label 令報讀器略過此元素 </code>``</p>
+<hr>
+<h3 id="36-金幣不足提示-toastcoininsufficienttoast-f18">§3.6 金幣不足提示 Toast（CoinInsufficientToast）— F18</h3>
+<p><strong>觸發條件</strong>：玩家嘗試射擊但金幣餘額 < 當前砲台倍率費用時觸發。</p>
+<p><strong>設計規格：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">   ┌──────────────────────────────────────────┐
+   │  ⚠  金幣不足！                           │
+   │  當前餘額：150 金幣  │  需要：500 金幣    │
+   │  [前往商城購買鑽石] 兌換更多金幣           │
+   └──────────────────────────────────────────┘
+   （從畫面底部上滑顯示，位於砲台 HUD 正上方）</code></pre></div>
+<ul>
+<li><strong>出現位置</strong>：畫面底部中央（在砲台 HUD 上方 16px），不遮擋遊戲核心區域</li>
+<li><strong>出現動畫</strong>：從畫面下方 40px 滑入（0.25s ease-out）</li>
+<li><strong>持續時間</strong>：3 秒後自動消失（淡出 0.3s）；玩家點擊 [前往商城] 立即消失並跳轉</li>
+<li><strong>顏色</strong>：底色 <code>rgba(255,45,85,0.95)</code>（Crisis Red 半透明），文字白色，圓角 <code>12px</code></li>
+<li><strong>[前往商城購買鑽石] 按鈕</strong>：內嵌文字連結，底線，白色，點擊後觸發場景跳轉至 Shop</li>
+<li><strong>防重複觸發</strong>：同一個射擊動作最多觸發一次 Toast；3 秒冷卻期內不重複顯示</li>
+<li><strong>F-R2-15 對比度風險說明</strong>：白色文字在 <code>rgba(255,45,85,0.95)</code> 上有效背景約 <code>#F42B51</code>，對比度約 4.5:1（WCAG AA 邊界）。遊戲場景動態背景（金色/青色粒子）可能降低半透明層的有效對比。建議實作時在裝置上以最壞情況背景（Boss 命中特效啟動中）驗證對比；若不通過，將背景不透明度調整至 1.0（<code>#FF2D55</code> 對白色對比度為 5.9:1，充分通過 AA）。</li>
+<li><strong>Round 5 F3 無障礙標籤規格</strong>（與其他 overlay 規格對齊）：</li>
+</ul>
+<div class="table-wrapper"><table>
+<thead><tr><th>元素</th><th>accessibilityLabel</th><th>accessibilityHint</th></tr></thead>
+<tbody>
+<tr><td>[前往商城購買鑽石] 文字連結</td><td>「前往商城購買鑽石按鈕」</td><td>「點擊跳轉商城兌換金幣」</td></tr>
+</tbody></table></div>
+<blockquote><p>實作注意：Toast 出現時呼叫 <code>setAccessibilityLabel(toastNode, '金幣不足，當前餘額 ${balance} 金幣，需要 ${required} 金幣')</code> 並觸發焦點移至 Toast 節點（iOS VoiceOver：<code>UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification,...)</code>；Android TalkBack：<code>announceForAccessibility()</code>），確保螢幕報讀器在 3s 自動消失前讀出資訊。</p></blockquote>
+<hr>
+<h2 id="4-響應式與裝置適配">§4 響應式與裝置適配</h2>
+<h3 id="41-safe-area-處理">§4.1 Safe Area 處理</h3>
+<h4 id="411-cocos-creator-4x-安全區域實作">§4.1.1 Cocos Creator 4.x 安全區域實作</h4>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// components/layout/SafeAreaAdapter.ts
+@ccclass('SafeAreaAdapter')
+export class SafeAreaAdapter extends Component {
+    @property(Node) topInset: Node = null;
+    @property(Node) bottomInset: Node = null;
+    @property(Node) leftInset: Node = null;
+    @property(Node) rightInset: Node = null;
+
+    onLoad() {
+        // 使用 Cocos Creator 4.x 的 sys.getSafeAreaRect() 取得安全區域
+        // sys.getSafeAreaRect() 與 screen.windowSize 均以實體像素（physical pixels）為單位
+        // UITransform.setContentSize() 接受邏輯單位（設計解析度 design resolution units）
+        // → 必須除以 devicePixelRatio 轉換，否則在 3x DPI 裝置上 inset 會放大 3 倍
+        const safeArea = sys.getSafeAreaRect();  // physical pixels
+        const screenSize = screen.windowSize;    // physical pixels
+        const dpr = screen.devicePixelRatio || 1;  // Round 5 F2 fix: 實體→邏輯像素轉換比例
+
+        // Y 軸向上：safeArea.y = 底部實體像素 inset；頂部需反算
+        const topPad    = (screenSize.height - safeArea.y - safeArea.height) / dpr;
+        const bottomPad = safeArea.y / dpr;
+        const leftPad   = safeArea.x / dpr;
+        const rightPad  = (screenSize.width - safeArea.x - safeArea.width) / dpr;
+        const logicalW  = screenSize.width  / dpr;
+        const logicalH  = screenSize.height / dpr;
+
+        // UITransform.setContentSize 接受邏輯單位
+        this.topInset.getComponent(UITransform).setContentSize(logicalW, topPad);
+        this.bottomInset.getComponent(UITransform).setContentSize(logicalW, bottomPad);
+        this.leftInset.getComponent(UITransform).setContentSize(leftPad, logicalH);
+        this.rightInset.getComponent(UITransform).setContentSize(rightPad, logicalH);
+    }
+}</code></pre></div>
+<h4 id="412-各裝置安全區域測試清單">§4.1.2 各裝置安全區域測試清單</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>裝置類型</th><th>安全區域問題</th><th>處理方式</th></tr></thead>
+<tbody>
+<tr><td>iPhone 13/14（劉海）</td><td>頂部 47px 瀏海遮擋</td><td><code>topInset</code> = 47px</td></tr>
+<tr><td>iPhone SE 3rd（無瀏海）</td><td>標準狀態欄 20px</td><td><code>topInset</code> = 20px</td></tr>
+<tr><td>iPhone 15 Pro Max（全圓角）</td><td>底部 Home Bar 34px</td><td><code>bottomInset</code> = 34px；砲台 UI 向上移動</td></tr>
+<tr><td><strong>iPhone 16 / 16 Plus</strong>（動態島）</td><td>頂部動態島同 14 Pro：59px</td><td><code>topInset</code> = 59px</td></tr>
+<tr><td><strong>iPhone 16 Pro / 16 Pro Max</strong>（動態島更寬）</td><td>頂部 68px（動態島加大）；底部 34px</td><td><code>topInset</code> = 68px，<code>bottomInset</code> = 34px</td></tr>
+<tr><td>Android 打孔屏（如 Samsung Galaxy S24）</td><td>頂部打孔相機，尺寸依裝置</td><td><code>sys.getSafeAreaRect()</code> 自動取得；F11 fix：另須在 <code>AndroidManifest.xml</code> 加入 <code>android:windowLayoutInDisplayCutoutMode="shortEdges"</code> 確保 fullscreen 模式下 Cutout 區域正確回報</td></tr>
+<tr><td>Android 全面屏（導覽列手勢）</td><td>底部手勢感應區 24px</td><td><code>bottomInset</code> = 24px</td></tr>
+<tr><td>iPad（橫屏）</td><td>圓角 + 側邊安全距離</td><td>左右 <code>leftInset/rightInset</code> 各 20px</td></tr>
+</tbody></table></div>
+<p><strong>Android Display Cutout 設定（F11）：</strong></p>
+<p>在 <code>proj.android/app/src/main/AndroidManifest.xml</code> 的 <code>&lt;activity&gt;</code> 標籤加入：</p>
+<div class="code-block-wrapper"><div class="code-lang-label">xml</div><pre><code class="language-xml">&lt;activity
+    android:screenOrientation="sensorLandscape"
+    android:windowLayoutInDisplayCutoutMode="shortEdges"&gt;</code></pre></div>
+<p>在 <code>AppActivity.java</code>（或 <code>AppActivity.kt</code>）的 <code>onCreate()</code> 加入：</p>
+<div class="code-block-wrapper"><div class="code-lang-label">java</div><pre><code class="language-java">if (Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.P) {
+    WindowManager.LayoutParams attrs = getWindow().getAttributes();
+    attrs.layoutInDisplayCutoutMode =
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+    getWindow().setAttributes(attrs);
+}</code></pre></div>
+<p>此設定確保橫屏時 <code>sys.getSafeAreaRect()</code> 正確回報打孔屏左右兩側的安全區域。</p>
+<hr>
+<h3 id="42-橫屏鎖定設計">§4.2 橫屏鎖定設計</h3>
+<p>本遊戲<strong>強制鎖橫屏</strong>（Landscape），原因：</p>
+<ol>
+<li>4 個砲台需要足夠水平空間分布</li>
+<li>魚群遊戲區域橫向視野更廣</li>
+<li>瞄準線操作在橫屏有更好的精準度</li>
+</ol>
+<p><strong>實作方式：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// F-R2-05 fix: CC4.x 橫屏鎖定使用 screen.setOrientation()，而非 CC3.x 的 jsb.device.setDeviceOrientation()
+import { screen, ScreenOrientation, sys } from 'cc';
+
+// 在 Boot.scene 初始化時執行
+if (sys.gameType !== sys.GameType.DesktopBrowser) {
+    screen.setOrientation(ScreenOrientation.LANDSCAPE_RIGHT);
+}</code></pre></div>
+<p><strong>Android <code>AndroidManifest.xml</code>：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">xml</div><pre><code class="language-xml">&lt;activity android:screenOrientation="sensorLandscape"&gt;</code></pre></div>
+<p><strong>iOS <code>Info.plist</code>：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">xml</div><pre><code class="language-xml">&lt;key&gt;UISupportedInterfaceOrientations&lt;/key&gt;
+&lt;array&gt;
+    &lt;string&gt;UIInterfaceOrientationLandscapeLeft&lt;/string&gt;
+    &lt;string&gt;UIInterfaceOrientationLandscapeRight&lt;/string&gt;
+&lt;/array&gt;</code></pre></div>
+<p><strong>豎屏提示處理：</strong> 若裝置未旋轉，顯示「請旋轉裝置為橫屏以獲得最佳遊戲體驗」提示（使用 CSS transform 或 Cocos Node 旋轉 90° 顯示提示）。</p>
+<hr>
+<h3 id="43-2gb-ram-中端機型優化策略">§4.3 2GB RAM 中端機型優化策略</h3>
+<h4 id="431-sprite-atlas-規劃">§4.3.1 Sprite Atlas 規劃</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>圖集名稱</th><th>內容</th><th>尺寸</th><th>壓縮格式</th><th>載入策略</th></tr></thead>
+<tbody>
+<tr><td><code>fish_normal.atlas</code></td><td>普通魚 Spine 圖集（S 尺寸）</td><td>1024×1024</td><td>ETC2 / ASTC</td><td>遊戲房間載入，離開後釋放</td></tr>
+<tr><td><code>fish_elite.atlas</code></td><td>精英魚 Spine 圖集（M 尺寸）</td><td>1024×1024</td><td>ETC2 / ASTC</td><td>遊戲房間載入，離開後釋放</td></tr>
+<tr><td><code>fish_boss.atlas</code></td><td>Boss 魚 Spine 圖集（XL 尺寸）</td><td>2048×2048</td><td>ETC2 / ASTC</td><td>按需載入（Boss 出現前 2 秒預載）</td></tr>
+<tr><td><code>effects_common.atlas</code></td><td>命中特效、粒子底圖</td><td>1024×1024</td><td>ETC2 / ASTC</td><td>遊戲房間載入</td></tr>
+<tr><td><code>bg_seabed.atlas</code></td><td>海底背景（含珊瑚礁）</td><td>2048×2048</td><td>ETC2 / ASTC</td><td>場景載入，常駐</td></tr>
+<tr><td><code>cannon.atlas</code></td><td>砲台 Spine 圖集（4 種狀態）</td><td>1024×1024</td><td>ETC2 / ASTC</td><td>遊戲房間載入</td></tr>
+</tbody></table></div>
+<h4 id="432-記憶體管理策略">§4.3.2 記憶體管理策略</h4>
+<p><strong>ObjectPool 設計（避免 GC 峰值）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// utils/ObjectPoolManager.ts
+// F4 fix + F-R2-01/F-R2-02 fix + F2 fix (Round 3):
+// CC4.x ObjectPool&lt;T&gt; 接受 creator + handler 物件；singleton 以 getInstance() 存取
+export class ObjectPoolManager {
+    private static _instance: ObjectPoolManager;
+
+    /** F2 fix: 全域 singleton，跨場景存取必須用此方法 */
+    public static getInstance(): ObjectPoolManager {
+        if (!ObjectPoolManager._instance) {
+            ObjectPoolManager._instance = new ObjectPoolManager();
+        }
+        return ObjectPoolManager._instance;
+    }
+
+    private _pools: Map&lt;string, ObjectPool&lt;Node&gt;&gt; = new Map();
+    private _prefabs: Map&lt;string, Prefab&gt; = new Map();
+
+    /** 註冊 Prefab，在 Boot.scene 或 GameRoom.scene 初始化時呼叫 */
+    public registerPrefab(key: string, prefab: Prefab): void {
+        this._prefabs.set(key, prefab);
+    }
+
+    public clearAllPools(): void {
+        this._pools.forEach((pool) =&gt; pool.clear());
+        this._pools.clear();
+    }
+
+    getPool(prefabKey: string, warmUpCount: number): ObjectPool&lt;Node&gt; {
+        if (!this._pools.has(prefabKey)) {
+            const prefab = this._prefabs.get(prefabKey);
+            // CC4.x ObjectPool handler 介面：IPoolHandlerComponent&lt;T&gt; 定義為 { onFree, reuse }
+            // （Round 5 F1 驗證：onFree = 回收時呼叫；reuse = 取出時呼叫，符合 CC4.x TypeScript 型別定義）
+            const pool = new ObjectPool&lt;Node&gt;(
+                () =&gt; instantiate(prefab),
+                {
+                    onFree: (node) =&gt; { node.active = false; },  // 回收入池時隱藏
+                    reuse: (node) =&gt; { node.active = true; }     // 從池中取出時顯示
+                }
+            );
+            // 預熱 N 個節點（避免遊戲中動態 instantiate 造成 GC 峰值）
+            for (let i = 0; i &lt; warmUpCount; i++) {
+                pool.put(instantiate(prefab));
+            }
+            this._pools.set(prefabKey, pool);
+        }
+        return this._pools.get(prefabKey);
+    }
+}</code></pre></div>
+<p><strong>預熱數量建議：</strong></p>
+<div class="table-wrapper"><table>
+<thead><tr><th>ObjectPool</th><th>預熱數量</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td>EliteFish</td><td>5</td><td>同時在場較少</td></tr>
+<tr><td>BossFish</td><td>2</td><td>同一時間最多 1 條</td></tr>
+<tr><td>Bullet</td><td>40</td><td>每玩家最多 10 顆，4 玩家共 40 顆</td></tr>
+<tr><td>HitEffect</td><td>20</td><td>命中特效短生命週期</td></tr>
+</tbody></table></div>
+<p><strong>場景切換記憶體釋放：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// F1 fix: CC4.x 移除頂層 assetManager.releaseAll()；應透過 Bundle 逐包釋放
+// F2 fix: ObjectPoolManager 需宣告 static instance（singleton）才能跨場景存取
+// 離開 GameRoom 場景時
+director.on(Director.EVENT_BEFORE_SCENE_LAUNCH, () =&gt; {
+    ObjectPoolManager.getInstance().clearAllPools();
+    // 釋放遊戲房間專屬圖集（透過 Bundle API，非頂層 assetManager.releaseAll()）
+    const gameRoomBundle = assetManager.getBundle('game_room');
+    gameRoomBundle?.releaseAll();  // 釋放 fish_normal/elite/boss/cannon/effects 圖集
+});</code></pre></div>
+<p><strong>紋理壓縮建議：</strong></p>
+<ul>
+<li>所有圖集使用硬體壓縮格式（ETC2 / ASTC），避免未壓縮 RGBA8888</li>
+<li>Boss 魚大圖集（2048×2048 × ASTC 4×4）記憶體佔用 ≈ 2MB（vs 未壓縮 16MB）</li>
+<li>目標：遊戲房間總紋理記憶體 < 128MB（2GB RAM 裝置保留 1.8GB 給系統和其他 App）</li>
+</ul>
+<h4 id="433-效能降級策略low-end-mode">§4.3.3 效能降級策略（Low-End Mode）</h4>
+<p>當偵測到裝置記憶體 < 3GB 或 FPS 連續 5 秒低於 25fps：</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>降級項目</th><th>正常模式</th><th>Low-End 模式</th></tr></thead>
+<tbody>
+<tr><td>命中特效粒子數</td><td>80 粒子（Boss 命中）</td><td>40 粒子</td></tr>
+<tr><td>Jackpot 觸發粒子</td><td>500 粒子</td><td>200 粒子</td></tr>
+<tr><td>水草動畫</td><td>所有水草擺動</td><td>僅前景水草擺動</td></tr>
+<tr><td>後處理（Camera PostProcess 組件）</td><td>Bloom + ColorGrading</td><td>僅 ColorGrading</td></tr>
+<tr><td>廣播 Banner 動畫</td><td>滑入動畫</td><td>直接顯示（無動畫）</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="5-無障礙設計a11y">§5 無障礙設計（A11y）</h2>
+<h3 id="51-prd-75-無障礙需求對應">§5.1 PRD §7.5 無障礙需求對應</h3>
+<p>PRD 要求：<strong>WCAG 2.1 Level A（MVP）→ Level AA（Phase 2）</strong></p>
+<h4 id="511-mvp-必須實作level-a">§5.1.1 MVP 必須實作（Level A）</h4>
+<div class="table-wrapper"><table>
+<thead><tr><th>需求 ID</th><th>WCAG 2.1 準則</th><th>具體要求</th><th>Cocos Creator 實作方式</th></tr></thead>
+<tbody>
+<tr><td>A11y-02</td><td>1.4.1 顏色非唯一資訊</td><td>不能僅靠顏色傳達資訊</td><td>狀態變化同時使用顏色 + 圖示 + 文字（例：HP 條顏色 + 數字 + 閃爍）</td></tr>
+<tr><td>A11y-03</td><td>1.4.3 對比度（最低）</td><td>文字對比度 ≥ 4.5:1；大文字（18pt+）≥ 3:1</td><td>所有靜態 UI 文字符合 §1.2 色彩對比度表</td></tr>
+<tr><td>A11y-04</td><td>2.1.1 鍵盤操作</td><td>所有功能可透過輔助觸控操作</td><td>確保 iOS VoiceOver / Android TalkBack 焦點順序正確</td></tr>
+<tr><td>A11y-05</td><td>2.3.1 三次以下閃爍</td><td>每秒不超過 3 次閃爍</td><td>Jackpot 全屏閃白限制為 1 次（詳見 §3.3.2）</td></tr>
+<tr><td>A11y-06</td><td>2.4.3 焦點順序</td><td>焦點順序符合邏輯</td><td>ModalStack 推入 Modal 時，焦點移至 Modal 內第一個可互動元素</td></tr>
+<tr><td>A11y-07</td><td>3.3.1 錯誤識別</td><td>錯誤輸入需用文字描述</td><td>表單驗證錯誤（Email 格式、DELETE 確認）顯示明確文字說明</td></tr>
+<tr><td>A11y-08</td><td>3.3.2 標籤或說明</td><td>輸入欄位需有標籤</td><td>隱私彈窗同意 Checkbox、Email 輸入框均有文字標籤</td></tr>
+<tr><td>A11y-09</td><td>4.1.2 名稱、角色、值</td><td>UI 組件需有可存取的名稱和角色</td><td>按鈕設定 <code>accessibilityLabel</code>（如「快速配對按鈕」）、狀態（如「已啟用」）</td></tr>
+</tbody></table></div>
+<h4 id="512-cocos-creator-4x-中對比度-451-的實作驗證">§5.1.2 Cocos Creator 4.x 中對比度 ≥ 4.5:1 的實作驗證</h4>
+<p>Cocos Creator 本身不提供對比度計算工具，建議在設計階段使用以下流程：</p>
+<p><strong>設計階段驗證：</strong></p>
+<ol>
+<li>使用 Figma 或 Contrast Checker（contrast-ratio.com）計算每個 Label 的前景/背景色對比度</li>
+<li>所有通過的顏色對記錄於 §1.2 色彩系統表，開發階段直接引用</li>
+<li>動態生成的 Label（如玩家名稱、金幣數字）確保在最深背景色（<code>#050D1A</code>）上使用白色或電光金，對比度 ≥ 13:1</li>
+</ol>
+<p><strong>開發階段驗證：</strong></p>
+<ul>
+<li>使用 iOS Accessibility Inspector 或 Android Accessibility Scanner 執行自動化對比度檢測</li>
+<li>每次 Sprint 結束前，對所有靜態 UI 畫面截圖並執行自動掃描</li>
+</ul>
+<p><strong>Cocos 環境特殊情境：</strong></p>
+<ul>
+<li>Glassmorphism 面板（半透明）：對比度計算以面板底色的「視覺有效背景色」計算（面板背景色 = <code>rgba(0,245,255,0.08)</code> 疊加於 <code>#050D1A</code> → 有效色約 <code>#071830</code>），確保白色文字在此有效背景上對比度 ≥ 14:1</li>
+<li>粒子特效期間（動態背景）：計算以最暗可能背景為基準（最差情境）</li>
+</ul>
+<h4 id="513-accessibilitylabel-設定f12與-reduce-motion-支援f13">§5.1.3 accessibilityLabel 設定（F12）與 Reduce Motion 支援（F13）</h4>
+<p><strong>accessibilityLabel 設定方式（F12 fix）：</strong></p>
+<p>Cocos Creator 4.x 沒有直接的 <code>accessibilityLabel</code> 屬性，需透過 <code>jsb.reflection</code> 呼叫原生 API。下列工具函式封裝此邏輯：</p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// utils/AccessibilityHelper.ts
+// F-R2-04 fix: 移除 _uiTransformComp.nativeObject 偽造屬性查詢（始終為 undefined）
+// 直接使用 node.uuid 作為原生端識別符（jsb.reflection 呼叫中已正確使用）
+export function setAccessibilityLabel(node: Node, label: string, hint?: string): void {
+    if (!jsb) return;  // Web 平台跳過
+    if (!node) return;
+
+    if (sys.os === sys.OS.IOS) {
+        // iOS：AppController 原生端以 uuid 查找對應 UIView，設定 accessibilityLabel
+        jsb.reflection.callStaticMethod(
+            'AppController',
+            'setAccessibilityLabel:hint:forNodeId:',
+            `${label}|${hint ?? ''}|${node.uuid}`
+        );
+    } else if (sys.os === sys.OS.ANDROID) {
+        // Android：Cocos2dxHelper 原生端以 uuid 查找對應 View，設定 contentDescription
+        jsb.reflection.callStaticMethod(
+            'org/cocos2dx/lib/Cocos2dxHelper',
+            'setAccessibilityLabel',
+            '(Ljava/lang/String;Ljava/lang/String;)V',
+            node.uuid,
+            label
+        );
+    }
+}
+
+// 使用範例（在 MainMenu 初始化時）
+setAccessibilityLabel(this.quickMatchBtn.node, '快速配對按鈕', '點擊後進入配對等待');
+setAccessibilityLabel(this.shopBtn.node, '商城按鈕');
+setAccessibilityLabel(this.settingsBtn.node, '設定按鈕');
+setAccessibilityLabel(this.privacyCheckbox.node, '隱私政策同意勾選框', '必須勾選才能繼續');</code></pre></div>
+<p><strong>Reduce Motion 支援（F13 fix）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">typescript</div><pre><code class="language-typescript">// utils/MotionPreference.ts
+export function isReduceMotionEnabled(): boolean {
+    if (!jsb) return false;  // Web 平台預設不減少動態效果
+
+    if (sys.os === sys.OS.IOS) {
+        // F4 fix: UIAccessibilityIsReduceMotionEnabled 是 C 函式 / ObjC property，
+        // 需透過在 AppController.mm 封裝的靜態 ObjC 方法呼叫（CC4.x jsb.reflection 限制）
+        // AppController.mm 需加入：
+        //   + (NSString *)isReduceMotionEnabled {
+        //       return UIAccessibilityIsReduceMotionEnabled() ? @"true" : @"false";
+        //   }
+        return jsb.reflection.callStaticMethod(
+            'AppController',
+            'isReduceMotionEnabled',
+            ''
+        ) === 'true';
+    }
+
+    if (sys.os === sys.OS.ANDROID) {
+        // F13 fix: Android 透過 Settings.Global.ANIMATOR_DURATION_SCALE 偵測
+        // ANIMATOR_DURATION_SCALE = 0 時，使用者已在開發者選項中關閉動畫（等同 Reduce Motion）
+        // 正常值為 1.0；無障礙設定的「移除動畫」也會設為 0
+        // F-R2-14 fix: JNI '()F' 回傳值在 JSB 中為 JS number，不需 string 轉型
+        const scale = jsb.reflection.callStaticMethod(
+            'org/cocos2dx/lib/Cocos2dxHelper',
+            'getAnimatorDurationScale',
+            '()F'
+        ) as number;
+        return scale === 0;
+    }
+
+    return false;
+}
+
+// 在 Boot.scene 初始化時讀取並儲存至 DataManager
+// 特效播放前檢查此設定，調整動畫強度（§3.3.2 中已定義降低策略：粒子減半、震動減弱 50%）</code></pre></div>
+<p><strong>Android 原生端配合實作（<code>Cocos2dxHelper.java</code>）：</strong></p>
+<div class="code-block-wrapper"><div class="code-lang-label">java</div><pre><code class="language-java">public static float getAnimatorDurationScale() {
+    return Settings.Global.getFloat(
+        Cocos2dxActivity.getContext().getContentResolver(),
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1.0f
+    );
+}</code></pre></div>
+<hr>
+<h2 id="6-設計審查檢查清單">§6 設計審查檢查清單</h2>
+<h3 id="61-privacy-by-design-審查對應-prd-17-隱私設計">§6.1 Privacy by Design 審查（對應 PRD §17 隱私設計）</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>項目</th><th>對應 US-ID</th><th>狀態</th></tr></thead>
+<tbody>
+<tr><td>PD-02</td><td>同意記錄保存時間戳、IP、政策版本號</td><td>US-PRIV-001 / AC-3</td><td>🔲 待實作</td></tr>
+<tr><td>PD-03</td><td>行銷通知同意可在設定頁獨立撤回</td><td>US-PRIV-004</td><td>🔲 待實作</td></tr>
+<tr><td>PD-04</td><td>撤回行銷同意後，Firebase Analytics <code>marketing_*</code> 事件即時停止</td><td>US-PRIV-004 / AC-2</td><td>🔲 待實作</td></tr>
+<tr><td>PD-05</td><td>帳號刪除需兩步驟確認（說明 + 輸入 DELETE）</td><td>US-PRIV-002 / AC-1</td><td>🔲 待實作</td></tr>
+<tr><td>PD-06</td><td>帳號刪除申請後顯示 30 天冷靜期，可取消</td><td>US-PRIV-002 / AC-3</td><td>🔲 待實作</td></tr>
+<tr><td>PD-07</td><td>暱稱和 Email 可在設定頁更正（更正權）</td><td>US-PRIV-003</td><td>🔲 待實作</td></tr>
+<tr><td>PD-08</td><td>刪除帳號按鈕視覺與其他設定項有明顯分隔，防誤觸</td><td>US-PRIV-002（PDD 設計規格）</td><td>🔲 待審查</td></tr>
+<tr><td>PD-09</td><td>隱私政策彈窗符合 WCAG Level A（對比度 + 無閃爍 + 替代文字）</td><td>§3.4.2</td><td>🔲 待審查</td></tr>
+<tr><td>PD-10</td><td>Jackpot 機率揭示在商城每個道具旁顯示（法規強制）</td><td>US-JACK-002</td><td>🔲 待實作</td></tr>
+<tr><td>PD-11</td><td>設定頁底部提供「完整 Jackpot 機率說明」連結</td><td>US-JACK-002 / AC-2</td><td>🔲 待實作</td></tr>
+<tr><td>PD-12</td><td>撤回必要同意（隱私政策）時引導至帳號刪除流程，不允許「保留帳號但撤回必要同意」</td><td>US-PRIV-004 / AC-3</td><td>🔲 待實作</td></tr>
+</tbody></table></div>
+<h3 id="62-wcag-21-level-a-審查">§6.2 WCAG 2.1 Level A 審查</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>#</th><th>準則</th><th>畫面 / 組件</th><th>驗收標準</th><th>狀態</th></tr></thead>
+<tbody>
+<tr><td>WC-02</td><td>1.4.1 顏色非唯一</td><td>HP 條（精英魚、Boss 魚）</td><td>顏色 + 數字標示（HP 條旁顯示 <code>XX%</code>）</td><td>🔲</td></tr>
+<tr><td>WC-03</td><td>1.4.3 對比度 ≥ 4.5:1</td><td>所有靜態文字 Label</td><td>iOS Accessibility Inspector 無對比度警告</td><td>🔲</td></tr>
+<tr><td>WC-04</td><td>1.4.3 對比度 ≥ 3:1（UI 組件）</td><td>按鈕邊框、輸入框邊框</td><td>邊框色與背景對比 ≥ 3:1</td><td>🔲</td></tr>
+<tr><td>WC-05</td><td>2.3.1 三次以下閃爍</td><td>Jackpot 觸發特效</td><td>全屏閃白僅 1 次，頻率 < 3Hz</td><td>🔲</td></tr>
+<tr><td>WC-06</td><td>2.1.1 鍵盤 / 輔助觸控</td><td>隱私彈窗</td><td>VoiceOver 可操作所有按鈕</td><td>🔲</td></tr>
+<tr><td>WC-07</td><td>2.4.3 焦點順序</td><td>隱私彈窗、帳號刪除彈窗</td><td>焦點順序：說明文字 → 操作按鈕（依閱讀順序）</td><td>🔲</td></tr>
+<tr><td>WC-08</td><td>3.3.1 錯誤識別</td><td>Email 輸入、DELETE 確認輸入</td><td>錯誤時顯示文字說明（非僅紅色邊框）</td><td>🔲</td></tr>
+<tr><td>WC-09</td><td>3.3.2 標籤或說明</td><td>所有輸入欄位</td><td>每個輸入框上方有可見 Label</td><td>🔲</td></tr>
+<tr><td>WC-10</td><td>4.1.2 名稱、角色、值</td><td>行銷同意 Toggle</td><td>TalkBack/VoiceOver 讀出「行銷推播，開關，已開啟」</td><td>🔲</td></tr>
+</tbody></table></div>
+<h3 id="63-anti-template-設計審查對應全局設計質量標準">§6.3 Anti-Template 設計審查（對應全局設計質量標準）</h3>
+<p>依設計質量標準，每個重要畫面需展示 ≥ 4 項設計品質指標：</p>
+<div class="table-wrapper"><table>
+<thead><tr><th>畫面</th><th>指標 1</th><th>指標 2</th><th>指標 3</th><th>指標 4</th><th>指標 5</th></tr></thead>
+<tbody>
+<tr><td>遊戲房間</td><td>✓ 層次（背景5層）</td><td>✓ 競技張力（瞄準線 + 即時 HUD）</td><td>✓ 動態運動（子彈軌跡、魚群游動）</td><td>✓ 差異化視覺（3 種魚大小不同）</td><td>✓ 數據視覺化（HP 條、RTP 指示條）</td></tr>
+<tr><td>商城</td><td>✓ 層次（套餐卡片 vs 背景）</td><td>✓ Glassmorphism 卡片質感</td><td>✓ 合規徽章（Jackpot 機率醒目標示）</td><td>✓ 視覺焦點（「最暢銷」標籤）</td><td>—</td></tr>
+<tr><td>隱私彈窗</td><td>✓ 法規資訊清楚結構化</td><td>✓ 按鈕層級（主 CTA vs 次要按鈕）</td><td>✓ 顏色語義（資訊藍連結）</td><td>✓ 無裝飾干擾（彈窗聚焦內容）</td><td>—</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="7-設計資產規格design-assets-specification">§7 設計資產規格（Design Assets Specification）</h2>
+<h3 id="71-美術外包交付清單">§7.1 美術外包交付清單</h3>
+<div class="table-wrapper"><table>
+<thead><tr><th>類別</th><th>資產名稱</th><th>格式</th><th>解析度</th><th>優先級</th><th>備注</th></tr></thead>
+<tbody>
+<tr><td>魚類動畫</td><td>精英魚（3 種造型）</td><td>Spine .skel + .atlas</td><td>1024×1024</td><td>P0</td><td>含 swim_loop、hurt、caught 動畫</td></tr>
+<tr><td>魚類動畫</td><td>Boss 魚（2 種造型）</td><td>Spine .skel + .atlas</td><td>2048×2048</td><td>P0</td><td>含 enter、swim_loop、hurt、die、escape</td></tr>
+<tr><td>砲台</td><td>基礎砲台動畫</td><td>Spine .skel + .atlas</td><td>1024×1024</td><td>P0</td><td>含 idle、charge、fire、cool 動畫</td></tr>
+<tr><td>背景</td><td>海底全場景</td><td>PNG（分層）</td><td>2048×1024（2x）</td><td>P0</td><td>深海底、珊瑚礁、中景水草分層</td></tr>
+<tr><td>UI 圖示</td><td>通用圖示組（金幣、鑽石、設定、客服等）</td><td>SVG 或 PNG@3x</td><td>64×64（基準）</td><td>P0</td><td>含 Hover 和 Active 狀態</td></tr>
+<tr><td>特效</td><td>命中爆炸特效幀動畫</td><td>PNG 序列 / Spine</td><td>128×128</td><td>P0</td><td>3 種（普通/精英/Boss 命中）</td></tr>
+<tr><td>Logo</td><td>遊戲 Logo（含霓虹版）</td><td>SVG + PNG@3x</td><td>向量</td><td>P0</td><td>需提供帶發光和不帶發光版本</td></tr>
+<tr><td>UI 框架</td><td>卡片、面板、彈窗底圖</td><td>9-sliced PNG</td><td>依設計稿</td><td>P0</td><td>可拉伸的九宮格切片</td></tr>
+</tbody></table></div>
+<h3 id="72-cocos-creator-4x-資源命名規範">§7.2 Cocos Creator 4.x 資源命名規範</h3>
+<div class="code-block-wrapper"><div class="code-lang-label">code</div><pre><code class="language-code">assets/
+├── textures/
+│   ├── atlas/                 # Sprite Atlas 圖集
+│   │   ├── ui_common.atlas
+│   │   ├── fish_normal.atlas
+│   │   ├── fish_elite.atlas
+│   │   ├── fish_boss.atlas
+│   │   ├── effects_common.atlas
+│   │   ├── cannon.atlas
+│   │   └── bg_seabed.atlas   # F7: 對應 §4.3.1 背景圖集（2048×2048，常駐）
+│   └── bg/                   # 背景 source 圖（供 Atlas 打包用，非直接引用）
+│       ├── seabed_deep.png
+│       ├── seabed_coral.png
+│       └── seabed_seaweed.png
+├── spines/                   # Spine 骨骼動畫
+│   ├── fish/
+│   │   ├── fish_normal_01.skel
+│   │   ├── fish_elite_01.skel
+│   │   └── fish_boss_01.skel
+│   └── cannon/
+│       └── cannon_base.skel
+├── prefabs/                  # Prefab 預製體
+│   ├── fish/
+│   ├── cannon/
+│   ├── ui/
+│   │   ├── PrivacyConsentModal.prefab
+│   │   ├── SettingsOverlay.prefab
+│   │   ├── WaitingLobbyOverlay.prefab
+│   │   ├── NetworkReconnectOverlay.prefab
+│   │   ├── JackpotOddsModal.prefab
+│   │   ├── CoinInsufficientToast.prefab
+│   │   ├── JackpotDisplay.prefab
+│   │   └── PrimaryButton.prefab
+│   └── effects/
+├── scenes/
+│   ├── Boot.scene
+│   ├── MainMenu.scene
+│   ├── GameRoom.scene
+│   └── Shop.scene
+│   # F-R2-06: Settings 為 ModalStack Prefab overlay，無獨立 Scene 檔案（見 §1.4）
+└── scripts/                 # TypeScript 腳本（依功能模組分組）
+    ├── cannon/
+    ├── fish/
+    ├── ui/
+    ├── network/
+    └── utils/</code></pre></div>
+<hr>
+<h2 id="8-動畫規格總表">§8 動畫規格總表</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>動畫名稱</th><th>觸發條件</th><th>時長</th><th>Easing</th><th>屬性</th><th>備注</th></tr></thead>
+<tbody>
+<tr><td>Jackpot 數字滾動</td><td>服務器廣播累積</td><td>0.3s</td><td>cubicOut</td><td>數字值</td><td>NumberRoller 組件</td></tr>
+<tr><td>砲管後坐力</td><td>發射</td><td>0.1s</td><td>cubicOut</td><td>translateY -8px → 0</td><td>觸感反饋</td></tr>
+<tr><td>子彈飛行</td><td>射擊</td><td>依距離/速度</td><td>linear</td><td>translateX/Y</td><td>服務器決定目標</td></tr>
+<tr><td>精英魚出現</td><td>服務器廣播</td><td>0.3s</td><td>bounceOut</td><td>scale 0.5→1.0</td><td>吸引目光</td></tr>
+<tr><td>Boss 魚進場</td><td>服務器廣播</td><td>2s</td><td>cubic</td><td>從畫面外游入</td><td>戲劇性演出</td></tr>
+<tr><td>Boss HP 條</td><td>受擊</td><td>0.15s</td><td>—</td><td>顏色閃爍</td><td>視覺反饋</td></tr>
+<tr><td>全屏暗化（Boss）</td><td>Boss 出現前</td><td>0.5s</td><td>linear</td><td>opacity 0→0.7</td><td>深紫 overlay</td></tr>
+<tr><td>命中特效</td><td>命中判定</td><td>0.3-0.8s</td><td>—</td><td>粒子系統</td><td>依魚種而異</td></tr>
+<tr><td>Jackpot 全屏閃白</td><td>Jackpot 觸發</td><td>0.1s</td><td>—</td><td>opacity 0→1→0</td><td>僅 1 次，WCAG 合規</td></tr>
+<tr><td>Jackpot 震動</td><td>Jackpot 觸發</td><td>0.8s</td><td>—</td><td>translateX ±10px</td><td>頻率 20Hz</td></tr>
+<tr><td>+N 金幣浮動</td><td>金幣增加</td><td>0.5s</td><td>cubicOut</td><td>translateY -40px + opacity 1→0</td><td>每次命中</td></tr>
+<tr><td>彈窗出現</td><td>ModalStack push</td><td>0.3s</td><td>cubicOut</td><td>opacity 0→1 + scale 0.95→1.0</td><td>通用 Modal 動畫</td></tr>
+<tr><td>頁面切換</td><td>場景載入完成</td><td>0.3s</td><td>linear</td><td>opacity 0→1</td><td>Loading 結束淡入</td></tr>
+<tr><td>Boss 廣播 Banner 滑入</td><td>Boss 出現</td><td>0.3s</td><td>ease-out</td><td>translateY 全寬橫幅從上方滑入</td><td>5s 後自動淡出</td></tr>
+<tr><td>WaitingLobby 海浪動畫</td><td>配對等待中（loop）</td><td>1.2s</td><td>ease-in-out</td><td>translateY ±4px（三條線交替 offset）</td><td>Reduce Motion: 停用</td></tr>
+<tr><td>WaitingLobby Slot 切換</td><td>玩家加入</td><td>0.3s</td><td>bounceOut</td><td>scale ○→●</td><td>Reduce Motion: 直接替換</td></tr>
+<tr><td>NetworkReconnect 成功淡出</td><td>重連成功</td><td>0.5s</td><td>linear</td><td>opacity 1→0</td><td>遊戲狀態同步後淡出</td></tr>
+<tr><td>CoinInsufficientToast 滑入</td><td>金幣不足射擊</td><td>0.25s</td><td>ease-out</td><td>translateY 底部 +40px → 0</td><td>位於砲台 HUD 上方</td></tr>
+<tr><td>CoinInsufficientToast 淡出</td><td>3s 後自動</td><td>0.3s</td><td>linear</td><td>opacity 1→0</td><td>亦可點擊 [前往商城] 觸發</td></tr>
+</tbody></table></div>
+<hr>
+<p><em>此 PDD 由 /devsop-gen-pdd 自動生成（Full-Auto 模式）。</em> <em>基於 PRD-FISHING-ARCADE-GAME-20260422 及 BRD-FISHING-ARCADE-GAME-20260421，涵蓋 8 大章節：設計原則、6 個核心畫面、4 類關鍵組件、裝置適配、無障礙設計、設計審查清單、資產規格及動畫規格。</em> <em>EDD 工程設計文件應參照本文件 §1.4 場景結構與 §3 組件規格進行技術落地。</em></p>
+      </main>
+    </div>
+  </div>
+  
+    <script>
+    (function() {
+      var toggle = document.querySelector('.sidebar-toggle');
+      var sidebar = document.querySelector('.sidebar');
+      var overlay = document.querySelector('.sidebar-overlay');
+      if (!toggle) return;
+      toggle.addEventListener('click', function() {
+        var open = sidebar.classList.toggle('open');
+        overlay.classList.toggle('visible', open);
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    })();
+    </script>
+
+</body>
+</html>
