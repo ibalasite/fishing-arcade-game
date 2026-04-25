@@ -20,11 +20,11 @@ interface SpawnerConfig {
 
 const DEFAULT_CONFIG: SpawnerConfig = {
   maxNormal:        15,
-  maxElite:          3,
-  normalIntervalMs: 2_000,
-  eliteIntervalMs:  30_000,
-  bossIntervalMs:   180_000,
-  eliteSpawnChance:  0.35,
+  maxElite:          5,
+  normalIntervalMs: 1_500,
+  eliteIntervalMs:  8_000,
+  bossIntervalMs:   60_000,
+  eliteSpawnChance:  0.70,
   screenW:          1280,
   screenH:           720,
 };
@@ -65,8 +65,9 @@ export class FishSpawner {
   // ---------------------------------------------------------------------------
 
   start(): void {
-    // Seed with a small initial wave
-    for (let i = 0; i < 5; i++) this._spawnNormal();
+    // Seed with a full initial wave so screen is never empty from the start
+    for (let i = 0; i < 8; i++) this._spawnNormal();
+    for (let i = 0; i < 3; i++) this._spawnElite();
 
     this._normalTimer = setInterval(() => {
       if (!this._disposed && this._normalCount < this._cfg.maxNormal) {
@@ -100,6 +101,9 @@ export class FishSpawner {
     });
 
     for (const id of escaped) this._removeFish(id, true);
+
+    // Guarantee minimum floor every tick
+    this._refillNormal();
   }
 
   dispose(): void {
@@ -120,7 +124,7 @@ export class FishSpawner {
   // ---------------------------------------------------------------------------
 
   private _spawnNormal(): void {
-    const duration = 8_000 + Math.random() * 6_000; // 8-14s
+    const duration = 22_000 + Math.random() * 13_000; // 22-35s
     const speed    = 180   + Math.random() * 80;    // px/s
     const fish     = this._create('normal', 1, 1, speed, duration);
     this._fishMap.set(fish.fishId, fish);
@@ -129,7 +133,7 @@ export class FishSpawner {
   }
 
   private _spawnElite(): void {
-    const duration = 14_000 + Math.random() * 8_000; // 14-22s
+    const duration = 30_000 + Math.random() * 20_000; // 30-50s
     const speed    = 140    + Math.random() * 60;
     const reward   = 2 + Math.floor(Math.random() * 4); // 2-5
     const fish     = this._create('elite', 1, reward, speed, duration);
@@ -217,6 +221,11 @@ export class FishSpawner {
   // Internal remove
   // ---------------------------------------------------------------------------
 
+  private _refillNormal(): void {
+    const MIN_NORMAL = 8;
+    while (!this._disposed && this._normalCount < MIN_NORMAL) this._spawnNormal();
+  }
+
   private _removeFish(fishId: string, escaped: boolean): void {
     const fish = this._fishMap.get(fishId);
     if (!fish) return;
@@ -227,6 +236,9 @@ export class FishSpawner {
 
     this._fishMap.delete(fishId);
     this._onDespawn(fishId, escaped);
+
+    // Immediately replace to avoid empty screen — don't wait for next tick
+    this._refillNormal();
   }
 }
 

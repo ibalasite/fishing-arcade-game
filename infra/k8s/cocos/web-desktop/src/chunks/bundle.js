@@ -11,13 +11,13 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
   var SERVER = window._GAME_SERVER || 'http://localhost:3000';
   var WS_SRV = SERVER.replace(/^http/, 'ws');
   var MUL_STEPS = [1, 2, 5, 10, 20, 50, 100];
-  // Canvas is 1280×960; world coords: ±640 X, ±480 Y
+  // Canvas design resolution 1280×720; world coords: ±640 X, ±360 Y
   var SLOT_POS = [[-520,-260],[520,-260],[-520,260],[520,260]];
-  var CANVAS_CY = 480; // correct center for 960px canvas height
+  var CANVAS_CY = 360; // design resolution 720px, center Y=360
 
   var g = {
     token:null, userId:null, nickname:'Guest', gold:0,
-    room:null, localSlot:0, cannonMul:1,
+    room:null, localSlot:-1, cannonMul:1,
     fishNodes:{}, fish:{}, bullets:[],
     hudRefs:null, fishLayer:null, bulletLayer:null,
     aimLineGfx:null, cannonNodes:[], cannonStates:{},
@@ -116,14 +116,14 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     gfx.fillColor=col(220,50,50); gfx.rect(-70,-8,140*pct,16); gfx.fill();
   }
 
-  function mkCannonNode(parent,slot,isLocal){
+  function mkCannonNode(parent,slot){
     var pos=SLOT_POS[slot];
     var n=new cc.Node('cannon_'+slot); n.layer=cc.Layers.Enum.UI_2D; parent.addChild(n);
     n.setPosition(pos[0],pos[1],0); n.addComponent(cc.UITransformComponent).setContentSize(130,130);
     var baseN=new cc.Node('base'); baseN.layer=cc.Layers.Enum.UI_2D; n.addChild(baseN);
     baseN.addComponent(cc.UITransformComponent).setContentSize(80,80);
     var bGfx=baseN.addComponent(cc.Graphics);
-    bGfx.fillColor=isLocal?col(255,200,0,230):col(80,120,180,200);
+    bGfx.fillColor=col(80,120,180,200);
     bGfx.circle(0,0,30); bGfx.fill();
     bGfx.strokeColor=col(255,255,255,180); bGfx.lineWidth=3; bGfx.circle(0,0,30); bGfx.stroke();
     var barrelN=new cc.Node('barrel'); barrelN.layer=cc.Layers.Enum.UI_2D; n.addChild(barrelN);
@@ -135,10 +135,40 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     rGfx.rect(4,-7,50,14); rGfx.stroke();
     var dx=-pos[0],dy=-pos[1];
     barrelN.angle=Math.atan2(dy,dx)*180/Math.PI;
-    n._barrel=barrelN; n._pos=pos; n._slot=slot;
-    mkLabel(n,'P'+(slot+1)+(isLocal?' (YOU)':''),17,0,-46,isLocal?col(255,220,0):col(180,180,200),140);
+    n._barrel=barrelN; n._pos=pos; n._slot=slot; n._baseGfx=bGfx;
+    var lblNode=mkLabel(n,'P'+(slot+1),17,0,-46,col(180,180,200),140);
+    n._lblComp=lblNode.getComponent(cc.Label);
     g.cannonStates[slot]='IDLE';
     return n;
+  }
+
+  // offset for 連發 checkbox relative to each slot (bottom slots go up, top slots go down)
+  var CB_OFFSET=[[0,65],[0,65],[0,-65],[0,-65]];
+
+  function updateCannonHighlight(localSlot){
+    g.cannonNodes.forEach(function(cn,idx){
+      if(!cn||!cn.parent) return;
+      var isLocal=(idx===localSlot);
+      if(cn._baseGfx){
+        cn._baseGfx.clear();
+        cn._baseGfx.fillColor=isLocal?col(255,200,0,230):col(80,120,180,200);
+        cn._baseGfx.circle(0,0,30); cn._baseGfx.fill();
+        cn._baseGfx.strokeColor=isLocal?col(255,240,120,220):col(255,255,255,180);
+        cn._baseGfx.lineWidth=isLocal?4:3;
+        cn._baseGfx.circle(0,0,30); cn._baseGfx.stroke();
+      }
+      if(cn._lblComp){
+        cn._lblComp.string='P'+(idx+1)+(isLocal?' (YOU)':'');
+        cn._lblComp.color=isLocal?col(255,220,0):col(180,180,200);
+      }
+    });
+    // Move 連發 checkbox to sit next to local cannon, then show it
+    if(g._cbNode&&localSlot>=0&&localSlot<4){
+      var csp=SLOT_POS[localSlot]||[0,0];
+      var off=CB_OFFSET[localSlot]||[0,65];
+      g._cbNode.setPosition(csp[0]+off[0],csp[1]+off[1],0);
+      g._cbNode.active=true;
+    }
   }
 
   function aimCannon(slot,toX,toY){
@@ -358,8 +388,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     connect:function(cbOk,cbErr){
       NET.auth().then(function(tok){
         var Cly=window.Colyseus; if(!Cly) throw new Error('Colyseus missing');
-        // Pass roomState:'WAITING' so server filterBy fills existing rooms before opening new ones
-        return(new Cly.Client(WS_SRV)).joinOrCreate('fishing_room',{token:tok,nickname:g.nickname,roomState:'WAITING'});
+        return(new Cly.Client(WS_SRV)).joinOrCreate('fishing_room',{token:tok,nickname:g.nickname});
       }).then(function(room){
         g.room=room; NET._retries=0;
         var first=true;
@@ -378,8 +407,11 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
                 if(nd&&nd.parent)nd.destroy();
                 if(g.fishNodes)delete g.fishNodes[key];
                 if(g.fish)delete g.fish[key];
-                // Clear stale lock; do NOT auto-lock another fish
-                if(g.targetFishId===key) g.targetFishId=null;
+                // When auto-fire is on and the locked fish is gone, auto-lock the next biggest
+                if(g.targetFishId===key){
+                  g.targetFishId=null;
+                  if(_autoFireCb) autoLockBest();
+                }
               });
             }
           }
@@ -394,7 +426,10 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
             state.players.forEach(function(p){
               cnt++;
               if(g.room&&p.playerId===g.room.sessionId){
-                if(p.slotIndex!==undefined)g.localSlot=p.slotIndex;
+                if(p.slotIndex!==undefined&&p.slotIndex!==g.localSlot){
+                  g.localSlot=p.slotIndex;
+                  updateCannonHighlight(g.localSlot);
+                }
                 if(p.gold!==undefined){g.gold=p.gold;if(g.hudRefs)g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();}
               }
             });
@@ -404,19 +439,30 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
         room.onMessage('shoot_result',function(m){
           if(m.gold!==undefined&&g.hudRefs){g.gold=m.gold;g.hudRefs.goldLbl.string='Gold: '+g.gold.toLocaleString();}
           if(m.hit&&g.lastShotFishId){
+            var hfn=g.fishNodes&&g.fishNodes[g.lastShotFishId];
+            var hfp=hfn&&hfn.parent?hfn.getPosition():null;
             var hfd=g.fish[g.lastShotFishId];
-            if(hfd) spawnHitEffect(hfd.posX||0,hfd.posY||0,false);
+            var hx=hfp?hfp.x:(hfd?hfd.posX||0:0);
+            var hy=hfp?hfp.y:(hfd?hfd.posY||0:0);
+            spawnHitEffect(hx,hy,false);
             playHitSfx();
           }
         });
         room.onMessage('fish_killed',function(m){
           var reward=m.payout||m.reward||0;
           if(reward&&g.canvasRef){
-            var fx=mkLabel(g.canvasRef,'+'+reward,38,(Math.random()-.5)*300,(Math.random()-.5)*150,col(255,240,50),180);
+            var kfn=g.fishNodes&&g.fishNodes[m.fishId];
+            var kfp=kfn&&kfn.parent?kfn.getPosition():null;
+            var kfd=g.fish[m.fishId];
+            var rkx=kfp?kfp.x:(kfd?kfd.posX||0:0);
+            var rky=kfp?kfp.y:(kfd?kfd.posY||0:0);
+            var fx=mkLabel(g.canvasRef,'+'+reward,38,rkx+(Math.random()-.5)*60,rky+(Math.random()-.5)*60,col(255,240,50),180);
             setTimeout(function(){if(fx&&fx.parent)fx.destroy();},1200);
           }
-          var kfd=g.fish[m.fishId];
-          if(kfd) spawnHitEffect(kfd.posX||0,kfd.posY||0,true);
+          var kfd2=g.fish[m.fishId];
+          var kfn2=g.fishNodes&&g.fishNodes[m.fishId];
+          var kfp2=kfn2&&kfn2.parent?kfn2.getPosition():null;
+          spawnHitEffect(kfp2?kfp2.x:(kfd2?kfd2.posX||0:0),kfp2?kfp2.y:(kfd2?kfd2.posY||0:0),true);
           playHitSfx();
           // Clear stale lock; do NOT auto-switch to another fish
           if(g.targetFishId===m.fishId) g.targetFishId=null;
@@ -456,7 +502,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     var canL=new cc.Node('CanL'); canL.layer=cc.Layers.Enum.UI_2D; canvas.addChild(canL);
     canL.addComponent(cc.UITransformComponent).setContentSize(1280,720);
     g.cannonNodes=[];
-    for(var si=0;si<4;si++) g.cannonNodes.push(mkCannonNode(canL,si,si===g.localSlot));
+    for(var si=0;si<4;si++) g.cannonNodes.push(mkCannonNode(canL,si));
     g.hudRefs=buildHUD(canvas);
     g.waitingOverlay=mkWaitOverlay(canvas);
     mkBtn(canvas,'BACK',22,-570,315,col(40,40,80,200),col(220,220,220),110,40)
@@ -479,11 +525,30 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       if(_autoFireIv){clearInterval(_autoFireIv);_autoFireIv=null;}
     }
 
+    // Pick the alive fish with highest rewardMultiplier; ties broken randomly
+    function autoLockBest(){
+      var bestReward=-1, tied=[];
+      if(g.fishNodes){
+        Object.keys(g.fishNodes).forEach(function(fid){
+          var fd=g.fish[fid]; if(!fd||!fd.alive) return;
+          var fn_=g.fishNodes[fid]; if(!fn_||!fn_.parent) return;
+          var r=fd.rewardMultiplier||1;
+          if(r>bestReward){bestReward=r;tied=[fid];}
+          else if(r===bestReward){tied.push(fid);}
+        });
+      }
+      if(tied.length>0) g.targetFishId=tied[Math.floor(Math.random()*tied.length)];
+    }
+
     function startAutoFire(){
       if(_autoFireIv) return;
       _autoFireIv=setInterval(function(){
-        if(!g.room||g.disposed||!_autoFireCb||!g.targetFishId){stopAutoFire();return;}
-        doShootAtLocked();
+        if(!g.room||g.disposed||!_autoFireCb){stopAutoFire();return;}
+        // If no lock, auto-pick the biggest fish first
+        if(!g.targetFishId||!g.fish[g.targetFishId]||!g.fish[g.targetFishId].alive){
+          autoLockBest();
+        }
+        if(g.targetFishId) doShootAtLocked();
       },500);
     }
 
@@ -492,7 +557,9 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       var tfd=g.targetFishId&&g.fish[g.targetFishId];
       if(!tfd||!tfd.alive){g.targetFishId=null;stopAutoFire();return;}
       var sp=SLOT_POS[g.localSlot]||[0,0];
-      var toX=tfd.posX||0,toY=tfd.posY||0;
+      var _tfn=g.fishNodes&&g.fishNodes[g.targetFishId];
+      var _tfp=_tfn&&_tfn.parent?_tfn.getPosition():null;
+      var toX=_tfp?_tfp.x:(tfd.posX||0),toY=_tfp?_tfp.y:(tfd.posY||0);
       aimCannon(g.localSlot,toX,toY);
       var bId='b'+Date.now()+Math.random().toString(36).slice(2,7);
       var betAmt=Math.max(1,g.cannonMul||1)*100;
@@ -514,20 +581,27 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
         ?g.targetFishId:null;
       var toX,toY;
       if(fireTarget){
-        var tfd=g.fish[fireTarget];
-        toX=tfd.posX||0; toY=tfd.posY||0;
+        // Use visual (animated) position of locked fish
+        var _fn=g.fishNodes&&g.fishNodes[fireTarget];
+        var _fp=_fn&&_fn.parent?_fn.getPosition():null;
+        toX=_fp?_fp.x:(g.fish[fireTarget].posX||0);
+        toY=_fp?_fp.y:(g.fish[fireTarget].posY||0);
       } else {
-        // Aim at nearest fish in tap direction
+        // Find nearest fish to tap using visual positions
         var nearFishId=null,nearDist=Infinity;
-        if(g.fish){Object.keys(g.fish).forEach(function(fid){
+        if(g.fishNodes){Object.keys(g.fishNodes).forEach(function(fid){
           var fd=g.fish[fid]; if(!fd||!fd.alive) return;
-          var fdx=(fd.posX||0)-wx,fdy=(fd.posY||0)-wy;
+          var fn_=g.fishNodes[fid]; if(!fn_||!fn_.parent) return;
+          var fp=fn_.getPosition();
+          var fdx=fp.x-wx,fdy=fp.y-wy;
           var d=fdx*fdx+fdy*fdy;
           if(d<nearDist){nearDist=d;nearFishId=fid;}
         });}
         fireTarget=nearFishId;
-        toX=nearFishId&&g.fish[nearFishId]?(g.fish[nearFishId].posX||0):wx;
-        toY=nearFishId&&g.fish[nearFishId]?(g.fish[nearFishId].posY||0):wy;
+        if(nearFishId&&g.fishNodes[nearFishId]&&g.fishNodes[nearFishId].parent){
+          var _np=g.fishNodes[nearFishId].getPosition();
+          toX=_np.x; toY=_np.y;
+        } else { toX=wx; toY=wy; }
       }
       if(!fireTarget) return;
       aimCannon(g.localSlot,toX,toY);
@@ -545,11 +619,13 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     }
 
     function doLockAtPos(wx,wy){
-      // Find nearest alive fish within 120 world-units
+      // Find nearest alive fish within 120 world-units using visual (animated) position
       var nearFishId=null,nearDist=120;
-      if(g.fish){Object.keys(g.fish).forEach(function(fid){
+      if(g.fishNodes){Object.keys(g.fishNodes).forEach(function(fid){
         var fd=g.fish[fid]; if(!fd||!fd.alive) return;
-        var fdx=(fd.posX||0)-wx,fdy=(fd.posY||0)-wy;
+        var fn_=g.fishNodes[fid]; if(!fn_||!fn_.parent) return;
+        var fp=fn_.getPosition(); // animated node position, not stale schema posX/posY
+        var fdx=fp.x-wx,fdy=fp.y-wy;
         var d=Math.sqrt(fdx*fdx+fdy*fdy);
         if(d<nearDist){nearDist=d;nearFishId=fid;}
       });}
@@ -565,9 +641,11 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
       }
     }
 
-    // ── Auto-fire checkbox (連發) near P1 bottom-left ─────────────────────────
+    // ── Auto-fire checkbox (連發) — hidden until slot assigned, then moved to local cannon ──
     var cbNode=new cc.Node('cb_autofire'); cbNode.layer=cc.Layers.Enum.UI_2D; canvas.addChild(cbNode);
-    cbNode.setPosition(-570,-295,0); cbNode.addComponent(cc.UITransformComponent).setContentSize(120,36);
+    cbNode.setPosition(0,0,0); cbNode.addComponent(cc.UITransformComponent).setContentSize(120,36);
+    cbNode.active=false; // shown by updateCannonHighlight after slot is known
+    g._cbNode=cbNode;
     var cbGfx=cbNode.addComponent(cc.Graphics);
     function redrawCb(){
       cbGfx.clear();
@@ -679,7 +757,7 @@ t("regeneratorRuntime",(function(){return e}));var r,e={},n=Object.prototype,o=n
     NET.connect(function(){
       if(connLbl&&connLbl.parent)connLbl.destroy();
     },function(){
-      var lb=connLbl&&connLbl.getComponent(cc.Label);
+      var lb=connLbl&&connLbl.parent&&connLbl.getComponent(cc.Label);
       if(lb)lb.string='Failed to connect. Retrying...';
     });
   }

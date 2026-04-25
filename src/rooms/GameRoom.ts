@@ -191,7 +191,7 @@ export class GameRoom extends Room<GameState> {
     this.state.playerCount = this.state.players.size;
     this._activeBullets.set(client.sessionId, new Set<string>());
 
-    if (this.state.playerCount >= this.maxClients) {
+    if (this.state.roomState === 'WAITING' && this.state.playerCount >= 1) {
       this._transitionToPlaying();
     }
 
