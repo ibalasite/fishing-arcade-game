@@ -65,9 +65,11 @@ export class FishSpawner {
   // ---------------------------------------------------------------------------
 
   start(): void {
-    // Fill to maxNormal immediately so screen is full from the first frame
-    this._refillNormal();
-    for (let i = 0; i < 3; i++) this._spawnElite();
+    // Initial fill: spread fish across the full path so screen is populated immediately.
+    // Without pre-aging, all 15 fish start off-screen (t=0) and take seconds to enter view.
+    this._refillNormal(true);
+    // Pre-age elite fish to mid-path so they appear on-screen right away
+    for (let i = 0; i < 3; i++) this._spawnElite(5_000 + Math.random() * 20_000);
 
     // Interval is a safety-net top-up (primary fill happens in _removeFish)
     this._normalTimer = setInterval(() => {
@@ -122,20 +124,20 @@ export class FishSpawner {
   // Spawn helpers
   // ---------------------------------------------------------------------------
 
-  private _spawnNormal(): void {
+  private _spawnNormal(preAgeMs = 0): void {
     const duration = 22_000 + Math.random() * 13_000; // 22-35s
     const speed    = 180   + Math.random() * 80;    // px/s
-    const fish     = this._create('normal', 1, 1, speed, duration);
+    const fish     = this._create('normal', 1, 1, speed, duration, preAgeMs);
     this._fishMap.set(fish.fishId, fish);
     this._onSpawn(fish);
     this._normalCount++;
   }
 
-  private _spawnElite(): void {
+  private _spawnElite(preAgeMs = 0): void {
     const duration = 30_000 + Math.random() * 20_000; // 30-50s
     const speed    = 140    + Math.random() * 60;
     const reward   = 2 + Math.floor(Math.random() * 4); // 2-5
-    const fish     = this._create('elite', 1, reward, speed, duration);
+    const fish     = this._create('elite', 1, reward, speed, duration, preAgeMs);
     this._fishMap.set(fish.fishId, fish);
     this._onSpawn(fish);
     this._eliteCount++;
@@ -155,6 +157,7 @@ export class FishSpawner {
     reward:   number,
     speed:    number,
     duration: number,
+    preAgeMs  = 0,
   ): FishState {
     const fish         = new FishState();
     fish.fishId        = crypto.randomUUID();
@@ -164,7 +167,8 @@ export class FishSpawner {
     fish.alive         = true;
     fish.rewardMultiplier = reward;
     fish.speed         = speed;
-    fish.startTimeMs   = Date.now();
+    // Clamp preAge to 80% of duration so fish never arrive already-expired
+    fish.startTimeMs   = Date.now() - Math.min(preAgeMs, duration * 0.80);
     fish.durationMs    = duration;
 
     const path = this._genPath(type);
@@ -220,9 +224,17 @@ export class FishSpawner {
   // Internal remove
   // ---------------------------------------------------------------------------
 
-  private _refillNormal(): void {
-    // Always fill to maxNormal so the screen is never sparse
-    while (!this._disposed && this._normalCount < this._cfg.maxNormal) this._spawnNormal();
+  private _refillNormal(initialFill = false): void {
+    while (!this._disposed && this._normalCount < this._cfg.maxNormal) {
+      // initialFill: spread fish randomly across their full path range so all
+      // stages of traversal are represented from the very first frame.
+      // Replacement fish: pre-age 3-10s so they enter the visible area quickly
+      // rather than appearing at the off-screen entry edge.
+      const preAge = initialFill
+        ? Math.random() * 22_000          // 0–22s: covers the full normal path
+        : 3_000 + Math.random() * 7_000;  // 3–10s: enters screen within seconds
+      this._spawnNormal(preAge);
+    }
   }
 
   private _removeFish(fishId: string, escaped: boolean): void {
