@@ -130,7 +130,7 @@ PYEOF
 
   # Inject game scene setup into bundle.js (director event approach — no ccclass needed)
   local BUNDLE_JS="$CLIENT_DIR/build/web-desktop/src/chunks/bundle.js"
-  if [ -f "$BUNDLE_JS" ] && ! grep -q "FishingArcadeGame_v4" "$BUNDLE_JS"; then
+  if [ -f "$BUNDLE_JS" ] && ! grep -q "FishingArcadeGame_v5" "$BUNDLE_JS"; then
     log "Injecting game scene setup into bundle.js..."
     BUNDLE_JS_PATH="$BUNDLE_JS" python3 << 'PYEOF'
 import os

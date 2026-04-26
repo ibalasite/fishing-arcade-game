@@ -4,7 +4,7 @@
   "description": "Server-side implementation for Fishing Arcade Game (Colyseus 0.15 + Node.js)",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "test": "jest",
